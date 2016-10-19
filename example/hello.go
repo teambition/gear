@@ -1,15 +1,9 @@
-gweb
-=====
-A pithy and powerful web framework for Go, work with context.Context and middleware, like koajs/toajs.
-
-## Demo
-```go
 package main
 
 import (
 	"fmt"
 
-	"github.com/zensh/gweb"
+	"github.com/teambition/gweb"
 )
 
 func main() {
@@ -23,4 +17,3 @@ func main() {
 	})
 	app.Listen(":3000")
 }
-```
