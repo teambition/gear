@@ -1,17 +1,19 @@
 package gweb
 
-import "net/http"
+import (
+	"bytes"
+	"net/http"
+)
 
 // Response implement ResponseWriter
 type Response struct {
-	status     int // status code passed to WriteHeader
-	err        error
-	res        http.ResponseWriter
-	body       []byte
-	headerSent bool
-	bodySent   bool
-	ctx        *Context
-	Header     http.Header
+	ctx      *Context
+	res      http.ResponseWriter
+	Status   int         // response Status
+	Type     string      // response Content-Type
+	Body     []byte      // response Content
+	Header   http.Header // response Header
+	finished bool
 }
 
 // NewResponse ...
@@ -19,7 +21,7 @@ func NewResponse(w http.ResponseWriter, ctx *Context) *Response {
 	r := new(Response)
 	r.res = w
 	r.ctx = ctx
-	r.status = 404
+	r.Status = 404
 	r.Header = w.Header()
 	return r
 }
@@ -44,27 +46,42 @@ func (r *Response) Set(key, value string) {
 	r.Header.Set(key, value)
 }
 
-func (r *Response) Status(code int) {
-	r.status = code
-}
-
-func (r *Response) Body(buf []byte) {
-	r.body = buf
-}
-
 func (r *Response) Write(buf []byte) (int, error) {
+	r.finished = true
 	return r.res.Write(buf)
 }
 
-func (r *Response) WriteHeader() {
-	if r.headerSent {
-		return
+func (r *Response) WriteHeader(code int) {
+	if code > 0 {
+		r.Status = code
 	}
-	r.headerSent = true
-	r.res.WriteHeader(r.status)
+	r.finished = true
+	r.res.WriteHeader(r.Status)
 }
 
-func (r *Response) respond() {
-	r.WriteHeader()
-	r.Write(r.body)
+func (r *Response) stringBody(str string) {
+	r.Body = bytes.NewBufferString(str).Bytes()
+}
+
+func (r *Response) end(code int) {
+	if r.finished {
+		return
+	}
+	r.ctx.Lock()
+	if code > 0 {
+		r.Status = code
+	}
+	statusText := http.StatusText(r.Status)
+	if statusText == "" {
+		r.Status = 500
+		statusText = http.StatusText(r.Status)
+	}
+	if r.Body == nil && r.Status >= 300 {
+		r.stringBody(statusText)
+	}
+	r.WriteHeader(0)
+	if r.Body != nil {
+		r.Write(r.Body)
+	}
+	r.ctx.Unlock()
 }

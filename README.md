@@ -19,6 +19,8 @@ func main() {
 		fmt.Println(c.Path)
 		c.Status(200)
 		c.Html("<h1>Hello! </h1>")
+		// or
+		// fmt.Fprintf(c.Res, "<h1>Hello! </h1>")
 		return
 	})
 	app.Listen(":3000")
