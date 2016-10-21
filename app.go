@@ -1,7 +1,7 @@
 package gear
 
 import (
-	"errors"
+	"io"
 	"log"
 	"net/http"
 	"sync"
@@ -9,46 +9,49 @@ import (
 
 // Gear is the top-level framework app instance.
 type Gear struct {
-	server     *http.Server
 	middleware []Middleware
 	pool       sync.Pool
 	ErrorLog   *log.Logger
+	Renderer   Renderer
+	Server     *http.Server
 }
 
 // Middleware defines a function to process middleware.
 type Middleware func(Context) error
 
-// HTTPError represents an error that occurred while handling a request.
-type HTTPError struct {
-	error
-	Code int
-}
+// // HTTPError represents an error that occurred while handling a request.
+// type HTTPError struct {
+// 	error
+// 	Code int
+// }
 
-// NewHTTPError creates an instance of HTTPError with status code and error message.
-func NewHTTPError(code int, err string) *HTTPError {
-	return &HTTPError{errors.New(err), code}
-}
+// // NewHTTPError creates an instance of HTTPError with status code and error message.
+// func NewHTTPError(code int, err string) *HTTPError {
+// 	return &HTTPError{errors.New(err), code}
+// }
 
-// Handler is a interface defines a function work as middleware.
+// Handler is the interface that wraps the Middleware function.
 type Handler interface {
 	Middleware(Context) error
+}
+
+// Renderer is the interface that wraps the Render function.
+type Renderer interface {
+	Render(Context, io.Writer, string, interface{}) error
 }
 
 // New creates an instance of Gear.
 func New() *Gear {
 	g := new(Gear)
-	g.server = new(http.Server)
+	g.Server = new(http.Server)
 	g.middleware = make([]Middleware, 0)
 	g.pool.New = func() interface{} {
-		ctx := &gearCtx{}
-		res := &Response{ctx: ctx}
-		ctx.res = res
-		return ctx
+		return &gearCtx{app: g, res: &Response{}}
 	}
 	return g
 }
 
-func (g *Gear) toServHandler() *servHandler {
+func (g *Gear) toServeHandler() *servHandler {
 	if len(g.middleware) == 0 {
 		panic("No middleware")
 	}
@@ -76,22 +79,22 @@ func (g *Gear) UseHandler(h Handler) {
 
 // Listen starts the HTTP server.
 func (g *Gear) Listen(addr string) error {
-	g.server.Addr = addr
-	g.server.Handler = g.toServHandler()
+	g.Server.Addr = addr
+	g.Server.Handler = g.toServeHandler()
 	if g.ErrorLog != nil {
-		g.server.ErrorLog = g.ErrorLog
+		g.Server.ErrorLog = g.ErrorLog
 	}
-	return g.server.ListenAndServe()
+	return g.Server.ListenAndServe()
 }
 
 // ListenTLS starts the HTTPS server.
 func (g *Gear) ListenTLS(addr, certFile, keyFile string) error {
-	g.server.Addr = addr
-	g.server.Handler = g.toServHandler()
+	g.Server.Addr = addr
+	g.Server.Handler = g.toServeHandler()
 	if g.ErrorLog != nil {
-		g.server.ErrorLog = g.ErrorLog
+		g.Server.ErrorLog = g.ErrorLog
 	}
-	return g.server.ListenAndServeTLS(certFile, keyFile)
+	return g.Server.ListenAndServeTLS(certFile, keyFile)
 }
 
 type servHandler struct {
@@ -131,6 +134,10 @@ func (h *servHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		ctx.Body(err.Error())
 	}
-	ctx.res.respond()
+	err = ctx.res.respond()
+	if err != nil {
+		h.app.OnError(err)
+	}
+	ctx.reset(nil, nil)
 	h.app.pool.Put(ctx)
 }

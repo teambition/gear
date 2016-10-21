@@ -145,7 +145,7 @@ func (r *Router) Middleware(ctx Context) error {
 		return fmt.Errorf("%s not allowed in %s", method, path)
 	}
 
-	ctx.SetValue(GearValueParams, res.params)
+	ctx.SetValue(GearParamsKey, res.params)
 	err := r.run(ctx, handle)
 	if err == nil && r.IsEndpoint {
 		ctx.End(0, "")

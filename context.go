@@ -1,13 +1,42 @@
 package gear
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/xml"
+	"errors"
 	"fmt"
+	"io"
+	"mime"
 	"net"
 	"net/http"
+	"net/url"
+	"path/filepath"
 	"sync"
 	"time"
+)
+
+// All const values got from https://github.com/labstack/echo
+// MIME types
+const (
+	charsetUTF8 = "charset=utf-8"
+
+	MIMEApplicationJSON                  = "application/json"
+	MIMEApplicationJSONCharsetUTF8       = MIMEApplicationJSON + "; " + charsetUTF8
+	MIMEApplicationJavaScript            = "application/javascript"
+	MIMEApplicationJavaScriptCharsetUTF8 = MIMEApplicationJavaScript + "; " + charsetUTF8
+	MIMEApplicationXML                   = "application/xml"
+	MIMEApplicationXMLCharsetUTF8        = MIMEApplicationXML + "; " + charsetUTF8
+	MIMEApplicationForm                  = "application/x-www-form-urlencoded"
+	MIMEApplicationProtobuf              = "application/protobuf"
+	MIMEApplicationMsgpack               = "application/msgpack"
+	MIMETextHTML                         = "text/html"
+	MIMETextHTMLCharsetUTF8              = MIMETextHTML + "; " + charsetUTF8
+	MIMETextPlain                        = "text/plain"
+	MIMETextPlainCharsetUTF8             = MIMETextPlain + "; " + charsetUTF8
+	MIMEMultipartForm                    = "multipart/form-data"
+	MIMEOctetStream                      = "application/octet-stream"
 )
 
 // Headers
@@ -51,26 +80,14 @@ const (
 	HeaderXCSRFToken              = "X-CSRF-Token"
 )
 
-const (
-	// CharsetUTF8
-	CharsetUTF8 = "charset=utf-8"
+type contextKey struct {
+	name string
+}
 
-	// MediaTypes
-	ApplicationJSON                  = "application/json"
-	ApplicationJSONCharsetUTF8       = ApplicationJSON + "; " + CharsetUTF8
-	ApplicationJavaScript            = "application/javascript"
-	ApplicationJavaScriptCharsetUTF8 = ApplicationJavaScript + "; " + CharsetUTF8
-	ApplicationXML                   = "application/xml"
-	ApplicationXMLCharsetUTF8        = ApplicationXML + "; " + CharsetUTF8
-	ApplicationForm                  = "application/x-www-form-urlencoded"
-	ApplicationProtobuf              = "application/protobuf"
-	TextHTML                         = "text/html"
-	TextHTMLCharsetUTF8              = TextHTML + "; " + CharsetUTF8
-	TextPlain                        = "text/plain"
-	TextPlainCharsetUTF8             = TextPlain + "; " + CharsetUTF8
-	MultipartForm                    = "multipart/form-data"
-
-	GearValueParams = "GearValueParams"
+// Gear global values
+var (
+	GearParamsKey = &contextKey{"Gear-Params-Key"}
+	GearLogsKey   = &contextKey{"Gear-Logs-Key"}
 )
 
 // Context represents the context of the current HTTP request. It holds request and
@@ -97,12 +114,6 @@ type Context interface {
 	// SetValue save a key and value to the ctx.
 	SetValue(interface{}, interface{})
 
-	// Lock locks ctx for writing. If the lock is already locked for reading or writing, Lock blocks until the lock is available.
-	Lock()
-
-	// Unlock unlocks ctx for writing. It is a run-time error if rw is not locked for writing on entry to Unlock.
-	Unlock()
-
 	// Request returns `*http.Request`.
 	Request() *http.Request
 
@@ -123,19 +134,19 @@ type Context interface {
 	Path() string
 
 	// Param returns path parameter by name.
-	Param(string) (string, bool)
+	Param(string) string
 
 	// Query returns the query param for the provided name.
-	// Query(string) string TODO
+	Query(string) string
 
 	// Cookie returns the named cookie provided in the request.
-	// Cookie(string) (*http.Cookie, error) TODO
+	Cookie(string) (*http.Cookie, error)
 
 	// SetCookie adds a `Set-Cookie` header in HTTP response.
-	// SetCookie(*http.Cookie) TODO
+	SetCookie(*http.Cookie)
 
 	// Cookies returns the HTTP cookies sent with the request.
-	// Cookies() []*http.Cookie TODO
+	Cookies() []*http.Cookie
 
 	// Get retrieves data from the request Header.
 	Get(string) string
@@ -153,81 +164,109 @@ type Context interface {
 	Type(string)
 
 	// HTML set an Html body with status code to response.
-	HTML(int, string)
+	// It will end the ctx.
+	HTML(int, string) error
 
 	// JSON set a JSON body with status code to response.
-	JSON(int, interface{})
+	// It will end the ctx.
+	JSON(int, interface{}) error
 
 	// JSONBlob set a JSON blob body with status code to response.
-	// JSONBlob(int, []byte) TODO
+	// It will end the ctx.
+	JSONBlob(int, []byte) error
+
+	// JSONP sends a JSONP response with status code. It uses `callback` to construct the JSONP payload.
+	// It will end the ctx.
+	JSONP(int, string, interface{}) error
+
+	// JSONPBlob sends a JSONP blob response with status code. It uses `callback`
+	// to construct the JSONP payload.
+	// It will end the ctx.
+	JSONPBlob(int, string, []byte) error
 
 	// XML set an XML body with status code to response.
-	// XML(int, interface{}) TODO
+	// It will end the ctx.
+	XML(int, interface{}) error
 
 	// XMLBlob set a XML blob body with status code to response.
-	// XMLBlob(int, []byte) TODO
+	// It will end the ctx.
+	XMLBlob(int, []byte) error
 
 	// Render renders a template with data and sends a text/html response with status
-	// code. Templates can be registered using `Echo.SetRenderer()`.
-	// Render(int, string, interface{}) error TODO
+	// code. Templates can be registered using `app.SetRenderer()`.
+	// It will end the ctx.
+	Render(int, string, interface{}) error
 
 	// Stream sends a streaming response with status code and content type.
-	// Stream(int, string, io.Reader) error TODO
+	// It will end the ctx.
+	Stream(int, string, io.Reader) error
 
 	// Attachment sends a response from `io.ReaderSeeker` as attachment, prompting
 	// client to save the file.
-	// Attachment(io.ReadSeeker, string) error TODO
+	// It will end the ctx.
+	Attachment(string, io.ReadSeeker) error
 
 	// Inline sends a response from `io.ReaderSeeker` as inline, opening
 	// the file in the browser.
-	// Inline(io.ReadSeeker, string) error TODO
+	// It will end the ctx.
+	Inline(string, io.ReadSeeker) error
 
 	// Redirect redirects the request with status code.
-	// Redirect(int, string) error TODO
+	// It will end the ctx.
+	Redirect(int, string) error
 
-	// End send an string body with status code to response.
+	// End end the ctx with string body and status code optionally.
+	// After it's called, the rest of middleware handles will not run.
+	// But the registered hook on the ctx will run.
 	End(int, string)
 
 	// IsEnded return the ctx' ended status.
 	IsEnded() bool
 
-	// After add a Middleware handle to the ctx that will run after app'Middleware.
+	// After add a Middleware handle to the ctx that will run after app's Middleware.
 	After(handle Middleware)
 
 	// String returns a string represent the ctx.
 	String() string
 }
 
-// Context docs
 type gearCtx struct {
 	ctx       context.Context
 	cancelCtx context.CancelFunc
 	req       *http.Request
 	res       *Response
+	app       *Gear
 	host      string
 	method    string
 	path      string
 	ended     bool
+	query     url.Values
 	vals      map[interface{}]interface{}
 	hooks     []Middleware
 	mu        sync.Mutex
 }
 
-// NewContext returns a Context
 func (ctx *gearCtx) reset(w http.ResponseWriter, req *http.Request) {
-	ctx.ctx, ctx.cancelCtx = context.WithCancel(req.Context())
 	ctx.req = req
 	ctx.res.reset(w)
-	ctx.host = req.Host
-	ctx.method = req.Method
 	ctx.ended = false
-	ctx.path = normalizePath(req.URL.Path) // convert "/abc//ef" to "/abc/ef"
-	ctx.hooks = make([]Middleware, 0)
-	ctx.vals = make(map[interface{}]interface{})
+	if w == nil {
+		ctx.ctx = nil
+		ctx.vals = nil
+		ctx.query = nil
+		ctx.hooks = nil
+		ctx.cancelCtx = nil
+	} else {
+		ctx.host = req.Host
+		ctx.method = req.Method
+		ctx.path = normalizePath(req.URL.Path) // fix "/abc//ef" to "/abc/ef"
+		ctx.hooks = make([]Middleware, 0)
+		ctx.vals = make(map[interface{}]interface{})
+		ctx.ctx, ctx.cancelCtx = context.WithCancel(req.Context())
+	}
 }
 
 // ----- implement context.Context interface -----
-
 func (ctx *gearCtx) Deadline() (time.Time, bool) {
 	return ctx.ctx.Deadline()
 }
@@ -273,19 +312,7 @@ func (ctx *gearCtx) WithValue(key, val interface{}) context.Context {
 }
 
 func (ctx *gearCtx) SetValue(key, val interface{}) {
-	ctx.Lock()
 	ctx.vals[key] = val
-	ctx.Unlock()
-}
-
-// ----- implement Locker interface -----
-
-func (ctx *gearCtx) Lock() {
-	ctx.mu.Lock()
-}
-
-func (ctx *gearCtx) Unlock() {
-	ctx.mu.Unlock()
 }
 
 func (ctx *gearCtx) Request() *http.Request {
@@ -320,11 +347,30 @@ func (ctx *gearCtx) Path() string {
 	return ctx.path
 }
 
-func (ctx *gearCtx) Param(key string) (val string, ok bool) {
-	if params := ctx.Value("GearValueParams"); params != nil {
-		val, ok = params.(map[string]string)[key]
+func (ctx *gearCtx) Param(key string) (val string) {
+	if params := ctx.Value(GearParamsKey); params != nil {
+		val, _ = params.(map[string]string)[key]
 	}
 	return
+}
+
+func (ctx *gearCtx) Query(name string) string {
+	if ctx.query == nil {
+		ctx.query = ctx.req.URL.Query()
+	}
+	return ctx.query.Get(name)
+}
+
+func (ctx *gearCtx) Cookie(name string) (*http.Cookie, error) {
+	return ctx.req.Cookie(name)
+}
+
+func (ctx *gearCtx) SetCookie(cookie *http.Cookie) {
+	http.SetCookie(ctx.res.res, cookie)
+}
+
+func (ctx *gearCtx) Cookies() []*http.Cookie {
+	return ctx.req.Cookies()
 }
 
 func (ctx *gearCtx) Get(key string) string {
@@ -349,15 +395,15 @@ func (ctx *gearCtx) Status(code int) {
 func (ctx *gearCtx) Type(str string) {
 	switch str {
 	case "json":
-		str = ApplicationJSONCharsetUTF8
+		str = MIMEApplicationJSONCharsetUTF8
 	case "js":
-		str = ApplicationJavaScriptCharsetUTF8
+		str = MIMEApplicationJavaScriptCharsetUTF8
 	case "xml":
-		str = ApplicationXMLCharsetUTF8
+		str = MIMEApplicationXMLCharsetUTF8
 	case "text":
-		str = TextPlainCharsetUTF8
+		str = MIMETextPlainCharsetUTF8
 	case "html":
-		str = TextHTMLCharsetUTF8
+		str = MIMETextHTMLCharsetUTF8
 	}
 	if str == "" {
 		ctx.res.Del(HeaderContentType)
@@ -366,33 +412,99 @@ func (ctx *gearCtx) Type(str string) {
 	}
 }
 
-func (ctx *gearCtx) HTML(code int, str string) {
-	ctx.Status(code)
+func (ctx *gearCtx) HTML(code int, str string) error {
 	ctx.Type("html")
-	ctx.Body(str)
+	ctx.End(code, str)
+	return nil
 }
 
-func (ctx *gearCtx) JSON(code int, val interface{}) {
+func (ctx *gearCtx) JSON(code int, val interface{}) error {
 	buf, err := json.Marshal(val)
-
 	if err != nil {
-		ctx.Status(500)
-		ctx.Type("text")
-		ctx.Body(err.Error())
-	} else {
-		ctx.Status(code)
-		ctx.Type("json")
-		ctx.res.Body = buf
+		ctx.End(500, err.Error())
+		return err
 	}
+	return ctx.JSONBlob(code, buf)
 }
 
-// func (ctx *gearCtx) Attachment(filename string) {
+func (ctx *gearCtx) JSONBlob(code int, buf []byte) error {
+	ctx.Type("json")
+	ctx.res.Body = buf
+	ctx.End(code, "")
+	return nil
+}
 
-// }
+func (ctx *gearCtx) JSONP(code int, callback string, val interface{}) error {
+	buf, err := json.Marshal(val)
+	if err != nil {
+		ctx.End(500, err.Error())
+		return err
+	}
+	return ctx.JSONPBlob(code, callback, buf)
+}
 
-// func (ctx *gearCtx) Redirect(url string) {
+func (ctx *gearCtx) JSONPBlob(code int, callback string, buf []byte) error {
+	ctx.Type("js")
+	ctx.res.Body = bytes.Join([][]byte{[]byte(callback + "("), buf, []byte(");")}, []byte{})
+	ctx.End(code, "")
+	return nil
+}
 
-// }
+func (ctx *gearCtx) XML(code int, val interface{}) error {
+	buf, err := xml.Marshal(val)
+	if err != nil {
+		ctx.End(500, err.Error())
+		return err
+	}
+	return ctx.XMLBlob(code, buf)
+}
+
+func (ctx *gearCtx) XMLBlob(code int, buf []byte) error {
+	ctx.Type("xml")
+	ctx.res.Body = buf
+	ctx.End(code, "")
+	return nil
+}
+
+func (ctx *gearCtx) Render(code int, name string, data interface{}) (err error) {
+	if ctx.app.Renderer == nil {
+		return errors.New("renderer not registered")
+	}
+	buf := new(bytes.Buffer)
+	if err = ctx.app.Renderer.Render(ctx, buf, name, data); err != nil {
+		return
+	}
+	ctx.Type("html")
+	ctx.res.Body = buf.Bytes()
+	ctx.End(code, "")
+	return
+}
+
+func (ctx *gearCtx) Stream(code int, contentType string, r io.Reader) (err error) {
+	ctx.Type(contentType)
+	ctx.res.WriteHeader(code)
+	_, err = io.Copy(ctx.res, r)
+	return
+}
+
+func (ctx *gearCtx) Attachment(name string, content io.ReadSeeker) error {
+	return ctx.contentDisposition("attachment", name, content)
+}
+
+func (ctx *gearCtx) Inline(name string, content io.ReadSeeker) error {
+	return ctx.contentDisposition("inline", name, content)
+}
+
+func (ctx *gearCtx) contentDisposition(dispositionType, name string, content io.ReadSeeker) error {
+	ctx.Set(HeaderContentDisposition, fmt.Sprintf("%s; filename=%s", dispositionType, name))
+	http.ServeContent(ctx.res, ctx.req, name, time.Time{}, content)
+	return nil
+}
+
+func (ctx *gearCtx) Redirect(code int, url string) error {
+	http.Redirect(ctx.res, ctx.req, url, code)
+	return nil
+}
 
 func (ctx *gearCtx) End(code int, str string) {
 	ctx.ended = true
@@ -410,4 +522,13 @@ func (ctx *gearCtx) IsEnded() bool {
 
 func (ctx *gearCtx) After(handle Middleware) {
 	ctx.hooks = append(ctx.hooks, handle)
+}
+
+// ContentTypeByExtension returns the MIME type associated with the file based on
+// its extension. It returns `application/octet-stream` incase MIME type is not found.
+func ContentTypeByExtension(name string) (t string) {
+	if t = mime.TypeByExtension(filepath.Ext(name)); t == "" {
+		t = MIMEOctetStream
+	}
+	return
 }
