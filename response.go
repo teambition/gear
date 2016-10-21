@@ -8,6 +8,7 @@ import (
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.
 type Response struct {
+	ctx      *gearCtx
 	res      http.ResponseWriter
 	Status   int         // response Status
 	Type     string      // response Content-Type
@@ -56,7 +57,9 @@ func (r *Response) Header() http.Header {
 
 // Write writes the data to the connection as part of an HTTP reply.
 func (r *Response) Write(buf []byte) (int, error) {
-	r.finished = true
+	if !r.finished {
+		r.WriteHeader(r.Status)
+	}
 	return r.res.Write(buf)
 }
 
@@ -66,27 +69,32 @@ func (r *Response) Write(buf []byte) (int, error) {
 // Thus explicit calls to WriteHeader are mainly used to
 // send error codes.
 func (r *Response) WriteHeader(code int) {
-	if code > 0 {
-		r.Status = code
+	r.Status = code
+
+	if r.ctx.afterHooks != nil {
+		r.ctx.runAfterHooks()
+	}
+	if r.ctx.endHooks != nil {
+		r.ctx.runEndHooks()
 	}
 	r.finished = true
-	r.res.WriteHeader(r.Status)
-}
-
-func (r *Response) stringBody(str string) {
-	r.Body = bytes.NewBufferString(str).Bytes()
+	r.res.WriteHeader(r.Status) // r.Status maybe changed in hooks
 }
 
 func (r *Response) respond() (err error) {
 	if r.finished {
 		return
 	}
-	r.WriteHeader(0)
+	r.WriteHeader(r.Status)
 	if r.Body == nil && r.Status >= 300 {
-		r.stringBody(http.StatusText(r.Status))
+		r.Body = stringToBytes(http.StatusText(r.Status))
 	}
 	if r.Body != nil {
 		_, err = r.Write(r.Body)
 	}
 	return
+}
+
+func stringToBytes(str string) []byte {
+	return bytes.NewBufferString(str).Bytes()
 }

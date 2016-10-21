@@ -8,11 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"mime"
 	"net"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"sync"
 	"time"
 )
@@ -84,6 +82,8 @@ type contextKey struct {
 	name string
 }
 
+var nilByte []byte
+
 // Gear global values
 var (
 	GearParamsKey = &contextKey{"Gear-Params-Key"}
@@ -154,14 +154,17 @@ type Context interface {
 	// Set saves data to the response Header.
 	Set(string, string)
 
-	// Body set a string to response.
-	Body(string)
-
 	// Status set a status code to response
 	Status(int)
 
 	// Type set a content type to response
 	Type(string)
+
+	// Body set a string to response.
+	Body(string)
+
+	// Error set a error message with status code to response.
+	Error(*HTTPError)
 
 	// HTML set an Html body with status code to response.
 	// It will end the ctx.
@@ -218,32 +221,36 @@ type Context interface {
 	// End end the ctx with string body and status code optionally.
 	// After it's called, the rest of middleware handles will not run.
 	// But the registered hook on the ctx will run.
-	End(int, string)
+	End(int, []byte)
 
 	// IsEnded return the ctx' ended status.
 	IsEnded() bool
 
-	// After add a Middleware handle to the ctx that will run after app's Middleware.
-	After(handle Middleware)
+	// After add a Hook to the ctx that will run after app's Middleware.
+	After(hook Hook)
+
+	// OnEnd add a Hook to the ctx that will run before response.WriteHeader.
+	OnEnd(hook Hook)
 
 	// String returns a string represent the ctx.
 	String() string
 }
 
 type gearCtx struct {
-	ctx       context.Context
-	cancelCtx context.CancelFunc
-	req       *http.Request
-	res       *Response
-	app       *Gear
-	host      string
-	method    string
-	path      string
-	ended     bool
-	query     url.Values
-	vals      map[interface{}]interface{}
-	hooks     []Middleware
-	mu        sync.Mutex
+	ctx        context.Context
+	cancelCtx  context.CancelFunc
+	req        *http.Request
+	res        *Response
+	app        *Gear
+	host       string
+	method     string
+	path       string
+	ended      bool
+	query      url.Values
+	vals       map[interface{}]interface{}
+	afterHooks []Hook
+	endHooks   []Hook
+	mu         sync.Mutex
 }
 
 func (ctx *gearCtx) reset(w http.ResponseWriter, req *http.Request) {
@@ -254,13 +261,13 @@ func (ctx *gearCtx) reset(w http.ResponseWriter, req *http.Request) {
 		ctx.ctx = nil
 		ctx.vals = nil
 		ctx.query = nil
-		ctx.hooks = nil
+		ctx.afterHooks = nil
+		ctx.endHooks = nil
 		ctx.cancelCtx = nil
 	} else {
 		ctx.host = req.Host
 		ctx.method = req.Method
 		ctx.path = normalizePath(req.URL.Path) // fix "/abc//ef" to "/abc/ef"
-		ctx.hooks = make([]Middleware, 0)
 		ctx.vals = make(map[interface{}]interface{})
 		ctx.ctx, ctx.cancelCtx = context.WithCancel(req.Context())
 	}
@@ -381,10 +388,6 @@ func (ctx *gearCtx) Set(key, value string) {
 	ctx.res.Set(key, value)
 }
 
-func (ctx *gearCtx) Body(str string) {
-	ctx.res.stringBody(str)
-}
-
 func (ctx *gearCtx) Status(code int) {
 	if statusText := http.StatusText(code); statusText == "" {
 		code = 500
@@ -412,16 +415,24 @@ func (ctx *gearCtx) Type(str string) {
 	}
 }
 
+func (ctx *gearCtx) Body(str string) {
+	ctx.res.Body = stringToBytes(str)
+}
+
+func (ctx *gearCtx) Error(err *HTTPError) {
+	ctx.End(err.Code, stringToBytes(err.Error()))
+}
+
 func (ctx *gearCtx) HTML(code int, str string) error {
 	ctx.Type("html")
-	ctx.End(code, str)
+	ctx.End(code, stringToBytes(str))
 	return nil
 }
 
 func (ctx *gearCtx) JSON(code int, val interface{}) error {
 	buf, err := json.Marshal(val)
 	if err != nil {
-		ctx.End(500, err.Error())
+		ctx.Status(500)
 		return err
 	}
 	return ctx.JSONBlob(code, buf)
@@ -429,15 +440,14 @@ func (ctx *gearCtx) JSON(code int, val interface{}) error {
 
 func (ctx *gearCtx) JSONBlob(code int, buf []byte) error {
 	ctx.Type("json")
-	ctx.res.Body = buf
-	ctx.End(code, "")
+	ctx.End(code, buf)
 	return nil
 }
 
 func (ctx *gearCtx) JSONP(code int, callback string, val interface{}) error {
 	buf, err := json.Marshal(val)
 	if err != nil {
-		ctx.End(500, err.Error())
+		ctx.Status(500)
 		return err
 	}
 	return ctx.JSONPBlob(code, callback, buf)
@@ -445,15 +455,15 @@ func (ctx *gearCtx) JSONP(code int, callback string, val interface{}) error {
 
 func (ctx *gearCtx) JSONPBlob(code int, callback string, buf []byte) error {
 	ctx.Type("js")
-	ctx.res.Body = bytes.Join([][]byte{[]byte(callback + "("), buf, []byte(");")}, []byte{})
-	ctx.End(code, "")
+	buf = bytes.Join([][]byte{[]byte(callback + "("), buf, []byte(");")}, []byte{})
+	ctx.End(code, buf)
 	return nil
 }
 
 func (ctx *gearCtx) XML(code int, val interface{}) error {
 	buf, err := xml.Marshal(val)
 	if err != nil {
-		ctx.End(500, err.Error())
+		ctx.Status(500)
 		return err
 	}
 	return ctx.XMLBlob(code, buf)
@@ -461,8 +471,7 @@ func (ctx *gearCtx) XML(code int, val interface{}) error {
 
 func (ctx *gearCtx) XMLBlob(code int, buf []byte) error {
 	ctx.Type("xml")
-	ctx.res.Body = buf
-	ctx.End(code, "")
+	ctx.End(code, buf)
 	return nil
 }
 
@@ -475,14 +484,13 @@ func (ctx *gearCtx) Render(code int, name string, data interface{}) (err error) 
 		return
 	}
 	ctx.Type("html")
-	ctx.res.Body = buf.Bytes()
-	ctx.End(code, "")
+	ctx.End(code, buf.Bytes())
 	return
 }
 
 func (ctx *gearCtx) Stream(code int, contentType string, r io.Reader) (err error) {
+	ctx.End(code, nilByte)
 	ctx.Type(contentType)
-	ctx.res.WriteHeader(code)
 	_, err = io.Copy(ctx.res, r)
 	return
 }
@@ -496,23 +504,25 @@ func (ctx *gearCtx) Inline(name string, content io.ReadSeeker) error {
 }
 
 func (ctx *gearCtx) contentDisposition(dispositionType, name string, content io.ReadSeeker) error {
+	ctx.ended = true
 	ctx.Set(HeaderContentDisposition, fmt.Sprintf("%s; filename=%s", dispositionType, name))
 	http.ServeContent(ctx.res, ctx.req, name, time.Time{}, content)
 	return nil
 }
 
 func (ctx *gearCtx) Redirect(code int, url string) error {
+	ctx.ended = true
 	http.Redirect(ctx.res, ctx.req, url, code)
 	return nil
 }
 
-func (ctx *gearCtx) End(code int, str string) {
+func (ctx *gearCtx) End(code int, buf []byte) {
 	ctx.ended = true
 	if code != 0 {
 		ctx.Status(code)
 	}
-	if str != "" {
-		ctx.Body(str)
+	if buf != nil {
+		ctx.res.Body = buf
 	}
 }
 
@@ -520,15 +530,36 @@ func (ctx *gearCtx) IsEnded() bool {
 	return ctx.ended || ctx.res.finished
 }
 
-func (ctx *gearCtx) After(handle Middleware) {
-	ctx.hooks = append(ctx.hooks, handle)
+func (ctx *gearCtx) After(hook Hook) {
+	if !ctx.ended { // should not add afterHooks if ctx.ended
+		ctx.afterHooks = append(ctx.afterHooks, hook)
+	}
 }
 
-// ContentTypeByExtension returns the MIME type associated with the file based on
-// its extension. It returns `application/octet-stream` incase MIME type is not found.
-func ContentTypeByExtension(name string) (t string) {
-	if t = mime.TypeByExtension(filepath.Ext(name)); t == "" {
-		t = MIMEOctetStream
+func (ctx *gearCtx) OnEnd(hook Hook) {
+	if !ctx.res.finished { // should not add endHooks if ctx.res.finished
+		ctx.endHooks = append(ctx.endHooks, hook)
 	}
-	return
+}
+
+func (ctx *gearCtx) runAfterHooks() {
+	ctx.ended = true // ensure ctx.ended to true
+	for _, hook := range ctx.afterHooks {
+		if ctx.res.finished {
+			break
+		}
+		hook(ctx)
+	}
+	ctx.afterHooks = nil
+}
+
+func (ctx *gearCtx) runEndHooks() {
+	ctx.res.finished = true // ensure ctx.res.finished to true
+	for _, hook := range ctx.endHooks {
+		if ctx.res.finished {
+			break
+		}
+		hook(ctx)
+	}
+	ctx.endHooks = nil
 }

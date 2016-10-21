@@ -1,6 +1,7 @@
 package gear
 
 import (
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -11,7 +12,12 @@ import (
 type Gear struct {
 	middleware []Middleware
 	pool       sync.Pool
-	ErrorLog   *log.Logger
+
+	// ErrorLog specifies an optional logger for app's errors.
+	ErrorLog *log.Logger
+
+	// OnCtxError is error handle for Middleware error.
+	OnCtxError func(Context, error) *HTTPError
 	Renderer   Renderer
 	Server     *http.Server
 }
@@ -19,16 +25,19 @@ type Gear struct {
 // Middleware defines a function to process middleware.
 type Middleware func(Context) error
 
-// // HTTPError represents an error that occurred while handling a request.
-// type HTTPError struct {
-// 	error
-// 	Code int
-// }
+// Hook defines a function to process hook.
+type Hook func(Context)
 
-// // NewHTTPError creates an instance of HTTPError with status code and error message.
-// func NewHTTPError(code int, err string) *HTTPError {
-// 	return &HTTPError{errors.New(err), code}
-// }
+// HTTPError represents an error that occurred while handling a request.
+type HTTPError struct {
+	error
+	Code int
+}
+
+// NewHTTPError creates an instance of HTTPError with status code and error message.
+func NewHTTPError(code int, err string) *HTTPError {
+	return &HTTPError{errors.New(err), code}
+}
 
 // Handler is the interface that wraps the Middleware function.
 type Handler interface {
@@ -46,7 +55,9 @@ func New() *Gear {
 	g.Server = new(http.Server)
 	g.middleware = make([]Middleware, 0)
 	g.pool.New = func() interface{} {
-		return &gearCtx{app: g, res: &Response{}}
+		ctx := &gearCtx{app: g, res: &Response{}}
+		ctx.res.ctx = ctx
+		return ctx
 	}
 	return g
 }
@@ -115,29 +126,32 @@ func (h *servHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break // end up the process
 		}
 	}
+	// set ended to true after app's middleware process
+	ctx.ended = true
 
-	if !ctx.res.finished && err == nil {
-		for _, handle := range ctx.hooks {
-			if err = handle(ctx); err != nil {
-				break
-			}
-			if ctx.res.finished {
-				break // end up the process
-			}
+	// process middleware error with OnCtxError
+	if err != nil && h.app.OnCtxError != nil {
+		if ctxErr := h.app.OnCtxError(ctx, err); ctxErr != nil {
+			ctx.Status(ctxErr.Code)
+			err = ctxErr
 		}
 	}
 
-	if err != nil {
+	if err == nil { // ctx.afterHooks should not run when err
+		ctx.runAfterHooks()
+	} else {
 		h.app.OnError(err)
 		if ctx.res.Status < 400 {
 			ctx.Status(500)
 		}
 		ctx.Body(err.Error())
 	}
+
 	err = ctx.res.respond()
 	if err != nil {
 		h.app.OnError(err)
 	}
+
 	ctx.reset(nil, nil)
 	h.app.pool.Put(ctx)
 }
