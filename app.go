@@ -1,41 +1,62 @@
-package gweb
+package gear
 
 import (
+	"errors"
 	"log"
 	"net/http"
+	"sync"
 )
 
-// Gweb docs
-type Gweb struct {
+// Gear is the top-level framework app instance.
+type Gear struct {
 	server     *http.Server
 	middleware []Middleware
+	pool       sync.Pool
 	ErrorLog   *log.Logger
 }
 
-type Middleware func(*Context) error
+// Middleware defines a function to process middleware.
+type Middleware func(Context) error
 
-type Handler interface {
-	ToMiddleware() Middleware
+// HTTPError represents an error that occurred while handling a request.
+type HTTPError struct {
+	error
+	Code int
 }
 
-// New docs
-func New() *Gweb {
-	g := new(Gweb)
+// NewHTTPError creates an instance of HTTPError with status code and error message.
+func NewHTTPError(code int, err string) *HTTPError {
+	return &HTTPError{errors.New(err), code}
+}
+
+// Handler is a interface defines a function work as middleware.
+type Handler interface {
+	Middleware(Context) error
+}
+
+// New creates an instance of Gear.
+func New() *Gear {
+	g := new(Gear)
+	g.server = new(http.Server)
 	g.middleware = make([]Middleware, 0)
-	g.server = &http.Server{}
+	g.pool.New = func() interface{} {
+		ctx := &gearCtx{}
+		res := &Response{ctx: ctx}
+		ctx.res = res
+		return ctx
+	}
 	return g
 }
 
-// ToHandler docs
-func (g *Gweb) toHandler() *servHandler {
+func (g *Gear) toServHandler() *servHandler {
 	if len(g.middleware) == 0 {
 		panic("No middleware")
 	}
-	return &servHandler{middleware: g.middleware[0:]}
+	return &servHandler{middleware: g.middleware[0:], app: g}
 }
 
-// OnError docs
-func (g *Gweb) OnError(err error) {
+// OnError is default app error handler.
+func (g *Gear) OnError(err error) {
 	if g.ErrorLog != nil {
 		g.ErrorLog.Println(err)
 	} else {
@@ -43,29 +64,30 @@ func (g *Gweb) OnError(err error) {
 	}
 }
 
-// Use docs
-func (g *Gweb) Use(fn Middleware) {
-	g.middleware = append(g.middleware, fn)
+// Use uses the given middleware `handle`.
+func (g *Gear) Use(handle Middleware) {
+	g.middleware = append(g.middleware, handle)
 }
 
-func (g *Gweb) UseHandler(h Handler) {
-	g.middleware = append(g.middleware, h.ToMiddleware())
+// UseHandler uses a instance that implemented Handler interface.
+func (g *Gear) UseHandler(h Handler) {
+	g.middleware = append(g.middleware, h.Middleware)
 }
 
-// Listen docs
-func (g *Gweb) Listen(addr string) error {
+// Listen starts the HTTP server.
+func (g *Gear) Listen(addr string) error {
 	g.server.Addr = addr
-	g.server.Handler = g.toHandler()
+	g.server.Handler = g.toServHandler()
 	if g.ErrorLog != nil {
 		g.server.ErrorLog = g.ErrorLog
 	}
 	return g.server.ListenAndServe()
 }
 
-// ListenTLS docs
-func (g *Gweb) ListenTLS(addr, certFile, keyFile string) error {
+// ListenTLS starts the HTTPS server.
+func (g *Gear) ListenTLS(addr, certFile, keyFile string) error {
 	g.server.Addr = addr
-	g.server.Handler = g.toHandler()
+	g.server.Handler = g.toServHandler()
 	if g.ErrorLog != nil {
 		g.server.ErrorLog = g.ErrorLog
 	}
@@ -73,38 +95,42 @@ func (g *Gweb) ListenTLS(addr, certFile, keyFile string) error {
 }
 
 type servHandler struct {
-	app        *Gweb
+	app        *Gear
 	middleware []Middleware
 }
 
 func (h *servHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
-	ctx := NewContext(w, r)
+	ctx := h.app.pool.Get().(*gearCtx)
+	ctx.reset(w, r)
 
-	for _, fn := range h.middleware {
-		if err = fn(ctx); err != nil {
+	for _, handle := range h.middleware {
+		if err = handle(ctx); err != nil {
 			break
 		}
-		if ctx.ended || ctx.Res.finished {
+		if ctx.ended || ctx.res.finished {
 			break // end up the process
 		}
 	}
 
-	if !ctx.Res.finished && err == nil {
-		for _, fn := range ctx.hooks {
-			if err = fn(ctx); err != nil {
+	if !ctx.res.finished && err == nil {
+		for _, handle := range ctx.hooks {
+			if err = handle(ctx); err != nil {
 				break
 			}
-			if ctx.Res.finished {
+			if ctx.res.finished {
 				break // end up the process
 			}
 		}
 	}
 
 	if err != nil {
-		ctx.Res.end(500)
 		h.app.OnError(err)
-	} else {
-		ctx.Res.end(0)
+		if ctx.res.Status < 400 {
+			ctx.Status(500)
+		}
+		ctx.Body(err.Error())
 	}
+	ctx.res.respond()
+	h.app.pool.Put(ctx)
 }

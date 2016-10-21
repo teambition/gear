@@ -1,13 +1,14 @@
-package gweb
+package gear
 
 import (
 	"bytes"
 	"net/http"
 )
 
-// Response implement ResponseWriter
+// Response wraps an http.ResponseWriter and implements its interface to be used
+// by an HTTP handler to construct an HTTP response.
 type Response struct {
-	ctx      *Context
+	ctx      Context
 	res      http.ResponseWriter
 	Status   int         // response Status
 	Type     string      // response Content-Type
@@ -16,14 +17,13 @@ type Response struct {
 	finished bool
 }
 
-// NewResponse ...
-func NewResponse(w http.ResponseWriter, ctx *Context) *Response {
-	r := new(Response)
+func (r *Response) reset(w http.ResponseWriter) {
 	r.res = w
-	r.ctx = ctx
+	r.Type = ""
+	r.Body = nil
+	r.finished = false
 	r.Status = 404
 	r.Header = w.Header()
-	return r
 }
 
 // Add adds the key, value pair to the header. It appends to any existing values associated with key.
@@ -46,11 +46,17 @@ func (r *Response) Set(key, value string) {
 	r.Header.Set(key, value)
 }
 
+// Write writes the data to the connection as part of an HTTP reply.
 func (r *Response) Write(buf []byte) (int, error) {
 	r.finished = true
 	return r.res.Write(buf)
 }
 
+// WriteHeader sends an HTTP response header with status code.
+// If WriteHeader is not called explicitly, the first call to Write
+// will trigger an implicit WriteHeader(http.StatusOK).
+// Thus explicit calls to WriteHeader are mainly used to
+// send error codes.
 func (r *Response) WriteHeader(code int) {
 	if code > 0 {
 		r.Status = code
@@ -63,23 +69,15 @@ func (r *Response) stringBody(str string) {
 	r.Body = bytes.NewBufferString(str).Bytes()
 }
 
-func (r *Response) end(code int) {
+func (r *Response) respond() {
 	if r.finished {
 		return
 	}
 	r.ctx.Lock()
-	if code > 0 {
-		r.Status = code
-	}
-	statusText := http.StatusText(r.Status)
-	if statusText == "" {
-		r.Status = 500
-		statusText = http.StatusText(r.Status)
-	}
-	if r.Body == nil && r.Status >= 300 {
-		r.stringBody(statusText)
-	}
 	r.WriteHeader(0)
+	if r.Body == nil && r.Status >= 300 {
+		r.stringBody(http.StatusText(r.Status))
+	}
 	if r.Body != nil {
 		r.Write(r.Body)
 	}
