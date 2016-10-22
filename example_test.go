@@ -3,6 +3,7 @@ package gear_test
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/teambition/gear"
 	"github.com/teambition/gear/middleware"
@@ -36,49 +37,45 @@ func Example() {
 	// Create views router
 	ViewRouter := gear.NewRouter("", true)
 	// "http://localhost:3000"
-	ViewRouter.Get("/", func(ctx gear.Context) (err error) {
-		ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-		return
+	ViewRouter.Get("/", func(ctx gear.Context) error {
+		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
 	})
 	// "http://localhost:3000/view/abc"
 	// "http://localhost:3000/view/123"
-	ViewRouter.Get("/view/:view", func(ctx gear.Context) (err error) {
-		if view := ctx.Param("view"); view == "" {
+	ViewRouter.Get("/view/:view", func(ctx gear.Context) error {
+		view := ctx.Param("view")
+		if view == "" {
 			ctx.Status(400)
-			err = errors.New("Invalid view")
-		} else {
-			ctx.HTML(200, "View: "+view)
+			return errors.New("Invalid view")
 		}
-		return
+		return ctx.HTML(200, "View: "+view)
 	})
 	// "http://localhost:3000/abc"
 	// "http://localhost:3000/abc/efg"
-	ViewRouter.Get("/:others*", func(ctx gear.Context) (err error) {
-		if others := ctx.Param("others"); others == "" {
+	ViewRouter.Get("/:others*", func(ctx gear.Context) error {
+		others := ctx.Param("others")
+		if others == "" {
 			ctx.Status(400)
-			err = errors.New("Invalid path")
-		} else {
-			ctx.HTML(200, "Request path: /"+others)
+			return errors.New("Invalid path")
 		}
-		return
+		return ctx.HTML(200, "Request path: /"+others)
 	})
 
 	// Create API router
 	APIRouter := gear.NewRouter("/api", true)
 	// "http://localhost:3000/api/user/abc"
 	// "http://localhost:3000/abc/user/123"
-	APIRouter.Get("/user/:id", func(ctx gear.Context) (err error) {
-		if id := ctx.Param("id"); id == "" {
+	APIRouter.Get("/user/:id", func(ctx gear.Context) error {
+		id := ctx.Param("id")
+		if id == "" {
 			ctx.Status(400)
-			err = errors.New("Invalid user id")
-		} else {
-			ctx.JSON(200, map[string]string{
-				"Method": ctx.Method(),
-				"Path":   ctx.Path(),
-				"UserID": id,
-			})
+			return errors.New("Invalid user id")
 		}
-		return
+		return ctx.JSON(200, map[string]string{
+			"Method": ctx.Method(),
+			"Path":   ctx.Path(),
+			"UserID": id,
+		})
 	})
 
 	// Must add APIRouter first.
@@ -86,4 +83,21 @@ func Example() {
 	app.UseHandler(ViewRouter)
 	// Start app at 3000
 	app.OnError(app.Listen(":3000"))
+}
+
+func ExampleBackgroundAPP() {
+	app := gear.New()
+
+	app.Use(func(ctx gear.Context) error {
+		ctx.End(200, []byte("<h1>Hello!</h1>"))
+		return nil
+	})
+
+	s := app.StartBG("") // Start at random addr.
+	fmt.Printf("App start at: %s\n", s.Addr())
+	go func() {
+		time.Sleep(time.Second * 3) // Close it after 3 sec
+		fmt.Printf("App closed: %s\n", s.Close())
+	}()
+	s.Wait()
 }

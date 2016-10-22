@@ -2,8 +2,10 @@ package gear
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"sync"
 )
@@ -20,6 +22,27 @@ type Gear struct {
 	OnCtxError func(Context, error) *HTTPError
 	Renderer   Renderer
 	Server     *http.Server
+}
+
+// ServerBG is a server returned by a background app instance.
+type ServerBG struct {
+	l net.Listener
+	c <-chan error
+}
+
+// Close closes the background app instance.
+func (s *ServerBG) Close() error {
+	return s.l.Close()
+}
+
+// Addr returns the background app instance addr.
+func (s *ServerBG) Addr() net.Addr {
+	return s.l.Addr()
+}
+
+// Wait waits the background app instance close.
+func (s *ServerBG) Wait() error {
+	return <-s.c
 }
 
 // Middleware defines a function to process middleware.
@@ -106,6 +129,29 @@ func (g *Gear) ListenTLS(addr, certFile, keyFile string) error {
 		g.Server.ErrorLog = g.ErrorLog
 	}
 	return g.Server.ListenAndServeTLS(certFile, keyFile)
+}
+
+// StartBG starts a background app instance. It is useful for testing.
+// The background app instance must close by ServerBG.Close().
+func (g *Gear) StartBG(laddr string) *ServerBG {
+	if laddr == "" {
+		laddr = "127.0.0.1:0"
+	}
+	g.Server.Handler = g.toServeHandler()
+	if g.ErrorLog != nil {
+		g.Server.ErrorLog = g.ErrorLog
+	}
+
+	l, err := net.Listen("tcp", laddr)
+	if err != nil {
+		panic(fmt.Sprintf("failed to listen on %v: %v", laddr, err))
+	}
+
+	c := make(chan error)
+	go func() {
+		c <- g.Server.Serve(l)
+	}()
+	return &ServerBG{l, c}
 }
 
 type servHandler struct {

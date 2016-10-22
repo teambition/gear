@@ -1,0 +1,11 @@
+sudo: false
+language: go
+go:
+  - 1.7
+  - tip
+matrix:
+  allow_failures:
+    - go: tip
+install:
+  - go get github.com/stretchr/testify
+script: go test

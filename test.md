@@ -274,6 +274,14 @@ func (g *Gear) OnError(err error)
 ```
 OnError is default app error handler.
 
+#### func (*Gear) StartBG
+
+```go
+func (g *Gear) StartBG(laddr string) *ServerBG
+```
+StartBG starts a background app instance. It is useful for testing. The
+background app instance must close by ServerBG.Close().
+
 #### func (*Gear) Use
 
 ```go
@@ -522,3 +530,33 @@ Put registers a new PUT route for a path with matching handler in the router.
 func (r *Router) Use(handle Middleware)
 ```
 Use registers a new Middleware handler in the router.
+
+#### type ServerBG
+
+```go
+type ServerBG struct {
+}
+```
+
+ServerBG is a server returned by a background app instance.
+
+#### func (*ServerBG) Addr
+
+```go
+func (s *ServerBG) Addr() net.Addr
+```
+Addr returns the background app instance addr.
+
+#### func (*ServerBG) Close
+
+```go
+func (s *ServerBG) Close() error
+```
+Close closes the background app instance.
+
+#### func (*ServerBG) Wait
+
+```go
+func (s *ServerBG) Wait() error
+```
+Wait waits the background app instance close.

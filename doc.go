@@ -1,5 +1,5 @@
 // Package gear implements a web framework with context.Context for Go. It focuses on performance and composition.
-// Version v0.1.0
+// Version v0.2.0
 
 /*
 Example:
