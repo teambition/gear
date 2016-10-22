@@ -69,7 +69,6 @@ const (
 	HeaderAccessControlExposeHeaders    = "Access-Control-Expose-Headers"
 	HeaderAccessControlMaxAge           = "Access-Control-Max-Age"
 
-	// Security
 	HeaderStrictTransportSecurity = "Strict-Transport-Security"
 	HeaderXContentTypeOptions     = "X-Content-Type-Options"
 	HeaderXXSSProtection          = "X-XSS-Protection"

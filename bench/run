@@ -1,0 +1,16 @@
+# #!/usr/bin/env bash
+
+# echo
+# go run $1/app.go -m$2 &
+# pid=$!
+
+# sleep 5
+
+# wrk 'http://localhost:3333/?foo[bar]=baz' \
+#   -d 10 \
+#   -c 100 \
+#   -t 4 \
+#   | grep 'Requests/sec' \
+#   | awk '{ print "  " $2 }'
+
+# kill $pid
