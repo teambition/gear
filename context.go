@@ -163,7 +163,7 @@ type Context interface {
 	Body(string)
 
 	// Error set a error message with status code to response.
-	Error(*HTTPError)
+	Error(HTTPError)
 
 	// HTML set an Html body with status code to response.
 	// It will end the ctx.
@@ -418,8 +418,8 @@ func (ctx *gearCtx) Body(str string) {
 	ctx.res.Body = stringToBytes(str)
 }
 
-func (ctx *gearCtx) Error(err *HTTPError) {
-	ctx.End(err.Code, stringToBytes(err.Error()))
+func (ctx *gearCtx) Error(err HTTPError) {
+	ctx.End(err.Status(), stringToBytes(err.Error()))
 }
 
 func (ctx *gearCtx) HTML(code int, str string) error {

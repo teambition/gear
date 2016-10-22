@@ -33,5 +33,5 @@ func main() {
 
 	app.UseHandler(router)
 	fmt.Printf("Gear start with %d middleware\n", count)
-	app.OnError(app.Listen(":3333"))
+	app.Error(app.Listen(":3333"))
 }

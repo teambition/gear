@@ -84,7 +84,7 @@ APIRouter.Get("/user/:id", func(ctx gear.Context) error {
 app.UseHandler(APIRouter)
 app.UseHandler(ViewRouter)
 // Start app at 3000
-app.OnError(app.Listen(":3000"))
+app.Error(app.Listen(":3000"))
 ```
 
 ## Import

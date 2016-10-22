@@ -1,7 +1,6 @@
 package gear
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -10,18 +9,42 @@ import (
 	"sync"
 )
 
-// Gear is the top-level framework app instance.
-type Gear struct {
-	middleware []Middleware
-	pool       sync.Pool
+// HTTPError represents an error that occurred while handling a request.
+type HTTPError interface {
+	error
+	Status() int
+}
 
-	// ErrorLog specifies an optional logger for app's errors.
-	ErrorLog *log.Logger
+// Handler is the interface that wraps the Middleware function.
+type Handler interface {
+	Middleware(Context) error
+}
 
-	// OnCtxError is error handle for Middleware error.
-	OnCtxError func(Context, error) *HTTPError
-	Renderer   Renderer
-	Server     *http.Server
+// Renderer is the interface that wraps the Render function.
+type Renderer interface {
+	Render(Context, io.Writer, string, interface{}) error
+}
+
+// Hook defines a function to process hook.
+type Hook func(Context)
+
+// Middleware defines a function to process middleware.
+type Middleware func(Context) error
+
+// Error is error struct that implemented HTTPError
+type Error struct {
+	error
+	Code int
+}
+
+// Status returns Error's status code.
+func (err Error) Status() int {
+	return err.Code
+}
+
+// NewError create a Error instance with error and status code.
+func NewError(err error, code int) Error {
+	return Error{error: err, Code: code}
 }
 
 // ServerBG is a server returned by a background app instance.
@@ -45,31 +68,18 @@ func (s *ServerBG) Wait() error {
 	return <-s.c
 }
 
-// Middleware defines a function to process middleware.
-type Middleware func(Context) error
+// Gear is the top-level framework app instance.
+type Gear struct {
+	middleware []Middleware
+	pool       sync.Pool
 
-// Hook defines a function to process hook.
-type Hook func(Context)
-
-// HTTPError represents an error that occurred while handling a request.
-type HTTPError struct {
-	error
-	Code int
-}
-
-// NewHTTPError creates an instance of HTTPError with status code and error message.
-func NewHTTPError(code int, err string) *HTTPError {
-	return &HTTPError{errors.New(err), code}
-}
-
-// Handler is the interface that wraps the Middleware function.
-type Handler interface {
-	Middleware(Context) error
-}
-
-// Renderer is the interface that wraps the Render function.
-type Renderer interface {
-	Render(Context, io.Writer, string, interface{}) error
+	// OnError is default ctx error handler.
+	// Override it for your business logic.
+	OnError  func(Context, error) HTTPError
+	Renderer Renderer
+	// ErrorLog specifies an optional logger for app's errors. Default to nil
+	ErrorLog *log.Logger
+	Server   *http.Server
 }
 
 // New creates an instance of Gear.
@@ -82,6 +92,9 @@ func New() *Gear {
 		ctx.res.ctx = ctx
 		return ctx
 	}
+	g.OnError = func(ctx Context, err error) HTTPError {
+		return NewError(err, 500)
+	}
 	return g
 }
 
@@ -90,15 +103,6 @@ func (g *Gear) toServeHandler() *servHandler {
 		panic("No middleware")
 	}
 	return &servHandler{middleware: g.middleware[0:], app: g}
-}
-
-// OnError is default app error handler.
-func (g *Gear) OnError(err error) {
-	if g.ErrorLog != nil {
-		g.ErrorLog.Println(err)
-	} else {
-		log.Println(err)
-	}
 }
 
 // Use uses the given middleware `handle`.
@@ -154,6 +158,17 @@ func (g *Gear) StartBG(laddr string) *ServerBG {
 	return &ServerBG{l, c}
 }
 
+// Error writes error to underlayer logging system.
+func (g *Gear) Error(err error) {
+	if err == nil {
+		if g.ErrorLog != nil {
+			g.ErrorLog.Println(err)
+		} else {
+			log.Println(err)
+		}
+	}
+}
+
 type servHandler struct {
 	app        *Gear
 	middleware []Middleware
@@ -176,9 +191,9 @@ func (h *servHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx.ended = true
 
 	// process middleware error with OnCtxError
-	if err != nil && h.app.OnCtxError != nil {
-		if ctxErr := h.app.OnCtxError(ctx, err); ctxErr != nil {
-			ctx.Status(ctxErr.Code)
+	if err != nil {
+		if ctxErr := h.app.OnError(ctx, err); ctxErr != nil {
+			ctx.Status(ctxErr.Status())
 			err = ctxErr
 		}
 	}
@@ -186,18 +201,36 @@ func (h *servHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err == nil { // ctx.afterHooks should not run when err
 		ctx.runAfterHooks()
 	} else {
-		h.app.OnError(err)
 		if ctx.res.Status < 400 {
-			ctx.Status(500)
+			ctx.res.Status = 500
+		}
+		if ctx.res.Status >= 500 { // Only handle 5xx Server Error
+			h.app.Error(err)
 		}
 		ctx.Body(err.Error())
 	}
 
 	err = ctx.res.respond()
 	if err != nil {
-		h.app.OnError(err)
+		h.app.Error(err)
 	}
 
 	ctx.reset(nil, nil)
 	h.app.pool.Put(ctx)
+}
+
+// WrapHandler wrap a http.Handler to Gear Middleware
+func WrapHandler(h http.Handler) Middleware {
+	return func(ctx Context) error {
+		h.ServeHTTP(ctx.Response(), ctx.Request())
+		return nil
+	}
+}
+
+// WrapHandlerFunc wrap a http.HandlerFunc to Gear Middleware
+func WrapHandlerFunc(h http.HandlerFunc) Middleware {
+	return func(ctx Context) error {
+		h(ctx.Response(), ctx.Request())
+		return nil
+	}
 }

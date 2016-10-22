@@ -21,7 +21,7 @@ func (r *Response) reset(w http.ResponseWriter) {
 	r.res = w
 	r.Type = ""
 	r.Body = nil
-	r.Status = 404
+	r.Status = 500
 	r.finished = false
 	if w != nil {
 		r.header = w.Header()

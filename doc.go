@@ -1,5 +1,5 @@
 // Package gear implements a web framework with context.Context for Go. It focuses on performance and composition.
-// Version v0.2.0
+// Version v0.3.0
 
 /*
 Example:
@@ -91,7 +91,7 @@ Example:
 		app.UseHandler(APIRouter)
 		app.UseHandler(ViewRouter)
 		// Start app at 3000
-		app.OnError(app.Listen(":3000"))
+		app.Error(app.Listen(":3000"))
 	}
 
 Learn more at https://github.com/teambition/gear

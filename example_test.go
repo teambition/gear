@@ -82,7 +82,7 @@ func Example() {
 	app.UseHandler(APIRouter)
 	app.UseHandler(ViewRouter)
 	// Start app at 3000
-	app.OnError(app.Listen(":3000"))
+	app.Error(app.Listen(":3000"))
 }
 
 func ExampleBackgroundAPP() {
