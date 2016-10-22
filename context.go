@@ -15,9 +15,9 @@ import (
 	"time"
 )
 
-// All const values got from https://github.com/labstack/echo
 // MIME types
 const (
+	// All const values got from https://github.com/labstack/echo
 	charsetUTF8 = "charset=utf-8"
 
 	MIMEApplicationJSON                  = "application/json"
@@ -81,13 +81,13 @@ type contextKey struct {
 	name string
 }
 
-var nilByte []byte
-
 // Gear global values
 var (
 	GearParamsKey = &contextKey{"Gear-Params-Key"}
 	GearLogsKey   = &contextKey{"Gear-Logs-Key"}
 )
+
+var nilByte []byte
 
 // Context represents the context of the current HTTP request. It holds request and
 // response objects, path, path parameters, data, registered handler and content.Context.

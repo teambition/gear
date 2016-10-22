@@ -3,7 +3,6 @@ package gear
 import (
 	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
 )
 
@@ -26,14 +25,7 @@ type Router struct {
 
 // NewRouter returns a new Router instance with root path and ignoreCase option.
 func NewRouter(root string, ignoreCase bool) *Router {
-	trie := &trie{
-		ignoreCase: ignoreCase,
-		root: &trieNode{
-			parentNode:      nil,
-			literalChildren: map[string]*trieNode{},
-			methods:         map[string]Middleware{},
-		},
-	}
+	t := newTrie(ignoreCase)
 	if root == "" {
 		root = "/"
 	}
@@ -41,7 +33,7 @@ func NewRouter(root string, ignoreCase bool) *Router {
 		HandleOPTIONS: true,
 		IsEndpoint:    true,
 		root:          root,
-		trie:          trie,
+		trie:          t,
 		middleware:    make([]Middleware, 0),
 	}
 }
@@ -145,7 +137,9 @@ func (r *Router) Middleware(ctx Context) error {
 		return fmt.Errorf("%s not allowed in %s", method, path)
 	}
 
-	ctx.SetValue(GearParamsKey, res.params)
+	if res.params != nil {
+		ctx.SetValue(GearParamsKey, res.params)
+	}
 	err := r.run(ctx, handle)
 	if err == nil && r.IsEndpoint {
 		ctx.End(0, nilByte)
@@ -165,168 +159,9 @@ func (r *Router) run(ctx Context, h Middleware) (err error) {
 	return h(ctx)
 }
 
-type trie struct {
-	ignoreCase bool
-	root       *trieNode
-}
-
-type trieNode struct {
-	pattern      string
-	allowMethods string
-	methods      map[string]Middleware
-
-	name            string
-	endpoint        bool
-	regex           *regexp.Regexp
-	parentNode      *trieNode
-	matchRemains    bool
-	regexpChild     *trieNode
-	literalChildren map[string]*trieNode
-}
-
-func (n *trieNode) handle(method string, handle Middleware) {
-	if n.methods[method] != nil {
-		panic("The route in \"" + n.pattern + "\" already defined")
-	}
-	n.methods[method] = handle
-	if n.allowMethods == "" {
-		n.allowMethods = method
-	} else {
-		n.allowMethods += ", " + method
-	}
-}
-
-type trieMatched struct {
-	node   *trieNode
-	params map[string]string
-}
-
-func (t *trie) define(pattern string) *trieNode {
-	if strings.Contains(pattern, "//") {
-		panic("Multi-slash exist.")
-	}
-
-	_pattern := strings.Trim(pattern, "/")
-	node := defineNode(t.root, strings.Split(_pattern, "/"), t.ignoreCase)
-
-	if node.pattern == "" {
-		node.pattern = pattern
-	}
-	return node
-}
-
-func (t *trie) match(path string) trieMatched {
-	node := t.root
-	frags := strings.Split(strings.Trim(path, "/"), "/")
-
-	res := trieMatched{params: map[string]string{}}
-	for i, frag := range frags {
-		_frag := frag
-		if t.ignoreCase && _frag != "" {
-			_frag = strings.ToLower(frag)
-		}
-		named := false
-		node, named = matchNode(node, _frag, res.params)
-		if node == nil {
-			return res
-		}
-		if named {
-			if node.matchRemains {
-				res.params[node.name] = strings.Join(frags[i:], "/")
-				break
-			} else {
-				res.params[node.name] = frag
-			}
-		}
-	}
-
-	if node.endpoint {
-		res.node = node
-	}
-	return res
-}
-
 func normalizePath(path string) string {
 	if !strings.Contains(path, "//") {
 		return path
 	}
 	return normalizePath(strings.Replace(path, "//", "/", -1))
-}
-
-func defineNode(parent *trieNode, frags []string, ignoreCase bool) *trieNode {
-	frag := frags[0]
-	frags = frags[1:]
-	child := parseNode(parent, frag, ignoreCase)
-
-	if len(frags) == 0 {
-		child.endpoint = true
-		return child
-	}
-	return defineNode(child, frags, ignoreCase)
-}
-
-func matchNode(parent *trieNode, frag string, params map[string]string) (child *trieNode, named bool) {
-	if child = parent.literalChildren[frag]; child != nil {
-		return
-	}
-
-	if child = parent.regexpChild; child != nil {
-		if child.regex != nil && !child.regex.MatchString(frag) {
-			child = nil
-		} else {
-			named = true
-		}
-	}
-	return
-}
-
-func parseNode(parent *trieNode, frag string, ignoreCase bool) *trieNode {
-	literalChildren := parent.literalChildren
-
-	if literalChildren[frag] != nil {
-		return literalChildren[frag]
-	}
-
-	node := &trieNode{
-		parentNode:      parent,
-		literalChildren: map[string]*trieNode{},
-		methods:         map[string]Middleware{},
-	}
-
-	if frag != "" && frag[0] == ':' {
-		var name, regex string
-		name = frag[1:]
-		trailing := name[len(name)-1]
-		if trailing == ')' {
-			if index := strings.IndexRune(name, '('); index > 0 {
-				regex = name[index+1 : len(name)-1]
-				if len(regex) > 0 {
-					name = name[0:index]
-					node.regex = regexp.MustCompile(regex)
-				}
-			}
-		} else if trailing == '*' {
-			name = name[0 : len(name)-1]
-			node.matchRemains = true
-		}
-		if len(name) == 0 {
-			panic(frag + "is invalid")
-		}
-		node.name = name
-		if child := parent.regexpChild; child != nil {
-			if child.name != name || child.matchRemains != node.matchRemains {
-				panic(frag + "is invalid")
-			}
-			if child.regex != nil && child.regex.String() != regex {
-				panic(frag + "is invalid")
-			}
-			return child
-		}
-
-		parent.regexpChild = node
-	} else {
-		literalChildren[frag] = node
-	}
-
-	return node
 }
