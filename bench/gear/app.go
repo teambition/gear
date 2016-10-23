@@ -21,13 +21,13 @@ func main() {
 	}
 
 	for i := 0; i < count; i++ {
-		app.Use(func(ctx gear.Context) error {
+		app.Use(func(ctx *gear.Context) error {
 			return nil
 		})
 	}
 
 	router := gear.NewRouter("", true)
-	router.Get("/", func(ctx gear.Context) error {
+	router.Get("/", func(ctx *gear.Context) error {
 		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
 	})
 

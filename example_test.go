@@ -22,12 +22,12 @@ func Example() {
 	}))
 
 	// Add some middleware to app
-	app.Use(func(ctx gear.Context) (err error) {
-		// fmt.Println(ctx.IP(), ctx.Method(), ctx.Path())
+	app.Use(func(ctx *gear.Context) (err error) {
+		// fmt.Println(ctx.IP(), ctx.Method, ctx.Path
 		// Do something...
 
 		// Add after hook to the ctx
-		ctx.After(func(ctx gear.Context) {
+		ctx.After(func(ctx *gear.Context) {
 			// Do something in after hook
 			fmt.Println("After hook")
 		})
@@ -37,12 +37,12 @@ func Example() {
 	// Create views router
 	ViewRouter := gear.NewRouter("", true)
 	// "http://localhost:3000"
-	ViewRouter.Get("/", func(ctx gear.Context) error {
+	ViewRouter.Get("/", func(ctx *gear.Context) error {
 		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
 	})
 	// "http://localhost:3000/view/abc"
 	// "http://localhost:3000/view/123"
-	ViewRouter.Get("/view/:view", func(ctx gear.Context) error {
+	ViewRouter.Get("/view/:view", func(ctx *gear.Context) error {
 		view := ctx.Param("view")
 		if view == "" {
 			ctx.Status(400)
@@ -52,7 +52,7 @@ func Example() {
 	})
 	// "http://localhost:3000/abc"
 	// "http://localhost:3000/abc/efg"
-	ViewRouter.Get("/:others*", func(ctx gear.Context) error {
+	ViewRouter.Get("/:others*", func(ctx *gear.Context) error {
 		others := ctx.Param("others")
 		if others == "" {
 			ctx.Status(400)
@@ -65,15 +65,15 @@ func Example() {
 	APIRouter := gear.NewRouter("/api", true)
 	// "http://localhost:3000/api/user/abc"
 	// "http://localhost:3000/abc/user/123"
-	APIRouter.Get("/user/:id", func(ctx gear.Context) error {
+	APIRouter.Get("/user/:id", func(ctx *gear.Context) error {
 		id := ctx.Param("id")
 		if id == "" {
 			ctx.Status(400)
 			return errors.New("Invalid user id")
 		}
 		return ctx.JSON(200, map[string]string{
-			"Method": ctx.Method(),
-			"Path":   ctx.Path(),
+			"Method": ctx.Method,
+			"Path":   ctx.Path,
 			"UserID": id,
 		})
 	})
@@ -88,7 +88,7 @@ func Example() {
 func ExampleBackgroundAPP() {
 	app := gear.New()
 
-	app.Use(func(ctx gear.Context) error {
+	app.Use(func(ctx *gear.Context) error {
 		ctx.End(200, []byte("<h1>Hello!</h1>"))
 		return nil
 	})

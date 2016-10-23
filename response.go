@@ -8,7 +8,7 @@ import (
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.
 type Response struct {
-	ctx      *gearCtx
+	ctx      *Context
 	res      http.ResponseWriter
 	Status   int         // response Status
 	Type     string      // response Content-Type

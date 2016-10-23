@@ -9,27 +9,30 @@ import (
 	"sync"
 )
 
+// Version is Gear's version
+const Version = "v0.5.0"
+
 // HTTPError represents an error that occurred while handling a request.
 type HTTPError interface {
 	error
 	Status() int
 }
 
-// Handler is the interface that wraps the Middleware function.
+// Handler is the interface that wraps the HandlerFunc function.
 type Handler interface {
-	Middleware(Context) error
+	Serve(*Context) error
 }
 
 // Renderer is the interface that wraps the Render function.
 type Renderer interface {
-	Render(Context, io.Writer, string, interface{}) error
+	Render(*Context, io.Writer, string, interface{}) error
 }
 
 // Hook defines a function to process hook.
-type Hook func(Context)
+type Hook func(*Context)
 
 // Middleware defines a function to process middleware.
-type Middleware func(Context) error
+type Middleware func(*Context) error
 
 // Error is error struct that implemented HTTPError
 type Error struct {
@@ -75,7 +78,7 @@ type Gear struct {
 
 	// OnError is default ctx error handler.
 	// Override it for your business logic.
-	OnError  func(Context, error) HTTPError
+	OnError  func(*Context, error) HTTPError
 	Renderer Renderer
 	// ErrorLog specifies an optional logger for app's errors. Default to nil
 	ErrorLog *log.Logger
@@ -88,21 +91,19 @@ func New() *Gear {
 	g.Server = new(http.Server)
 	g.middleware = make([]Middleware, 0)
 	g.pool.New = func() interface{} {
-		ctx := &gearCtx{app: g, res: &Response{}}
-		ctx.res.ctx = ctx
-		return ctx
+		return NewContext(g)
 	}
-	g.OnError = func(ctx Context, err error) HTTPError {
+	g.OnError = func(ctx *Context, err error) HTTPError {
 		return NewError(err, 500)
 	}
 	return g
 }
 
-func (g *Gear) toServeHandler() *servHandler {
+func (g *Gear) toServeHandler() *serveHandler {
 	if len(g.middleware) == 0 {
 		panic("No middleware")
 	}
-	return &servHandler{middleware: g.middleware[0:], app: g}
+	return &serveHandler{middleware: g.middleware[0:], app: g}
 }
 
 // Use uses the given middleware `handle`.
@@ -112,7 +113,7 @@ func (g *Gear) Use(handle Middleware) {
 
 // UseHandler uses a instance that implemented Handler interface.
 func (g *Gear) UseHandler(h Handler) {
-	g.middleware = append(g.middleware, h.Middleware)
+	g.middleware = append(g.middleware, h.Serve)
 }
 
 // Listen starts the HTTP server.
@@ -169,21 +170,21 @@ func (g *Gear) Error(err error) {
 	}
 }
 
-type servHandler struct {
+type serveHandler struct {
 	app        *Gear
 	middleware []Middleware
 }
 
-func (h *servHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
-	ctx := h.app.pool.Get().(*gearCtx)
-	ctx.reset(w, r)
+	ctx := h.app.pool.Get().(*Context)
+	ctx.Reset(w, r)
 
 	for _, handle := range h.middleware {
 		if err = handle(ctx); err != nil {
 			break
 		}
-		if ctx.ended || ctx.res.finished {
+		if ctx.ended || ctx.Res.finished {
 			break // end up the process
 		}
 	}
@@ -201,36 +202,36 @@ func (h *servHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err == nil { // ctx.afterHooks should not run when err
 		ctx.runAfterHooks()
 	} else {
-		if ctx.res.Status < 400 {
-			ctx.res.Status = 500
+		if ctx.Res.Status < 400 {
+			ctx.Res.Status = 500
 		}
-		if ctx.res.Status >= 500 { // Only handle 5xx Server Error
+		if ctx.Res.Status >= 500 { // Only handle 5xx Server Error
 			h.app.Error(err)
 		}
 		ctx.Body(err.Error())
 	}
 
-	err = ctx.res.respond()
+	err = ctx.Res.respond()
 	if err != nil {
 		h.app.Error(err)
 	}
 
-	ctx.reset(nil, nil)
+	ctx.Reset(nil, nil)
 	h.app.pool.Put(ctx)
 }
 
 // WrapHandler wrap a http.Handler to Gear Middleware
 func WrapHandler(h http.Handler) Middleware {
-	return func(ctx Context) error {
-		h.ServeHTTP(ctx.Response(), ctx.Request())
+	return func(ctx *Context) error {
+		h.ServeHTTP(ctx.Res, ctx.Req)
 		return nil
 	}
 }
 
 // WrapHandlerFunc wrap a http.HandlerFunc to Gear Middleware
 func WrapHandlerFunc(h http.HandlerFunc) Middleware {
-	return func(ctx Context) error {
-		h(ctx.Response(), ctx.Request())
+	return func(ctx *Context) error {
+		h(ctx.Res, ctx.Req)
 		return nil
 	}
 }

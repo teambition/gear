@@ -38,8 +38,8 @@ func NewStatic(opts StaticOptions) gear.Middleware {
 	if opts.Prefix == "" {
 		opts.Prefix = "/"
 	}
-	return func(ctx gear.Context) error {
-		path := ctx.Path()
+	return func(ctx *gear.Context) error {
+		path := ctx.Path
 		if !strings.HasPrefix(path, opts.Prefix) {
 			return nil
 		}
@@ -47,7 +47,7 @@ func NewStatic(opts StaticOptions) gear.Middleware {
 			path = strings.TrimPrefix(path, opts.Prefix)
 		}
 		path = filepath.Join(root, filepath.FromSlash(path))
-		http.ServeFile(ctx.Response(), ctx.Request(), path)
+		http.ServeFile(ctx.Res, ctx.Req, path)
 		return nil
 	}
 }

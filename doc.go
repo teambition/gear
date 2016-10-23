@@ -1,5 +1,4 @@
 // Package gear implements a web framework with context.Context for Go. It focuses on performance and composition.
-// Version v0.4.0
 
 /*
 Example:
@@ -21,18 +20,18 @@ Example:
 		// Add a static middleware
 		// http://localhost:3000/middleware/static.go
 		app.Use(middleware.NewStatic(middleware.StaticOptions{
-			Root:        "./middleware",
-			Prefix:      "/middleware",
+			Root:        "./dist",
+			Prefix:      "/static",
 			StripPrefix: true,
 		}))
 
 		// Add some middleware to app
-		app.Use(func(ctx gear.Context) (err error) {
-			// fmt.Println(ctx.IP(), ctx.Method(), ctx.Path())
+		app.Use(func(ctx *gear.Context) (err error) {
+			// fmt.Println(ctx.IP(), ctx.Method, ctx.Path
 			// Do something...
 
 			// Add after hook to the ctx
-			ctx.After(func(ctx gear.Context) {
+			ctx.After(func(ctx *gear.Context) {
 				// Do something in after hook
 				fmt.Println("After hook")
 			})
@@ -42,49 +41,45 @@ Example:
 		// Create views router
 		ViewRouter := gear.NewRouter("", true)
 		// "http://localhost:3000"
-		ViewRouter.Get("/", func(ctx gear.Context) (err error) {
-			ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-			return
+		ViewRouter.Get("/", func(ctx *gear.Context) error {
+			return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
 		})
 		// "http://localhost:3000/view/abc"
 		// "http://localhost:3000/view/123"
-		ViewRouter.Get("/view/:view", func(ctx gear.Context) (err error) {
-			if view := ctx.Param("view"); view == "" {
+		ViewRouter.Get("/view/:view", func(ctx *gear.Context) error {
+			view := ctx.Param("view")
+			if view == "" {
 				ctx.Status(400)
-				err = errors.New("Invalid view")
-			} else {
-				ctx.HTML(200, "View: "+view)
+				return errors.New("Invalid view")
 			}
-			return
+			return ctx.HTML(200, "View: "+view)
 		})
 		// "http://localhost:3000/abc"
 		// "http://localhost:3000/abc/efg"
-		ViewRouter.Get("/:others*", func(ctx gear.Context) (err error) {
-			if others := ctx.Param("others"); others == "" {
+		ViewRouter.Get("/:others*", func(ctx *gear.Context) error {
+			others := ctx.Param("others")
+			if others == "" {
 				ctx.Status(400)
-				err = errors.New("Invalid path")
-			} else {
-				ctx.HTML(200, "Request path: /"+others)
+				return errors.New("Invalid path")
 			}
-			return
+			return ctx.HTML(200, "Request path: /"+others)
 		})
 
 		// Create API router
 		APIRouter := gear.NewRouter("/api", true)
 		// "http://localhost:3000/api/user/abc"
 		// "http://localhost:3000/abc/user/123"
-		APIRouter.Get("/user/:id", func(ctx gear.Context) (err error) {
-			if id := ctx.Param("id"); id == "" {
+		APIRouter.Get("/user/:id", func(ctx *gear.Context) error {
+			id := ctx.Param("id")
+			if id == "" {
 				ctx.Status(400)
-				err = errors.New("Invalid user id")
-			} else {
-				ctx.JSON(200, map[string]string{
-					"Method": ctx.Method(),
-					"Path":   ctx.Path(),
-					"UserID": id,
-				})
+				return errors.New("Invalid user id")
 			}
-			return
+			return ctx.JSON(200, map[string]string{
+				"Method": ctx.Method,
+				"Path":   ctx.Path,
+				"UserID": id,
+			})
 		})
 
 		// Must add APIRouter first.

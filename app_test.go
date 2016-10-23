@@ -17,7 +17,7 @@ type Response struct {
 
 func TestGearAppHello(t *testing.T) {
 	app := gear.New()
-	app.Use(func(ctx gear.Context) error {
+	app.Use(func(ctx *gear.Context) error {
 		ctx.End(200, []byte("<h1>Hello!</h1>"))
 		return nil
 	})
@@ -38,12 +38,12 @@ func TestGearAppHello(t *testing.T) {
 
 func TestGearError(t *testing.T) {
 	app := gear.New()
-	app.OnError = func(ctx gear.Context, err error) gear.HTTPError {
+	app.OnError = func(ctx *gear.Context, err error) gear.HTTPError {
 		ctx.Type("html")
 		return gear.NewError(err, 501)
 	}
 
-	app.Use(func(ctx gear.Context) error {
+	app.Use(func(ctx *gear.Context) error {
 		return errors.New("Some 501 error")
 	})
 	srv := app.StartBG("")

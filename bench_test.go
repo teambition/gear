@@ -9,7 +9,7 @@ import (
 
 func BenchmarkGearAppHello(b *testing.B) {
 	app := gear.New()
-	app.Use(func(ctx gear.Context) error {
+	app.Use(func(ctx *gear.Context) error {
 		ctx.End(200, []byte("<h1>Hello!</h1>"))
 		return nil
 	})

@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"sync"
 	"time"
 )
 
@@ -91,170 +90,33 @@ var nilByte []byte
 
 // Context represents the context of the current HTTP request. It holds request and
 // response objects, path, path parameters, data, registered handler and content.Context.
-type Context interface {
-	context.Context
-
-	// Cancel cancel the ctx and all it' children context
-	Cancel()
-
-	// WithCancel returns a copy of the ctx with a new Done channel.
-	// The returned context's Done channel is closed when the returned cancel function is called or when the parent context's Done channel is closed, whichever happens first.
-	WithCancel() (context.Context, context.CancelFunc)
-
-	// WithDeadline returns a copy of the ctx with the deadline adjusted to be no later than d.
-	WithDeadline(time.Time) (context.Context, context.CancelFunc)
-
-	// WithTimeout returns WithDeadline(time.Now().Add(timeout)).
-	WithTimeout(time.Duration) (context.Context, context.CancelFunc)
-
-	// WithValue returns a copy of the ctx in which the value associated with key is val.
-	WithValue(interface{}, interface{}) context.Context
-
-	// SetValue save a key and value to the ctx.
-	SetValue(interface{}, interface{})
-
-	// Request returns `*http.Request`.
-	Request() *http.Request
-
-	// Request returns `*Response`.
-	Response() *Response
-
-	// IP returns the client's network address based on `X-Forwarded-For`
-	// or `X-Real-IP` request header.
-	IP() string
-
-	// Host returns the the client's request Host.
-	Host() string
-
-	// Method returns the client's request Method.
-	Method() string
-
-	// Path returns the client's request Path.
-	Path() string
-
-	// Param returns path parameter by name.
-	Param(string) string
-
-	// Query returns the query param for the provided name.
-	Query(string) string
-
-	// Cookie returns the named cookie provided in the request.
-	Cookie(string) (*http.Cookie, error)
-
-	// SetCookie adds a `Set-Cookie` header in HTTP response.
-	SetCookie(*http.Cookie)
-
-	// Cookies returns the HTTP cookies sent with the request.
-	Cookies() []*http.Cookie
-
-	// Get retrieves data from the request Header.
-	Get(string) string
-
-	// Set saves data to the response Header.
-	Set(string, string)
-
-	// Status set a status code to response
-	Status(int)
-
-	// Type set a content type to response
-	Type(string)
-
-	// Body set a string to response.
-	Body(string)
-
-	// Error set a error message with status code to response.
-	Error(HTTPError)
-
-	// HTML set an Html body with status code to response.
-	// It will end the ctx.
-	HTML(int, string) error
-
-	// JSON set a JSON body with status code to response.
-	// It will end the ctx.
-	JSON(int, interface{}) error
-
-	// JSONBlob set a JSON blob body with status code to response.
-	// It will end the ctx.
-	JSONBlob(int, []byte) error
-
-	// JSONP sends a JSONP response with status code. It uses `callback` to construct the JSONP payload.
-	// It will end the ctx.
-	JSONP(int, string, interface{}) error
-
-	// JSONPBlob sends a JSONP blob response with status code. It uses `callback`
-	// to construct the JSONP payload.
-	// It will end the ctx.
-	JSONPBlob(int, string, []byte) error
-
-	// XML set an XML body with status code to response.
-	// It will end the ctx.
-	XML(int, interface{}) error
-
-	// XMLBlob set a XML blob body with status code to response.
-	// It will end the ctx.
-	XMLBlob(int, []byte) error
-
-	// Render renders a template with data and sends a text/html response with status
-	// code. Templates can be registered using `app.SetRenderer()`.
-	// It will end the ctx.
-	Render(int, string, interface{}) error
-
-	// Stream sends a streaming response with status code and content type.
-	// It will end the ctx.
-	Stream(int, string, io.Reader) error
-
-	// Attachment sends a response from `io.ReaderSeeker` as attachment, prompting
-	// client to save the file.
-	// It will end the ctx.
-	Attachment(string, io.ReadSeeker) error
-
-	// Inline sends a response from `io.ReaderSeeker` as inline, opening
-	// the file in the browser.
-	// It will end the ctx.
-	Inline(string, io.ReadSeeker) error
-
-	// Redirect redirects the request with status code.
-	// It will end the ctx.
-	Redirect(int, string) error
-
-	// End end the ctx with string body and status code optionally.
-	// After it's called, the rest of middleware handles will not run.
-	// But the registered hook on the ctx will run.
-	End(int, []byte)
-
-	// IsEnded return the ctx' ended status.
-	IsEnded() bool
-
-	// After add a Hook to the ctx that will run after app's Middleware.
-	After(hook Hook)
-
-	// OnEnd add a Hook to the ctx that will run before response.WriteHeader.
-	OnEnd(hook Hook)
-
-	// String returns a string represent the ctx.
-	String() string
-}
-
-type gearCtx struct {
+type Context struct {
 	ctx        context.Context
 	cancelCtx  context.CancelFunc
-	req        *http.Request
-	res        *Response
 	app        *Gear
-	host       string
-	method     string
-	path       string
+	Req        *http.Request
+	Res        *Response
+	Host       string
+	Method     string
+	Path       string
 	ended      bool
 	query      url.Values
 	vals       map[interface{}]interface{}
 	afterHooks []Hook
 	endHooks   []Hook
-	mu         sync.Mutex
 }
 
-func (ctx *gearCtx) reset(w http.ResponseWriter, req *http.Request) {
-	ctx.req = req
-	ctx.res.reset(w)
+// NewContext creates an instance of Context. It is useful for testing a middleware.
+func NewContext(g *Gear) *Context {
+	ctx := &Context{app: g, Res: &Response{}}
+	ctx.Res.ctx = ctx
+	return ctx
+}
+
+// Reset initializes the ctx with http.ResponseWriter and http.Request.
+func (ctx *Context) Reset(w http.ResponseWriter, req *http.Request) {
+	ctx.Req = req
+	ctx.Res.reset(w)
 	ctx.ended = false
 	if w == nil {
 		ctx.ctx = nil
@@ -264,28 +126,37 @@ func (ctx *gearCtx) reset(w http.ResponseWriter, req *http.Request) {
 		ctx.endHooks = nil
 		ctx.cancelCtx = nil
 	} else {
-		ctx.host = req.Host
-		ctx.method = req.Method
-		ctx.path = normalizePath(req.URL.Path) // fix "/abc//ef" to "/abc/ef"
+		ctx.Host = req.Host
+		ctx.Method = req.Method
+		ctx.Path = normalizePath(req.URL.Path) // fix "/abc//ef" to "/abc/ef"
 		ctx.vals = make(map[interface{}]interface{})
 		ctx.ctx, ctx.cancelCtx = context.WithCancel(req.Context())
 	}
 }
 
-// ----- implement context.Context interface -----
-func (ctx *gearCtx) Deadline() (time.Time, bool) {
+// ----- implement context.Context interface ----- //
+
+// Deadline returns the time when work done on behalf of this context
+// should be canceled.
+func (ctx *Context) Deadline() (time.Time, bool) {
 	return ctx.ctx.Deadline()
 }
 
-func (ctx *gearCtx) Done() <-chan struct{} {
+// Done returns a channel that's closed when work done on behalf of this
+// context should be canceled.
+func (ctx *Context) Done() <-chan struct{} {
 	return ctx.ctx.Done()
 }
 
-func (ctx *gearCtx) Err() error {
+// Err returns a non-nil error value after Done is closed.
+func (ctx *Context) Err() error {
 	return ctx.ctx.Err()
 }
 
-func (ctx *gearCtx) Value(key interface{}) (val interface{}) {
+// Value returns the value associated with this context for key, or nil
+// if no value is associated with key. Successive calls to Value with
+// the same key returns the same result.
+func (ctx *Context) Value(key interface{}) (val interface{}) {
 	var ok bool
 	if val, ok = ctx.vals[key]; !ok {
 		val = ctx.ctx.Value(key)
@@ -293,47 +164,49 @@ func (ctx *gearCtx) Value(key interface{}) (val interface{}) {
 	return
 }
 
-func (ctx *gearCtx) String() string {
-	return fmt.Sprintf("gweb.Context{Req: %v, Res: %v}", ctx.req, ctx.res)
+// String returns a string represent the ctx.
+func (ctx *Context) String() string {
+	return fmt.Sprintf("gweb.Context{Req: %v, Res: %v}", ctx.Req, ctx.Res)
 }
 
-func (ctx *gearCtx) Cancel() {
+// Cancel cancel the ctx and all it' children context
+func (ctx *Context) Cancel() {
 	ctx.cancelCtx()
 }
 
-func (ctx *gearCtx) WithCancel() (context.Context, context.CancelFunc) {
+// WithCancel returns a copy of the ctx with a new Done channel.
+// The returned context's Done channel is closed when the returned cancel function is called or when the parent context's Done channel is closed, whichever happens first.
+func (ctx *Context) WithCancel() (context.Context, context.CancelFunc) {
 	return context.WithCancel(ctx.ctx)
 }
 
-func (ctx *gearCtx) WithDeadline(deadline time.Time) (context.Context, context.CancelFunc) {
+// WithDeadline returns a copy of the ctx with the deadline adjusted to be no later than d.
+func (ctx *Context) WithDeadline(deadline time.Time) (context.Context, context.CancelFunc) {
 	return context.WithDeadline(ctx.ctx, deadline)
 }
 
-func (ctx *gearCtx) WithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
+// WithTimeout returns WithDeadline(time.Now().Add(timeout)).
+func (ctx *Context) WithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(ctx.ctx, timeout)
 }
 
-func (ctx *gearCtx) WithValue(key, val interface{}) context.Context {
+// WithValue returns a copy of the ctx in which the value associated with key is val.
+func (ctx *Context) WithValue(key, val interface{}) context.Context {
 	return context.WithValue(ctx.ctx, key, val)
 }
 
-func (ctx *gearCtx) SetValue(key, val interface{}) {
+// SetValue save a key and value to the ctx.
+func (ctx *Context) SetValue(key, val interface{}) {
 	ctx.vals[key] = val
 }
 
-func (ctx *gearCtx) Request() *http.Request {
-	return ctx.req
-}
-
-func (ctx *gearCtx) Response() *Response {
-	return ctx.res
-}
-
-func (ctx *gearCtx) IP() string {
-	ra := ctx.req.RemoteAddr
-	if ip := ctx.req.Header.Get(HeaderXForwardedFor); ip != "" {
+// IP returns the client's network address based on `X-Forwarded-For`
+// or `X-Real-IP` request header.
+func (ctx *Context) IP() string {
+	ra := ctx.Req.RemoteAddr
+	if ip := ctx.Req.Header.Get(HeaderXForwardedFor); ip != "" {
 		ra = ip
-	} else if ip := ctx.req.Header.Get(HeaderXRealIP); ip != "" {
+	} else if ip := ctx.Req.Header.Get(HeaderXRealIP); ip != "" {
 		ra = ip
 	} else {
 		ra, _, _ = net.SplitHostPort(ra)
@@ -341,60 +214,57 @@ func (ctx *gearCtx) IP() string {
 	return ra
 }
 
-func (ctx *gearCtx) Host() string {
-	return ctx.host
-}
-
-func (ctx *gearCtx) Method() string {
-	return ctx.method
-}
-
-func (ctx *gearCtx) Path() string {
-	return ctx.path
-}
-
-func (ctx *gearCtx) Param(key string) (val string) {
+// Param returns path parameter by name.
+func (ctx *Context) Param(key string) (val string) {
 	if params := ctx.Value(GearParamsKey); params != nil {
 		val, _ = params.(map[string]string)[key]
 	}
 	return
 }
 
-func (ctx *gearCtx) Query(name string) string {
+// Query returns the query param for the provided name.
+func (ctx *Context) Query(name string) string {
 	if ctx.query == nil {
-		ctx.query = ctx.req.URL.Query()
+		ctx.query = ctx.Req.URL.Query()
 	}
 	return ctx.query.Get(name)
 }
 
-func (ctx *gearCtx) Cookie(name string) (*http.Cookie, error) {
-	return ctx.req.Cookie(name)
+// Cookie returns the named cookie provided in the request.
+func (ctx *Context) Cookie(name string) (*http.Cookie, error) {
+	return ctx.Req.Cookie(name)
 }
 
-func (ctx *gearCtx) SetCookie(cookie *http.Cookie) {
-	http.SetCookie(ctx.res.res, cookie)
+// SetCookie adds a `Set-Cookie` header in HTTP response.
+func (ctx *Context) SetCookie(cookie *http.Cookie) {
+	http.SetCookie(ctx.Res.res, cookie)
 }
 
-func (ctx *gearCtx) Cookies() []*http.Cookie {
-	return ctx.req.Cookies()
+// Cookies returns the HTTP cookies sent with the request.
+func (ctx *Context) Cookies() []*http.Cookie {
+	return ctx.Req.Cookies()
 }
 
-func (ctx *gearCtx) Get(key string) string {
-	return ctx.req.Header.Get(key)
+// Get retrieves data from the request Header.
+func (ctx *Context) Get(key string) string {
+	return ctx.Req.Header.Get(key)
 }
 
-func (ctx *gearCtx) Set(key, value string) {
-	ctx.res.Set(key, value)
+// Set saves data to the response Header.
+func (ctx *Context) Set(key, value string) {
+	ctx.Res.Set(key, value)
 }
 
-func (ctx *gearCtx) Status(code int) {
+// Status set a status code to response
+func (ctx *Context) Status(code int) {
 	if statusText := http.StatusText(code); statusText == "" {
 		code = 500
 	}
-	ctx.res.Status = code
+	ctx.Res.Status = code
 }
 
-func (ctx *gearCtx) Type(str string) {
+// Type set a content type to response
+func (ctx *Context) Type(str string) {
 	switch str {
 	case "json":
 		str = MIMEApplicationJSONCharsetUTF8
@@ -408,27 +278,33 @@ func (ctx *gearCtx) Type(str string) {
 		str = MIMETextHTMLCharsetUTF8
 	}
 	if str == "" {
-		ctx.res.Del(HeaderContentType)
+		ctx.Res.Del(HeaderContentType)
 	} else {
-		ctx.res.Set(HeaderContentType, str)
+		ctx.Res.Set(HeaderContentType, str)
 	}
 }
 
-func (ctx *gearCtx) Body(str string) {
-	ctx.res.Body = stringToBytes(str)
+// Body set a string to response.
+func (ctx *Context) Body(str string) {
+	ctx.Res.Body = stringToBytes(str)
 }
 
-func (ctx *gearCtx) Error(err HTTPError) {
+// Error set a error message with status code to response.
+func (ctx *Context) Error(err HTTPError) {
 	ctx.End(err.Status(), stringToBytes(err.Error()))
 }
 
-func (ctx *gearCtx) HTML(code int, str string) error {
+// HTML set an Html body with status code to response.
+// It will end the ctx.
+func (ctx *Context) HTML(code int, str string) error {
 	ctx.Type("html")
 	ctx.End(code, stringToBytes(str))
 	return nil
 }
 
-func (ctx *gearCtx) JSON(code int, val interface{}) error {
+// JSON set a JSON body with status code to response.
+// It will end the ctx.
+func (ctx *Context) JSON(code int, val interface{}) error {
 	buf, err := json.Marshal(val)
 	if err != nil {
 		ctx.Status(500)
@@ -437,13 +313,17 @@ func (ctx *gearCtx) JSON(code int, val interface{}) error {
 	return ctx.JSONBlob(code, buf)
 }
 
-func (ctx *gearCtx) JSONBlob(code int, buf []byte) error {
+// JSONBlob set a JSON blob body with status code to response.
+// It will end the ctx.
+func (ctx *Context) JSONBlob(code int, buf []byte) error {
 	ctx.Type("json")
 	ctx.End(code, buf)
 	return nil
 }
 
-func (ctx *gearCtx) JSONP(code int, callback string, val interface{}) error {
+// JSONP sends a JSONP response with status code. It uses `callback` to construct the JSONP payload.
+// It will end the ctx.
+func (ctx *Context) JSONP(code int, callback string, val interface{}) error {
 	buf, err := json.Marshal(val)
 	if err != nil {
 		ctx.Status(500)
@@ -452,14 +332,19 @@ func (ctx *gearCtx) JSONP(code int, callback string, val interface{}) error {
 	return ctx.JSONPBlob(code, callback, buf)
 }
 
-func (ctx *gearCtx) JSONPBlob(code int, callback string, buf []byte) error {
+// JSONPBlob sends a JSONP blob response with status code. It uses `callback`
+// to construct the JSONP payload.
+// It will end the ctx.
+func (ctx *Context) JSONPBlob(code int, callback string, buf []byte) error {
 	ctx.Type("js")
 	buf = bytes.Join([][]byte{[]byte(callback + "("), buf, []byte(");")}, []byte{})
 	ctx.End(code, buf)
 	return nil
 }
 
-func (ctx *gearCtx) XML(code int, val interface{}) error {
+// XML set an XML body with status code to response.
+// It will end the ctx.
+func (ctx *Context) XML(code int, val interface{}) error {
 	buf, err := xml.Marshal(val)
 	if err != nil {
 		ctx.Status(500)
@@ -468,13 +353,18 @@ func (ctx *gearCtx) XML(code int, val interface{}) error {
 	return ctx.XMLBlob(code, buf)
 }
 
-func (ctx *gearCtx) XMLBlob(code int, buf []byte) error {
+// XMLBlob set a XML blob body with status code to response.
+// It will end the ctx.
+func (ctx *Context) XMLBlob(code int, buf []byte) error {
 	ctx.Type("xml")
 	ctx.End(code, buf)
 	return nil
 }
 
-func (ctx *gearCtx) Render(code int, name string, data interface{}) (err error) {
+// Render renders a template with data and sends a text/html response with status
+// code. Templates can be registered using `app.SetRenderer()`.
+// It will end the ctx.
+func (ctx *Context) Render(code int, name string, data interface{}) (err error) {
 	if ctx.app.Renderer == nil {
 		return errors.New("renderer not registered")
 	}
@@ -487,64 +377,80 @@ func (ctx *gearCtx) Render(code int, name string, data interface{}) (err error) 
 	return
 }
 
-func (ctx *gearCtx) Stream(code int, contentType string, r io.Reader) (err error) {
+// Stream sends a streaming response with status code and content type.
+// It will end the ctx.
+func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error) {
 	ctx.End(code, nilByte)
 	ctx.Type(contentType)
-	_, err = io.Copy(ctx.res, r)
+	_, err = io.Copy(ctx.Res, r)
 	return
 }
 
-func (ctx *gearCtx) Attachment(name string, content io.ReadSeeker) error {
+// Attachment sends a response from `io.ReaderSeeker` as attachment, prompting
+// client to save the file.
+// It will end the ctx.
+func (ctx *Context) Attachment(name string, content io.ReadSeeker) error {
 	return ctx.contentDisposition("attachment", name, content)
 }
 
-func (ctx *gearCtx) Inline(name string, content io.ReadSeeker) error {
+// Inline sends a response from `io.ReaderSeeker` as inline, opening
+// the file in the browser.
+// It will end the ctx.
+func (ctx *Context) Inline(name string, content io.ReadSeeker) error {
 	return ctx.contentDisposition("inline", name, content)
 }
 
-func (ctx *gearCtx) contentDisposition(dispositionType, name string, content io.ReadSeeker) error {
+func (ctx *Context) contentDisposition(dispositionType, name string, content io.ReadSeeker) error {
 	ctx.ended = true
 	ctx.Set(HeaderContentDisposition, fmt.Sprintf("%s; filename=%s", dispositionType, name))
-	http.ServeContent(ctx.res, ctx.req, name, time.Time{}, content)
+	http.ServeContent(ctx.Res, ctx.Req, name, time.Time{}, content)
 	return nil
 }
 
-func (ctx *gearCtx) Redirect(code int, url string) error {
+// Redirect redirects the request with status code.
+// It will end the ctx.
+func (ctx *Context) Redirect(code int, url string) error {
 	ctx.ended = true
-	http.Redirect(ctx.res, ctx.req, url, code)
+	http.Redirect(ctx.Res, ctx.Req, url, code)
 	return nil
 }
 
-func (ctx *gearCtx) End(code int, buf []byte) {
+// End end the ctx with string body and status code optionally.
+// After it's called, the rest of middleware handles will not run.
+// But the registered hook on the ctx will run.
+func (ctx *Context) End(code int, buf []byte) {
 	ctx.ended = true
 	if code != 0 {
 		ctx.Status(code)
 	}
 	if buf != nil {
-		ctx.res.Body = buf
+		ctx.Res.Body = buf
 	}
 }
 
-func (ctx *gearCtx) IsEnded() bool {
-	return ctx.ended || ctx.res.finished
+// IsEnded return the ctx' ended status.
+func (ctx *Context) IsEnded() bool {
+	return ctx.ended || ctx.Res.finished
 }
 
-func (ctx *gearCtx) After(hook Hook) {
+// After add a Hook to the ctx that will run after app's Middleware.
+func (ctx *Context) After(hook Hook) {
 	if !ctx.ended { // should not add afterHooks if ctx.ended
 		ctx.afterHooks = append(ctx.afterHooks, hook)
 	}
 }
 
-func (ctx *gearCtx) OnEnd(hook Hook) {
-	if !ctx.res.finished { // should not add endHooks if ctx.res.finished
+// OnEnd add a Hook to the ctx that will run before response.WriteHeader.
+func (ctx *Context) OnEnd(hook Hook) {
+	if !ctx.Res.finished { // should not add endHooks if ctx.Res.finished
 		ctx.endHooks = append(ctx.endHooks, hook)
 	}
 }
 
-func (ctx *gearCtx) runAfterHooks() {
+func (ctx *Context) runAfterHooks() {
 	ctx.ended = true // ensure ctx.ended to true
 	for _, hook := range ctx.afterHooks {
-		if ctx.res.finished {
+		if ctx.Res.finished {
 			break
 		}
 		hook(ctx)
@@ -552,10 +458,10 @@ func (ctx *gearCtx) runAfterHooks() {
 	ctx.afterHooks = nil
 }
 
-func (ctx *gearCtx) runEndHooks() {
-	ctx.res.finished = true // ensure ctx.res.finished to true
+func (ctx *Context) runEndHooks() {
+	ctx.Res.finished = true // ensure ctx.Res.finished to true
 	for _, hook := range ctx.endHooks {
-		if ctx.res.finished {
+		if ctx.Res.finished {
 			break
 		}
 		hook(ctx)

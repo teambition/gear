@@ -1,16 +1,11 @@
 package gear
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
-
-type te struct {
-	x int
-}
 
 func EqualPtr(t *testing.T, a, b interface{}) {
 	require.Equal(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
@@ -203,7 +198,6 @@ func TestGearTrie(t *testing.T) {
 			tr1 := newTrie(true)
 			node := tr1.define("/")
 			res := tr1.match("/")
-			fmt.Println(res)
 			require.Nil(t, res.params)
 			EqualPtr(t, node, res.node)
 

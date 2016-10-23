@@ -100,10 +100,10 @@ func (r *Router) Otherwise(handle Middleware) {
 	r.otherwise = handle
 }
 
-// Middleware implemented gear.Handler interface
-func (r *Router) Middleware(ctx Context) error {
-	path := ctx.Path()
-	method := ctx.Method()
+// Serve implemented gear.Handler interface
+func (r *Router) Serve(ctx *Context) error {
+	path := ctx.Path
+	method := ctx.Method
 
 	if !strings.HasPrefix(path, r.root) {
 		return nil
@@ -147,7 +147,7 @@ func (r *Router) Middleware(ctx Context) error {
 	return err
 }
 
-func (r *Router) run(ctx Context, h Middleware) (err error) {
+func (r *Router) run(ctx *Context, h Middleware) (err error) {
 	for _, handle := range r.middleware {
 		if err = handle(ctx); err != nil {
 			return
