@@ -21,7 +21,7 @@ func TestGearAppHello(t *testing.T) {
 		ctx.End(200, []byte("<h1>Hello!</h1>"))
 		return nil
 	})
-	srv := app.StartBG("")
+	srv := app.Start()
 	defer srv.Close()
 
 	url := "http://" + srv.Addr().String()
@@ -46,7 +46,7 @@ func TestGearError(t *testing.T) {
 	app.Use(func(ctx *gear.Context) error {
 		return errors.New("Some 501 error")
 	})
-	srv := app.StartBG("")
+	srv := app.Start()
 	defer srv.Close()
 
 	url := "http://" + srv.Addr().String()

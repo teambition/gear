@@ -164,11 +164,6 @@ func (ctx *Context) Value(key interface{}) (val interface{}) {
 	return
 }
 
-// String returns a string represent the ctx.
-func (ctx *Context) String() string {
-	return fmt.Sprintf("gweb.Context{Req: %v, Res: %v}", ctx.Req, ctx.Res)
-}
-
 // Cancel cancel the ctx and all it' children context
 func (ctx *Context) Cancel() {
 	ctx.cancelCtx()
@@ -284,18 +279,25 @@ func (ctx *Context) Type(str string) {
 	}
 }
 
-// Body set a string to response.
-func (ctx *Context) Body(str string) {
+// String set a string to response.
+func (ctx *Context) String(str string) {
 	ctx.Res.Body = stringToBytes(str)
 }
 
 // Error set a error message with status code to response.
+// It will end the ctx. The middlewares after current middleware and "after hooks" will not run.
+// "end hooks" will run normally.
+// Note that this will not stop the current handler.
 func (ctx *Context) Error(err HTTPError) {
-	ctx.End(err.Status(), stringToBytes(err.Error()))
+	ctx.ended = true
+	ctx.afterHooks = nil // clear afterHooks when error
+	http.Error(ctx.Res, err.Error(), err.Status())
 }
 
 // HTML set an Html body with status code to response.
-// It will end the ctx.
+// It will end the ctx. The middlewares after current middleware will not run.
+// "after hooks" and "end hooks" will run normally.
+// Note that this will not stop the current handler.
 func (ctx *Context) HTML(code int, str string) error {
 	ctx.Type("html")
 	ctx.End(code, stringToBytes(str))
@@ -303,7 +305,9 @@ func (ctx *Context) HTML(code int, str string) error {
 }
 
 // JSON set a JSON body with status code to response.
-// It will end the ctx.
+// It will end the ctx. The middlewares after current middleware will not run.
+// "after hooks" (if no error) and "end hooks" will run normally.
+// Note that this will not stop the current handler.
 func (ctx *Context) JSON(code int, val interface{}) error {
 	buf, err := json.Marshal(val)
 	if err != nil {
@@ -314,7 +318,9 @@ func (ctx *Context) JSON(code int, val interface{}) error {
 }
 
 // JSONBlob set a JSON blob body with status code to response.
-// It will end the ctx.
+// It will end the ctx. The middlewares after current middleware will not run.
+// "after hooks" and "end hooks" will run normally.
+// Note that this will not stop the current handler.
 func (ctx *Context) JSONBlob(code int, buf []byte) error {
 	ctx.Type("json")
 	ctx.End(code, buf)
@@ -322,7 +328,9 @@ func (ctx *Context) JSONBlob(code int, buf []byte) error {
 }
 
 // JSONP sends a JSONP response with status code. It uses `callback` to construct the JSONP payload.
-// It will end the ctx.
+// It will end the ctx. The middlewares after current middleware will not run.
+// "after hooks" (if no error) and "end hooks" will run normally.
+// Note that this will not stop the current handler.
 func (ctx *Context) JSONP(code int, callback string, val interface{}) error {
 	buf, err := json.Marshal(val)
 	if err != nil {
@@ -334,7 +342,9 @@ func (ctx *Context) JSONP(code int, callback string, val interface{}) error {
 
 // JSONPBlob sends a JSONP blob response with status code. It uses `callback`
 // to construct the JSONP payload.
-// It will end the ctx.
+// It will end the ctx. The middlewares after current middleware will not run.
+// "after hooks" and "end hooks" will run normally.
+// Note that this will not stop the current handler.
 func (ctx *Context) JSONPBlob(code int, callback string, buf []byte) error {
 	ctx.Type("js")
 	buf = bytes.Join([][]byte{[]byte(callback + "("), buf, []byte(");")}, []byte{})
@@ -343,7 +353,9 @@ func (ctx *Context) JSONPBlob(code int, callback string, buf []byte) error {
 }
 
 // XML set an XML body with status code to response.
-// It will end the ctx.
+// It will end the ctx. The middlewares after current middleware will not run.
+// "after hooks" (if no error) and "end hooks" will run normally.
+// Note that this will not stop the current handler.
 func (ctx *Context) XML(code int, val interface{}) error {
 	buf, err := xml.Marshal(val)
 	if err != nil {
@@ -354,7 +366,9 @@ func (ctx *Context) XML(code int, val interface{}) error {
 }
 
 // XMLBlob set a XML blob body with status code to response.
-// It will end the ctx.
+// It will end the ctx. The middlewares after current middleware will not run.
+// "after hooks" and "end hooks" will run normally.
+// Note that this will not stop the current handler.
 func (ctx *Context) XMLBlob(code int, buf []byte) error {
 	ctx.Type("xml")
 	ctx.End(code, buf)
@@ -362,8 +376,10 @@ func (ctx *Context) XMLBlob(code int, buf []byte) error {
 }
 
 // Render renders a template with data and sends a text/html response with status
-// code. Templates can be registered using `app.SetRenderer()`.
-// It will end the ctx.
+// code. Templates can be registered using `app.Renderer = Renderer`.
+// It will end the ctx. The middlewares after current middleware will not run.
+// "after hooks" (if no error) and "end hooks" will run normally.
+// Note that this will not stop the current handler.
 func (ctx *Context) Render(code int, name string, data interface{}) (err error) {
 	if ctx.app.Renderer == nil {
 		return errors.New("renderer not registered")
@@ -378,7 +394,9 @@ func (ctx *Context) Render(code int, name string, data interface{}) (err error) 
 }
 
 // Stream sends a streaming response with status code and content type.
-// It will end the ctx.
+// It will end the ctx. The middlewares after current middleware will not run.
+// "after hooks" and "end hooks" will run normally.
+// Note that this will not stop the current handler.
 func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error) {
 	ctx.End(code, nilByte)
 	ctx.Type(contentType)
@@ -388,14 +406,18 @@ func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error
 
 // Attachment sends a response from `io.ReaderSeeker` as attachment, prompting
 // client to save the file.
-// It will end the ctx.
+// It will end the ctx. The middlewares after current middleware will not run.
+// "after hooks" and "end hooks" will run normally.
+// Note that this will not stop the current handler.
 func (ctx *Context) Attachment(name string, content io.ReadSeeker) error {
 	return ctx.contentDisposition("attachment", name, content)
 }
 
 // Inline sends a response from `io.ReaderSeeker` as inline, opening
 // the file in the browser.
-// It will end the ctx.
+// It will end the ctx. The middlewares after current middleware will not run.
+// "after hooks" and "end hooks" will run normally.
+// Note that this will not stop the current handler.
 func (ctx *Context) Inline(name string, content io.ReadSeeker) error {
 	return ctx.contentDisposition("inline", name, content)
 }
@@ -408,16 +430,19 @@ func (ctx *Context) contentDisposition(dispositionType, name string, content io.
 }
 
 // Redirect redirects the request with status code.
-// It will end the ctx.
+// It will end the ctx. The middlewares after current middleware will not run.
+// "after hooks" and "end hooks" will run normally.
+// Note that this will not stop the current handler.
 func (ctx *Context) Redirect(code int, url string) error {
 	ctx.ended = true
 	http.Redirect(ctx.Res, ctx.Req, url, code)
 	return nil
 }
 
-// End end the ctx with string body and status code optionally.
+// End end the ctx with bytes and status code optionally.
 // After it's called, the rest of middleware handles will not run.
-// But the registered hook on the ctx will run.
+// But "after hooks" and "end hooks" will run normally.
+// Note that this will not stop the current handler.
 func (ctx *Context) End(code int, buf []byte) {
 	ctx.ended = true
 	if code != 0 {
@@ -433,14 +458,14 @@ func (ctx *Context) IsEnded() bool {
 	return ctx.ended || ctx.Res.finished
 }
 
-// After add a Hook to the ctx that will run after app's Middleware.
+// After add a "after hook" to the ctx that will run after app's Middleware.
 func (ctx *Context) After(hook Hook) {
 	if !ctx.ended { // should not add afterHooks if ctx.ended
 		ctx.afterHooks = append(ctx.afterHooks, hook)
 	}
 }
 
-// OnEnd add a Hook to the ctx that will run before response.WriteHeader.
+// OnEnd add a "end hook" to the ctx that will run before response.WriteHeader.
 func (ctx *Context) OnEnd(hook Hook) {
 	if !ctx.Res.finished { // should not add endHooks if ctx.Res.finished
 		ctx.endHooks = append(ctx.endHooks, hook)

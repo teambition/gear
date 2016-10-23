@@ -93,7 +93,7 @@ func ExampleBackgroundAPP() {
 		return nil
 	})
 
-	s := app.StartBG("") // Start at random addr.
+	s := app.Start() // Start at random addr.
 	fmt.Printf("App start at: %s\n", s.Addr())
 	go func() {
 		time.Sleep(time.Second * 3) // Close it after 3 sec

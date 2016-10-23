@@ -13,7 +13,7 @@ func BenchmarkGearAppHello(b *testing.B) {
 		ctx.End(200, []byte("<h1>Hello!</h1>"))
 		return nil
 	})
-	srv := app.StartBG("")
+	srv := app.Start()
 	defer srv.Close()
 
 	url := "http://" + srv.Addr().String()

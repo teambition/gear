@@ -10,7 +10,7 @@ import (
 )
 
 // Version is Gear's version
-const Version = "v0.5.0"
+const Version = "v0.6.0"
 
 // HTTPError represents an error that occurred while handling a request.
 type HTTPError interface {
@@ -50,24 +50,24 @@ func NewError(err error, code int) Error {
 	return Error{error: err, Code: code}
 }
 
-// ServerBG is a server returned by a background app instance.
-type ServerBG struct {
+// ServerListener is returned by a non-blocking app instance.
+type ServerListener struct {
 	l net.Listener
 	c <-chan error
 }
 
-// Close closes the background app instance.
-func (s *ServerBG) Close() error {
+// Close closes the non-blocking app instance.
+func (s *ServerListener) Close() error {
 	return s.l.Close()
 }
 
-// Addr returns the background app instance addr.
-func (s *ServerBG) Addr() net.Addr {
+// Addr returns the non-blocking app instance addr.
+func (s *ServerListener) Addr() net.Addr {
 	return s.l.Addr()
 }
 
-// Wait waits the background app instance close.
-func (s *ServerBG) Wait() error {
+// Wait make the non-blocking app instance blocking.
+func (s *ServerListener) Wait() error {
 	return <-s.c
 }
 
@@ -136,11 +136,12 @@ func (g *Gear) ListenTLS(addr, certFile, keyFile string) error {
 	return g.Server.ListenAndServeTLS(certFile, keyFile)
 }
 
-// StartBG starts a background app instance. It is useful for testing.
-// The background app instance must close by ServerBG.Close().
-func (g *Gear) StartBG(laddr string) *ServerBG {
-	if laddr == "" {
-		laddr = "127.0.0.1:0"
+// Start starts a background app instance. It is useful for testing.
+// The background app instance must close by ServerListener.Close().
+func (g *Gear) Start(addr ...string) *ServerListener {
+	laddr := "127.0.0.1:0"
+	if len(addr) > 0 && addr[0] != "" {
+		laddr = addr[0]
 	}
 	g.Server.Handler = g.toServeHandler()
 	if g.ErrorLog != nil {
@@ -156,10 +157,10 @@ func (g *Gear) StartBG(laddr string) *ServerBG {
 	go func() {
 		c <- g.Server.Serve(l)
 	}()
-	return &ServerBG{l, c}
+	return &ServerListener{l, c}
 }
 
-// Error writes error to underlayer logging system.
+// Error writes error to underlayer logging system (ErrorLog).
 func (g *Gear) Error(err error) {
 	if err == nil {
 		if g.ErrorLog != nil {
@@ -208,7 +209,8 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if ctx.Res.Status >= 500 { // Only handle 5xx Server Error
 			h.app.Error(err)
 		}
-		ctx.Body(err.Error())
+		ctx.String(err.Error())
+		ctx.afterHooks = nil // clear afterHooks
 	}
 
 	err = ctx.Res.respond()
