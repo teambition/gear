@@ -57,6 +57,7 @@ func (r *Response) Header() http.Header {
 
 // Write writes the data to the connection as part of an HTTP reply.
 func (r *Response) Write(buf []byte) (int, error) {
+	// Some http Handler will call Write directly.
 	if !r.finished {
 		r.WriteHeader(r.Status)
 	}
@@ -66,11 +67,9 @@ func (r *Response) Write(buf []byte) (int, error) {
 // WriteHeader sends an HTTP response header with status code.
 // If WriteHeader is not called explicitly, the first call to Write
 // will trigger an implicit WriteHeader(http.StatusOK).
-// Thus explicit calls to WriteHeader are mainly used to
-// send error codes.
+// Thus explicit calls to WriteHeader are mainly used to send error codes.
 func (r *Response) WriteHeader(code int) {
 	r.Status = code
-
 	if r.ctx.afterHooks != nil {
 		r.ctx.runAfterHooks()
 	}

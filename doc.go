@@ -17,6 +17,9 @@ Example:
 		// Create app
 		app := gear.New()
 
+		// Use a default logger middleware
+		app.Use(gear.NewDefaultLogger())
+
 		// Add a static middleware
 		// http://localhost:3000/middleware/static.go
 		app.Use(middleware.NewStatic(middleware.StaticOptions{

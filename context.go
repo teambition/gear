@@ -91,9 +91,12 @@ var nilByte []byte
 // Context represents the context of the current HTTP request. It holds request and
 // response objects, path, path parameters, data, registered handler and content.Context.
 type Context struct {
-	ctx        context.Context
-	cancelCtx  context.CancelFunc
-	app        *Gear
+	ctx       context.Context
+	cancelCtx context.CancelFunc
+	app       *Gear
+
+	// Log recodes key-value pairs for logs. See gear.NewLogger
+	Log        Log
 	Req        *http.Request
 	Res        *Response
 	Host       string
@@ -125,7 +128,9 @@ func (ctx *Context) Reset(w http.ResponseWriter, req *http.Request) {
 		ctx.afterHooks = nil
 		ctx.endHooks = nil
 		ctx.cancelCtx = nil
+		ctx.Log = nil
 	} else {
+		ctx.Log = make(Log)
 		ctx.Host = req.Host
 		ctx.Method = req.Method
 		ctx.Path = normalizePath(req.URL.Path) // fix "/abc//ef" to "/abc/ef"
@@ -489,9 +494,6 @@ func (ctx *Context) runAfterHooks() {
 func (ctx *Context) runEndHooks() {
 	ctx.Res.finished = true // ensure ctx.Res.finished to true
 	for _, hook := range ctx.endHooks {
-		if ctx.Res.finished {
-			break
-		}
 		hook(ctx)
 	}
 	ctx.endHooks = nil

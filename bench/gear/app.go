@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/teambition/gear"
 )
@@ -28,6 +29,7 @@ func main() {
 
 	router := gear.NewRouter("", true)
 	router.Get("/", func(ctx *gear.Context) error {
+		time.Sleep(time.Millisecond * 100)
 		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
 	})
 
