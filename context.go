@@ -5,11 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
-	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/textproto"
 	"net/url"
 	"time"
 )
@@ -164,9 +164,12 @@ func (ctx *Context) Value(key interface{}) (val interface{}) {
 	return
 }
 
-// Cancel cancel the ctx and all it' children context
+// Cancel cancel the ctx and all it' children context.
+// The ctx' process will ended too.
 func (ctx *Context) Cancel() {
 	ctx.cancelCtx()
+	ctx.ended = true
+	ctx.afterHooks = nil // clear afterHooks when error
 }
 
 // WithCancel returns a copy of the ctx with a new Done channel.
@@ -288,10 +291,10 @@ func (ctx *Context) String(str string) {
 // It will end the ctx. The middlewares after current middleware and "after hooks" will not run.
 // "end hooks" will run normally.
 // Note that this will not stop the current handler.
-func (ctx *Context) Error(err HTTPError) {
+func (ctx *Context) Error(err *textproto.Error) {
 	ctx.ended = true
 	ctx.afterHooks = nil // clear afterHooks when error
-	http.Error(ctx.Res, err.Error(), err.Status())
+	http.Error(ctx.Res, err.Error(), err.Code)
 }
 
 // HTML set an Html body with status code to response.
@@ -382,7 +385,7 @@ func (ctx *Context) XMLBlob(code int, buf []byte) error {
 // Note that this will not stop the current handler.
 func (ctx *Context) Render(code int, name string, data interface{}) (err error) {
 	if ctx.app.Renderer == nil {
-		return errors.New("renderer not registered")
+		return NewAppError("renderer not registered")
 	}
 	buf := new(bytes.Buffer)
 	if err = ctx.app.Renderer.Render(ctx, buf, name, data); err != nil {

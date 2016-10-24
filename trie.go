@@ -1,6 +1,7 @@
 package gear
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -40,7 +41,7 @@ type trieNode struct {
 
 func (n *trieNode) handle(method string, handle Middleware) {
 	if n.methods[method] != nil {
-		panic("The route in \"" + n.pattern + "\" already defined")
+		panic(NewAppError(fmt.Sprintf("the route in %s already defined", n.pattern)))
 	}
 	n.methods[method] = handle
 	if n.allowMethods == "" {
@@ -57,7 +58,7 @@ type trieMatched struct {
 
 func (t *trie) define(pattern string) *trieNode {
 	if strings.Contains(pattern, "//") {
-		panic("Multi-slash exist.")
+		panic(NewAppError(fmt.Sprintf("multi-slash exist: %s", pattern)))
 	}
 
 	_pattern := strings.Trim(pattern, "/")
@@ -112,7 +113,7 @@ func defineNode(parent *trieNode, frags []string, ignoreCase bool) *trieNode {
 		child.endpoint = true
 		return child
 	} else if child.wildcard {
-		panic("Can not define pattern after wildcard(*).")
+		panic(NewAppError(fmt.Sprintf("can't define pattern after wildcard: %s", child.pattern)))
 	}
 	return defineNode(child, frags, ignoreCase)
 }
@@ -168,7 +169,7 @@ func parseNode(parent *trieNode, frag string, ignoreCase bool) *trieNode {
 					name = name[0:index]
 					node.regex = regexp.MustCompile(regex)
 				} else {
-					panic(frag + " is invalid")
+					panic(NewAppError(fmt.Sprintf("invalid pattern: %s", frag)))
 				}
 			}
 		} else if trailing == '*' {
@@ -177,22 +178,22 @@ func parseNode(parent *trieNode, frag string, ignoreCase bool) *trieNode {
 		}
 		// name must be word characters `[0-9A-Za-z_]`
 		if !wordReg.MatchString(name) {
-			panic(frag + " is invalid")
+			panic(NewAppError(fmt.Sprintf("invalid pattern: %s", frag)))
 		}
 		node.name = name
 		if child := parent.varyChild; child != nil {
 			if child.name != name || child.wildcard != node.wildcard {
-				panic(frag + " is invalid")
+				panic(NewAppError(fmt.Sprintf("invalid pattern: %s", frag)))
 			}
 			if child.regex != nil && child.regex.String() != regex {
-				panic(frag + " is invalid")
+				panic(NewAppError(fmt.Sprintf("invalid pattern: %s", frag)))
 			}
 			return child
 		}
 
 		parent.varyChild = node
 	} else if frag[0] == '*' || frag[0] == '(' || frag[0] == ')' {
-		panic(frag + " is invalid")
+		panic(NewAppError(fmt.Sprintf("invalid pattern: %s", frag)))
 	} else {
 		literalChildren[frag] = node
 	}

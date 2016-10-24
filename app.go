@@ -1,22 +1,18 @@
 package gear
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
+	"net/textproto"
 	"sync"
 )
 
 // Version is Gear's version
 const Version = "v0.6.0"
-
-// HTTPError represents an error that occurred while handling a request.
-type HTTPError interface {
-	error
-	Status() int
-}
 
 // Handler is the interface that wraps the HandlerFunc function.
 type Handler interface {
@@ -34,20 +30,14 @@ type Hook func(*Context)
 // Middleware defines a function to process middleware.
 type Middleware func(*Context) error
 
-// Error is error struct that implemented HTTPError
-type Error struct {
-	error
-	Code int
+// NewError create a textproto.Error instance with error and status code.
+func NewError(err error, code int) *textproto.Error {
+	return &textproto.Error{Msg: err.Error(), Code: code}
 }
 
-// Status returns Error's status code.
-func (err Error) Status() int {
-	return err.Code
-}
-
-// NewError create a Error instance with error and status code.
-func NewError(err error, code int) Error {
-	return Error{error: err, Code: code}
+// NewAppError create a error instance with "[Gear] " prefix.
+func NewAppError(err string) error {
+	return fmt.Errorf("[Gear] %s", err)
 }
 
 // ServerListener is returned by a non-blocking app instance.
@@ -78,7 +68,7 @@ type Gear struct {
 
 	// OnError is default ctx error handler.
 	// Override it for your business logic.
-	OnError  func(*Context, error) HTTPError
+	OnError  func(*Context, error) *textproto.Error
 	Renderer Renderer
 	// ErrorLog specifies an optional logger for app's errors. Default to nil
 	ErrorLog *log.Logger
@@ -93,7 +83,7 @@ func New() *Gear {
 	g.pool.New = func() interface{} {
 		return NewContext(g)
 	}
-	g.OnError = func(ctx *Context, err error) HTTPError {
+	g.OnError = func(ctx *Context, err error) *textproto.Error {
 		return NewError(err, 500)
 	}
 	return g
@@ -101,7 +91,7 @@ func New() *Gear {
 
 func (g *Gear) toServeHandler() *serveHandler {
 	if len(g.middleware) == 0 {
-		panic("No middleware")
+		panic(NewAppError("no middleware"))
 	}
 	return &serveHandler{middleware: g.middleware[0:], app: g}
 }
@@ -136,8 +126,9 @@ func (g *Gear) ListenTLS(addr, certFile, keyFile string) error {
 	return g.Server.ListenAndServeTLS(certFile, keyFile)
 }
 
-// Start starts a background app instance. It is useful for testing.
-// The background app instance must close by ServerListener.Close().
+// Start starts a non-blocking app instance. It is useful for testing.
+// If addr omit, the app will listen on a random addr, use ServerListener.Addr() to get it.
+// The non-blocking app instance must close by ServerListener.Close().
 func (g *Gear) Start(addr ...string) *ServerListener {
 	laddr := "127.0.0.1:0"
 	if len(addr) > 0 && addr[0] != "" {
@@ -150,7 +141,7 @@ func (g *Gear) Start(addr ...string) *ServerListener {
 
 	l, err := net.Listen("tcp", laddr)
 	if err != nil {
-		panic(fmt.Sprintf("failed to listen on %v: %v", laddr, err))
+		panic(NewAppError(fmt.Sprintf("failed to listen on %v: %v", laddr, err)))
 	}
 
 	c := make(chan error)
@@ -195,8 +186,8 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// process middleware error with OnCtxError
 	if err != nil {
 		if ctxErr := h.app.OnError(ctx, err); ctxErr != nil {
-			ctx.Status(ctxErr.Status())
-			err = ctxErr
+			ctx.Status(ctxErr.Code)
+			err = errors.New(ctxErr.Error())
 		}
 	}
 

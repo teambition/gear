@@ -46,10 +46,10 @@ func (r *Router) Use(handle Middleware) {
 // Handle registers a new Middleware handler with method and path in the router.
 func (r *Router) Handle(method, pattern string, handle Middleware) {
 	if method == "" {
-		panic("Invalid method")
+		panic(NewAppError("invalid method"))
 	}
 	if handle == nil {
-		panic("Invalid middleware")
+		panic(NewAppError("invalid middleware"))
 	}
 	r.trie.define(pattern).handle(strings.ToUpper(method), handle)
 }

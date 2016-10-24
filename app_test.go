@@ -1,23 +1,18 @@
-package gear_test
+package gear
 
 import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"net/textproto"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/teambition/gear"
 )
 
-type Response struct {
-	Header http.Header
-	Body   []byte
-}
-
 func TestGearAppHello(t *testing.T) {
-	app := gear.New()
-	app.Use(func(ctx *gear.Context) error {
+	app := New()
+	app.Use(func(ctx *Context) error {
 		ctx.End(200, []byte("<h1>Hello!</h1>"))
 		return nil
 	})
@@ -37,14 +32,14 @@ func TestGearAppHello(t *testing.T) {
 }
 
 func TestGearError(t *testing.T) {
-	app := gear.New()
-	app.OnError = func(ctx *gear.Context, err error) gear.HTTPError {
+	app := New()
+	app.OnError = func(ctx *Context, err error) *textproto.Error {
 		ctx.Type("html")
-		return gear.NewError(err, 501)
+		return NewError(err, 501)
 	}
 
-	app.Use(func(ctx *gear.Context) error {
-		return errors.New("Some 501 error")
+	app.Use(func(ctx *Context) error {
+		return errors.New("Some error")
 	})
 	srv := app.Start()
 	defer srv.Close()
@@ -58,5 +53,5 @@ func TestGearError(t *testing.T) {
 	res.Body.Close()
 
 	require.Nil(t, err)
-	require.Equal(t, body, []byte("Some 501 error"))
+	require.Equal(t, body, []byte("501 Some error"))
 }
