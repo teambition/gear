@@ -2,8 +2,10 @@ Gear
 =====
 Gear implements a web framework with context.Context for Go. It focuses on performance and composition.
 
-[![Build Status][travis-image]][travis-url]
-[![GoDoc][GoDoc-image]][GoDoc-url]
+[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/teambition/gear)
+[![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/teambition/gear/master/LICENSE)
+[![Build Status](http://img.shields.io/travis/teambition/gear.svg?style=flat-square)](https://travis-ci.org/teambition/gear)
+[![Coverage Status](http://img.shields.io/coveralls/teambition/gear.svg?style=flat-square)](https://coveralls.io/r/teambition/gear)
 
 ## Demo
 ```go
@@ -108,6 +110,16 @@ import "github.com/teambition/gear"
 
 https://godoc.org/github.com/teambition/gear
 
+## Middleware
+
+```go
+// package middleware
+"github.com/teambition/gear/middleware"
+```
+
+1. middleware.NewStatic https://github.com/teambition/gear/blob/master/middleware/static.go
+2. middleware.NewTimeout https://github.com/teambition/gear/blob/master/middleware/timeout.go
+
 ## Bench
 https://godoc.org/github.com/teambition/gear/blob/master/bench
 
@@ -118,11 +130,11 @@ https://godoc.org/github.com/teambition/gear/blob/master/bench
 Running 10s test @ http://localhost:3333/?foo[bar]=baz
   4 threads and 100 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     2.30ms    2.53ms  59.54ms   94.28%
-    Req/Sec    12.15k     1.56k   20.98k    81.75%
-  484231 requests in 10.02s, 63.27MB read
-Requests/sec:  48307.40
-Transfer/sec:      6.31MB
+    Latency     2.22ms    3.91ms 155.60ms   97.49%
+    Req/Sec    12.58k     1.26k   18.76k    84.25%
+  501031 requests in 10.01s, 65.46MB read
+Requests/sec:  50030.72
+Transfer/sec:      6.54MB
 ```
 
 ### Iris with "fasthttp": 70310
@@ -139,12 +151,20 @@ Requests/sec:  70310.19
 Transfer/sec:     10.13MB
 ```
 
+### Gin with "net/http": 48307
+```sh
+> wrk 'http://localhost:3333/?foo[bar]=baz' -d 10 -c 100 -t 4
+
+Running 10s test @ http://localhost:3333/?foo[bar]=baz
+  4 threads and 100 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     2.07ms    1.50ms  30.44ms   90.04%
+    Req/Sec    12.62k     1.12k   15.42k    77.50%
+  502815 requests in 10.02s, 65.69MB read
+Requests/sec:  50195.68
+Transfer/sec:      6.56MB
+```
+
 ## License
 Gear is licensed under the [MIT](https://github.com/teambition/gear/blob/master/LICENSE) license.
 Copyright &copy; 2016 [Teambition](https://www.teambition.com).
-
-[travis-url]: https://travis-ci.org/teambition/gear
-[travis-image]: http://img.shields.io/travis/teambition/gear.svg
-
-[GoDoc-url]: https://travis-ci.org/teambition/gear
-[GoDoc-image]: https://godoc.org/github.com/teambition/gear?status.svg

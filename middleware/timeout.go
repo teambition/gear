@@ -18,8 +18,8 @@ import (
 //		// some process maybe timeout...
 //		c, _ := ctx.WithTimeout(time.Second * 2)
 //		select {
-//		case <-ctx.Done():
-//		case <-c.Done():
+//		case <-ctx.Done(): // this case will always reached
+//		case <-c.Done(): // this case maybe reached... but elapsed time should be 1 sec.
 //		}
 //		return nil
 //	})

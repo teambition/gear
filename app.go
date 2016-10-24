@@ -1,18 +1,18 @@
 package gear
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"net/textproto"
 	"sync"
 )
 
 // Version is Gear's version
-const Version = "v0.6.0"
+const Version = "v0.7.0"
 
 // Handler is the interface that wraps the HandlerFunc function.
 type Handler interface {
@@ -153,7 +153,7 @@ func (g *Gear) Start(addr ...string) *ServerListener {
 
 // Error writes error to underlayer logging system (ErrorLog).
 func (g *Gear) Error(err error) {
-	if err == nil {
+	if err != nil {
 		if g.ErrorLog != nil {
 			g.ErrorLog.Println(err)
 		} else {
@@ -172,6 +172,18 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := h.app.pool.Get().(*Context)
 	ctx.Reset(w, r)
 
+	// reuse Context instance, recover panic error
+	defer func() {
+		if err := recover(); err != nil {
+			httprequest, _ := httputil.DumpRequest(ctx.Req, false)
+			ctx.Error(&textproto.Error{Code: 500, Msg: http.StatusText(500)})
+			h.app.Error(fmt.Errorf("panic recovered:\n%s\n%s\n", string(httprequest), err))
+		}
+		ctx.Reset(nil, nil)
+		h.app.pool.Put(ctx)
+	}()
+
+	// process app middleware
 	for _, handle := range h.middleware {
 		if err = handle(ctx); err != nil {
 			break
@@ -180,37 +192,29 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break // end up the process
 		}
 	}
+
 	// set ended to true after app's middleware process
 	ctx.ended = true
-
-	// process middleware error with OnCtxError
-	if err != nil {
-		if ctxErr := h.app.OnError(ctx, err); ctxErr != nil {
-			ctx.Status(ctxErr.Code)
-			err = errors.New(ctxErr.Error())
-		}
-	}
-
-	if err == nil { // ctx.afterHooks should not run when err
+	if err == nil {
+		// run "after hooks" if no error
 		ctx.runAfterHooks()
-	} else {
+	} else if ctxErr := h.app.OnError(ctx, err); ctxErr != nil {
+		// process middleware error with OnCtxError
 		if ctx.Res.Status < 400 {
 			ctx.Res.Status = 500
 		}
-		if ctx.Res.Status >= 500 { // Only handle 5xx Server Error
+		// app.Error only receive 5xx Server Error
+		if ctx.Res.Status >= 500 {
 			h.app.Error(err)
 		}
-		ctx.String(err.Error())
-		ctx.afterHooks = nil // clear afterHooks
+		ctx.Error(ctxErr)
 	}
 
+	// respond to client
 	err = ctx.Res.respond()
 	if err != nil {
 		h.app.Error(err)
 	}
-
-	ctx.Reset(nil, nil)
-	h.app.pool.Put(ctx)
 }
 
 // WrapHandler wrap a http.Handler to Gear Middleware
