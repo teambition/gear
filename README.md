@@ -1,11 +1,10 @@
-Gear
-=====
-Gear implements a web framework with context.Context for Go. It focuses on performance and composition.
-
+![Gear](https://raw.githubusercontent.com/teambition/gear/master/gear.png)
 [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/teambition/gear)
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/teambition/gear/master/LICENSE)
 [![Build Status](http://img.shields.io/travis/teambition/gear.svg?style=flat-square)](https://travis-ci.org/teambition/gear)
 [![Coverage Status](http://img.shields.io/coveralls/teambition/gear.svg?style=flat-square)](https://coveralls.io/r/teambition/gear)
+=====
+Gear implements a web framework with context.Context for Go. It focuses on performance and composition.
 
 ## Demo
 ```go
@@ -112,13 +111,16 @@ https://godoc.org/github.com/teambition/gear
 
 ## Middleware
 
+https://godoc.org/github.com/teambition/gear/middleware
+
 ```go
 // package middleware
 "github.com/teambition/gear/middleware"
 ```
 
-1. middleware.NewStatic https://github.com/teambition/gear/blob/master/middleware/static.go
-2. middleware.NewTimeout https://github.com/teambition/gear/blob/master/middleware/timeout.go
+1. middleware.NewFavicon https://github.com/teambition/gear/blob/master/middleware/favicon.go
+2. middleware.NewStatic https://github.com/teambition/gear/blob/master/middleware/static.go
+3. middleware.NewTimeout https://github.com/teambition/gear/blob/master/middleware/timeout.go
 
 ## Bench
 https://godoc.org/github.com/teambition/gear/blob/master/bench

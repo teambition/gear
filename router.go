@@ -122,7 +122,7 @@ func (r *Router) Serve(ctx *Context) error {
 	// OPTIONS support
 	if method == http.MethodOptions && r.HandleOPTIONS {
 		ctx.Set(HeaderAllow, res.node.allowMethods)
-		ctx.End(204, nilByte)
+		ctx.End(204)
 		return nil
 	}
 
@@ -142,7 +142,7 @@ func (r *Router) Serve(ctx *Context) error {
 	}
 	err := r.run(ctx, handle)
 	if err == nil && r.IsEndpoint {
-		ctx.End(0, nilByte)
+		ctx.End(0)
 	}
 	return err
 }

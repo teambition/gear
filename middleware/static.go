@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,8 +17,30 @@ type StaticOptions struct {
 	StripPrefix bool   // Strip the prefix from URL path, default to `false`.
 }
 
-// NewStatic returns a Static middleware to serves static content from the provided
-// root directory.
+// NewStatic returns a Static middleware to serves static content from the provided root directory.
+//
+//	package main
+//
+//	import (
+//		"github.com/teambition/gear"
+//		"github.com/teambition/gear/middleware"
+//	)
+//
+//	func main() {
+//		app := gear.New()
+//		app.Use(gear.NewDefaultLogger())
+//		app.Use(middleware.NewFavicon("./testdata/favicon.ico"))
+//		app.Use(middleware.NewStatic(middleware.StaticOptions{
+//			Root:        "./testdata",
+//			Prefix:      "/",
+//			StripPrefix: false,
+//		}))
+//		app.Use(func(ctx *gear.Context) error {
+//			return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+//		})
+//		app.Error(app.Listen(":3000"))
+//	}
+//
 func NewStatic(opts StaticOptions) gear.Middleware {
 	if opts.Root == "" {
 		opts.Root = "."
@@ -32,16 +55,26 @@ func NewStatic(opts StaticOptions) gear.Middleware {
 	}
 	info, _ := os.Stat(root)
 	if info == nil || !info.IsDir() {
-		panic("Invalid root path: " + root)
+		panic(gear.NewAppError(fmt.Sprintf("invalid root path: %s", root)))
 	}
 
 	if opts.Prefix == "" {
 		opts.Prefix = "/"
 	}
-	return func(ctx *gear.Context) error {
+	return func(ctx *gear.Context) (err error) {
 		path := ctx.Path
 		if !strings.HasPrefix(path, opts.Prefix) {
 			return nil
+		}
+
+		if ctx.Method != http.MethodGet && ctx.Method != http.MethodHead {
+			status := 200
+			if ctx.Method != http.MethodOptions {
+				status = 405
+			}
+			ctx.Set(gear.HeaderAllow, "GET, HEAD, OPTIONS")
+			ctx.End(status)
+			return
 		}
 		if opts.StripPrefix {
 			path = strings.TrimPrefix(path, opts.Prefix)

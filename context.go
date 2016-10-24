@@ -86,8 +86,6 @@ var (
 	GearLogsKey   = &contextKey{"Gear-Logs-Key"}
 )
 
-var nilByte []byte
-
 // Context represents the context of the current HTTP request. It holds request and
 // response objects, path, path parameters, data, registered handler and content.Context.
 type Context struct {
@@ -406,7 +404,7 @@ func (ctx *Context) Render(code int, name string, data interface{}) (err error) 
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error) {
-	ctx.End(code, nilByte)
+	ctx.End(code)
 	ctx.Type(contentType)
 	_, err = io.Copy(ctx.Res, r)
 	return
@@ -451,13 +449,13 @@ func (ctx *Context) Redirect(code int, url string) error {
 // After it's called, the rest of middleware handles will not run.
 // But "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
-func (ctx *Context) End(code int, buf []byte) {
+func (ctx *Context) End(code int, buf ...[]byte) {
 	ctx.ended = true
 	if code != 0 {
 		ctx.Status(code)
 	}
-	if buf != nil {
-		ctx.Res.Body = buf
+	if len(buf) != 0 {
+		ctx.Res.Body = buf[0]
 	}
 }
 

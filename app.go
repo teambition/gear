@@ -12,7 +12,7 @@ import (
 )
 
 // Version is Gear's version
-const Version = "v0.7.0"
+const Version = "v0.8.0"
 
 // Handler is the interface that wraps the HandlerFunc function.
 type Handler interface {
@@ -62,6 +62,22 @@ func (s *ServerListener) Wait() error {
 }
 
 // Gear is the top-level framework app instance.
+//
+// Hello Gear!
+//
+//	package main
+//
+//	import "github.com/teambition/gear"
+//
+//	func main() {
+//		app := gear.New() // Create app
+//		app.Use(gear.NewDefaultLogger())
+//		app.Use(func(ctx *gear.Context) error {
+//			return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+//		})
+//		app.Error(app.Listen(":3000"))
+//	}
+//
 type Gear struct {
 	middleware []Middleware
 	pool       sync.Pool

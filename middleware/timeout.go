@@ -7,10 +7,11 @@ import (
 )
 
 // NewTimeout returns a timeout middleware with time.Duration and timeout hook.
+// A timeout middleware example:
 //
 //	app := gear.New()
 //	app.Use(NewTimeout(time.Second, func(ctx *gear.Context) {
-//    // timeout hook
+//		// timeout hook
 //		ctx.Status(504)
 //		ctx.String("Service timeout")
 //	}))
@@ -27,6 +28,7 @@ import (
 //		// if timeout, the rest of middleware will not run.
 //		panic("this middleware unreachable")
 //	})
+//
 func NewTimeout(du time.Duration, h gear.Hook) gear.Middleware {
 	return func(ctx *gear.Context) error {
 		c, _ := ctx.WithTimeout(du)
