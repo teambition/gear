@@ -1,8 +1,8 @@
 ![Gear](https://raw.githubusercontent.com/teambition/gear/master/gear.png)
-[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/teambition/gear)
-[![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/teambition/gear/master/LICENSE)
 [![Build Status](http://img.shields.io/travis/teambition/gear.svg?style=flat-square)](https://travis-ci.org/teambition/gear)
 [![Coverage Status](http://img.shields.io/coveralls/teambition/gear.svg?style=flat-square)](https://coveralls.io/r/teambition/gear)
+[![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/teambition/gear/master/LICENSE)
+[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/teambition/gear)
 
 -----
 Gear implements a web framework with context.Context for Go. It focuses on performance and composition.
@@ -26,7 +26,7 @@ func main() {
 	// Use a default logger middleware
 	app.Use(gear.NewDefaultLogger())
 
-	// Add a static middleware
+	// Add a static server middleware
 	// http://localhost:3000/middleware/static.go
 	app.Use(middleware.NewStatic(middleware.StaticOptions{
 		Root:        "./dist",
@@ -36,14 +36,7 @@ func main() {
 
 	// Add some middleware to app
 	app.Use(func(ctx *gear.Context) (err error) {
-		// fmt.Println(ctx.IP(), ctx.Method, ctx.Path
 		// Do something...
-
-		// Add after hook to the ctx
-		ctx.After(func(ctx *gear.Context) {
-			// Do something in after hook
-			fmt.Println("After hook")
-		})
 		return
 	})
 
@@ -94,6 +87,7 @@ func main() {
 	// Must add APIRouter first.
 	app.UseHandler(APIRouter)
 	app.UseHandler(ViewRouter)
+
 	// Start app at 3000
 	app.Error(app.Listen(":3000"))
 }
@@ -116,17 +110,17 @@ https://godoc.org/github.com/teambition/gear/middleware
 
 ```go
 // package middleware
-"github.com/teambition/gear/middleware"
+import "github.com/teambition/gear/middleware"
 ```
 
-1. middleware.NewFavicon https://github.com/teambition/gear/blob/master/middleware/favicon.go
-2. middleware.NewStatic https://github.com/teambition/gear/blob/master/middleware/static.go
-3. middleware.NewTimeout https://github.com/teambition/gear/blob/master/middleware/timeout.go
+1. [Favicon middleware](https://godoc.org/github.com/teambition/gear/middleware#NewFavicon)
+2. [Static server middleware](https://godoc.org/github.com/teambition/gear/middleware#NewStatic)
+3. [Timeout middleware](https://godoc.org/github.com/teambition/gear/middleware#NewTimeout)
 
 ## Bench
 https://godoc.org/github.com/teambition/gear/blob/master/bench
 
-### Gear with "net/http": 48307
+### Gear with "net/http": 50030
 ```sh
 > wrk 'http://localhost:3333/?foo[bar]=baz' -d 10 -c 100 -t 4
 
@@ -154,7 +148,7 @@ Requests/sec:  70310.19
 Transfer/sec:     10.13MB
 ```
 
-### Gin with "net/http": 48307
+### Gin with "net/http": 50195
 ```sh
 > wrk 'http://localhost:3333/?foo[bar]=baz' -d 10 -c 100 -t 4
 

@@ -12,7 +12,70 @@ import (
 )
 
 // Version is Gear's version
-const Version = "v0.8.0"
+const Version = "v0.9.0"
+
+// MIME types
+const (
+	// All const values got from https://github.com/labstack/echo
+	charsetUTF8 = "charset=utf-8"
+
+	MIMEApplicationJSON                  = "application/json"
+	MIMEApplicationJSONCharsetUTF8       = MIMEApplicationJSON + "; " + charsetUTF8
+	MIMEApplicationJavaScript            = "application/javascript"
+	MIMEApplicationJavaScriptCharsetUTF8 = MIMEApplicationJavaScript + "; " + charsetUTF8
+	MIMEApplicationXML                   = "application/xml"
+	MIMEApplicationXMLCharsetUTF8        = MIMEApplicationXML + "; " + charsetUTF8
+	MIMEApplicationForm                  = "application/x-www-form-urlencoded"
+	MIMEApplicationProtobuf              = "application/protobuf"
+	MIMEApplicationMsgpack               = "application/msgpack"
+	MIMETextHTML                         = "text/html"
+	MIMETextHTMLCharsetUTF8              = MIMETextHTML + "; " + charsetUTF8
+	MIMETextPlain                        = "text/plain"
+	MIMETextPlainCharsetUTF8             = MIMETextPlain + "; " + charsetUTF8
+	MIMEMultipartForm                    = "multipart/form-data"
+	MIMEOctetStream                      = "application/octet-stream"
+)
+
+// Headers
+const (
+	HeaderAcceptEncoding                = "Accept-Encoding"
+	HeaderAllow                         = "Allow"
+	HeaderAuthorization                 = "Authorization"
+	HeaderContentDisposition            = "Content-Disposition"
+	HeaderContentEncoding               = "Content-Encoding"
+	HeaderContentLength                 = "Content-Length"
+	HeaderContentType                   = "Content-Type"
+	HeaderCookie                        = "Cookie"
+	HeaderSetCookie                     = "Set-Cookie"
+	HeaderIfModifiedSince               = "If-Modified-Since"
+	HeaderLastModified                  = "Last-Modified"
+	HeaderLocation                      = "Location"
+	HeaderUpgrade                       = "Upgrade"
+	HeaderUserAgent                     = "User-Agent"
+	HeaderVary                          = "Vary"
+	HeaderWWWAuthenticate               = "WWW-Authenticate"
+	HeaderXForwardedProto               = "X-Forwarded-Proto"
+	HeaderXHTTPMethodOverride           = "X-HTTP-Method-Override"
+	HeaderXForwardedFor                 = "X-Forwarded-For"
+	HeaderXRealIP                       = "X-Real-IP"
+	HeaderServer                        = "Server"
+	HeaderOrigin                        = "Origin"
+	HeaderAccessControlRequestMethod    = "Access-Control-Request-Method"
+	HeaderAccessControlRequestHeaders   = "Access-Control-Request-Headers"
+	HeaderAccessControlAllowOrigin      = "Access-Control-Allow-Origin"
+	HeaderAccessControlAllowMethods     = "Access-Control-Allow-Methods"
+	HeaderAccessControlAllowHeaders     = "Access-Control-Allow-Headers"
+	HeaderAccessControlAllowCredentials = "Access-Control-Allow-Credentials"
+	HeaderAccessControlExposeHeaders    = "Access-Control-Expose-Headers"
+	HeaderAccessControlMaxAge           = "Access-Control-Max-Age"
+
+	HeaderStrictTransportSecurity = "Strict-Transport-Security"
+	HeaderXContentTypeOptions     = "X-Content-Type-Options"
+	HeaderXXSSProtection          = "X-XSS-Protection"
+	HeaderXFrameOptions           = "X-Frame-Options"
+	HeaderContentSecurityPolicy   = "Content-Security-Policy"
+	HeaderXCSRFToken              = "X-CSRF-Token"
+)
 
 // Handler is the interface that wraps the HandlerFunc function.
 type Handler interface {
@@ -65,18 +128,18 @@ func (s *ServerListener) Wait() error {
 //
 // Hello Gear!
 //
-//	package main
+//  package main
 //
-//	import "github.com/teambition/gear"
+//  import "github.com/teambition/gear"
 //
-//	func main() {
-//		app := gear.New() // Create app
-//		app.Use(gear.NewDefaultLogger())
-//		app.Use(func(ctx *gear.Context) error {
-//			return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-//		})
-//		app.Error(app.Listen(":3000"))
-//	}
+//  func main() {
+//  	app := gear.New() // Create app
+//  	app.Use(gear.NewDefaultLogger())
+//  	app.Use(func(ctx *gear.Context) error {
+//  		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+//  	})
+//  	app.Error(app.Listen(":3000"))
+//  }
 //
 type Gear struct {
 	middleware []Middleware
@@ -186,7 +249,7 @@ type serveHandler struct {
 func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	ctx := h.app.pool.Get().(*Context)
-	ctx.Reset(w, r)
+	ctx.reset(w, r)
 
 	// reuse Context instance, recover panic error
 	defer func() {
@@ -195,7 +258,7 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ctx.Error(&textproto.Error{Code: 500, Msg: http.StatusText(500)})
 			h.app.Error(fmt.Errorf("panic recovered:\n%s\n%s\n", string(httprequest), err))
 		}
-		ctx.Reset(nil, nil)
+		ctx.reset(nil, nil)
 		h.app.pool.Put(ctx)
 	}()
 
@@ -205,32 +268,29 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		if ctx.ended || ctx.Res.finished {
-			break // end up the process
+			break // end up the middleware process
 		}
 	}
 
 	// set ended to true after app's middleware process
 	ctx.ended = true
-	if err == nil {
-		// run "after hooks" if no error
-		ctx.runAfterHooks()
-	} else if ctxErr := h.app.OnError(ctx, err); ctxErr != nil {
-		// process middleware error with OnCtxError
-		if ctx.Res.Status < 400 {
-			ctx.Res.Status = 500
+	if err != nil {
+		ctx.afterHooks = nil // clear afterHooks when error
+		if ctxErr := h.app.OnError(ctx, err); ctxErr != nil {
+			// process middleware error with OnCtxError
+			if ctx.Res.Status < 400 {
+				ctx.Res.Status = 500
+			}
+			// app.Error only receive 5xx Server Error
+			if ctx.Res.Status >= 500 {
+				h.app.Error(err)
+			}
+			ctx.Error(ctxErr)
 		}
-		// app.Error only receive 5xx Server Error
-		if ctx.Res.Status >= 500 {
-			h.app.Error(err)
-		}
-		ctx.Error(ctxErr)
 	}
 
-	// respond to client
-	err = ctx.Res.respond()
-	if err != nil {
-		h.app.Error(err)
-	}
+	// try to respond to client
+	ctx.Res.respond()
 }
 
 // WrapHandler wrap a http.Handler to Gear Middleware

@@ -15,7 +15,7 @@ func TestGearRouter(t *testing.T) {
 		ctx := NewContext(app)
 		req := httptest.NewRequest(method, url, body)
 		res := httptest.NewRecorder()
-		ctx.Reset(res, req)
+		ctx.reset(res, req)
 		return ctx
 	}
 

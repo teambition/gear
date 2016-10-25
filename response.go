@@ -80,7 +80,7 @@ func (r *Response) WriteHeader(code int) {
 	r.res.WriteHeader(r.Status) // r.Status maybe changed in hooks
 }
 
-func (r *Response) respond() (err error) {
+func (r *Response) respond() {
 	if r.finished {
 		return
 	}
@@ -89,7 +89,9 @@ func (r *Response) respond() (err error) {
 		r.Body = stringToBytes(http.StatusText(r.Status))
 	}
 	if r.Body != nil {
-		_, err = r.Write(r.Body)
+		if _, err := r.Write(r.Body); err != nil {
+			r.ctx.app.Error(err)
+		}
 	}
 	return
 }

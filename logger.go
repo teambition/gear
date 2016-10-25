@@ -36,13 +36,44 @@ func ColorString(code int, str string) string {
 // Log represents the key-value pairs for logs.
 type Log map[string]interface{}
 
-// Logger is the interface for logging.
+// Logger is a interface for logging. See DefaultLogger.
 type Logger interface {
 	Init(*Context)
 	Format(Log) string
 }
 
 // DefaultLogger is Gear's default logger, useful for development.
+//
+//  type appLogger struct{}
+//
+//  func (l *appLogger) Init(ctx *Context) {
+//  	ctx.Log["IP"] = ctx.IP()
+//  	ctx.Log["Method"] = ctx.Method
+//  	ctx.Log["URL"] = ctx.Req.URL.String()
+//  	ctx.Log["Start"] = time.Now()
+//  	ctx.Log["UserAgent"] = ctx.Get(HeaderUserAgent)
+//  }
+//
+//  func (l *appLogger) Format(log Log) string {
+//  	// Format: ":Date INFO :JSONInfo"
+//  	end := time.Now()
+//  	info := map[string]interface{}{
+// 			"IP":        log["IP"],
+// 			"Method":    log["Method"],
+// 			"URL":       log["URL"],
+// 			"UserAgent": log["UserAgent"],
+// 			"Status":    log["Status"],
+// 			"Length":    log["Length"],
+// 			"Data":      log["Data"],
+// 			"Time":      end.Sub(log["Start"].(time.Time)) / 1e6,
+// 		}
+// 		res, err := json.Marshal(info)
+// 		if err != nil {
+// 			return fmt.Sprintf("%s ERROR %s", end.Format(time.RFC3339), err.Error())
+// 		}
+// 		return fmt.Sprintf("%s INFO %s", end.Format(time.RFC3339), bytes.NewBuffer(res).String())
+// }
+//
 type DefaultLogger struct{}
 
 // Init implements Logger interface
@@ -50,37 +81,52 @@ func (d *DefaultLogger) Init(ctx *Context) {
 	ctx.Log["IP"] = ctx.IP()
 	ctx.Log["Method"] = ctx.Method
 	ctx.Log["URL"] = ctx.Req.URL.String()
-	ctx.Log["startTime"] = time.Now()
+	ctx.Log["Start"] = time.Now()
 }
 
 // Format implements Logger interface
-func (d *DefaultLogger) Format(l Log) string {
+func (d *DefaultLogger) Format(log Log) string {
 	// Tiny format: "Method Url Status Content-Length - Response-time ms"
-	return fmt.Sprintf("%s %s %s %d - %.3f ms\n",
-		ColorMethod(l["Method"].(string)),
-		l["URL"],
-		ColorStatus(l["Status"].(int)),
-		l["Length"],
-		float64(time.Now().Sub(l["startTime"].(time.Time)))/1e6,
+	return fmt.Sprintf("%s %s %s %d - %.3f ms",
+		ColorMethod(log["Method"].(string)),
+		log["URL"],
+		ColorStatus(log["Status"].(int)),
+		log["Length"],
+		float64(time.Now().Sub(log["Start"].(time.Time)))/1e6,
 	)
 }
 
 // NewDefaultLogger creates a Gear default logger middleware.
+//
+//  app.Use(gear.NewDefaultLogger())
+//
 func NewDefaultLogger() Middleware {
 	return NewLogger(os.Stdout, &DefaultLogger{})
 }
 
 // NewLogger creates a logger middleware with io.Writer and Logger.
+//
+//  app := New()
+//  app.Use(NewLogger(os.Stdout, &appLogger{}))
+//  app.Use(func(ctx *Context) (err error) {
+//  	ctx.Log["Data"] = map[string]interface{}{}
+//  	return ctx.HTML(200, "OK")
+//  })
+//
+// `appLogger` Output:
+//
+//  2016-10-25T08:52:19+08:00 INFO {"Data":{},"IP":"127.0.0.1","Length":2,"Method":"GET","Status":200,"Time":0,"URL":"/","UserAgent":"go-request/0.6.0"}
 func NewLogger(w io.Writer, l Logger) Middleware {
 	return func(ctx *Context) error {
+		ctx.Log = make(Log)
+
 		l.Init(ctx)
 		ctx.OnEnd(func(ctx *Context) {
 			ctx.Log["Status"] = ctx.Res.Status
-			ctx.Log["Length"] = 0
-			if ctx.Res.Body != nil {
-				ctx.Log["Length"] = len(ctx.Res.Body)
+			ctx.Log["Length"] = len(ctx.Res.Body)
+			if _, err := fmt.Fprintln(w, l.Format(ctx.Log)); err != nil {
+				panic(err) // will be recovered by serveHandler
 			}
-			fmt.Fprintf(w, l.Format(ctx.Log))
 		})
 		return nil
 	}
@@ -105,7 +151,7 @@ func ColorStatus(code int) string {
 func ColorMethod(method string) string {
 	switch method {
 	case http.MethodGet:
-		return ColorString(ColorCodeGreen, method)
+		return ColorString(ColorCodeBlue, method)
 	case http.MethodHead:
 		return ColorString(ColorCodeMagenta, method)
 	case http.MethodPost:

@@ -14,68 +14,6 @@ import (
 	"time"
 )
 
-// MIME types
-const (
-	// All const values got from https://github.com/labstack/echo
-	charsetUTF8 = "charset=utf-8"
-
-	MIMEApplicationJSON                  = "application/json"
-	MIMEApplicationJSONCharsetUTF8       = MIMEApplicationJSON + "; " + charsetUTF8
-	MIMEApplicationJavaScript            = "application/javascript"
-	MIMEApplicationJavaScriptCharsetUTF8 = MIMEApplicationJavaScript + "; " + charsetUTF8
-	MIMEApplicationXML                   = "application/xml"
-	MIMEApplicationXMLCharsetUTF8        = MIMEApplicationXML + "; " + charsetUTF8
-	MIMEApplicationForm                  = "application/x-www-form-urlencoded"
-	MIMEApplicationProtobuf              = "application/protobuf"
-	MIMEApplicationMsgpack               = "application/msgpack"
-	MIMETextHTML                         = "text/html"
-	MIMETextHTMLCharsetUTF8              = MIMETextHTML + "; " + charsetUTF8
-	MIMETextPlain                        = "text/plain"
-	MIMETextPlainCharsetUTF8             = MIMETextPlain + "; " + charsetUTF8
-	MIMEMultipartForm                    = "multipart/form-data"
-	MIMEOctetStream                      = "application/octet-stream"
-)
-
-// Headers
-const (
-	HeaderAcceptEncoding                = "Accept-Encoding"
-	HeaderAllow                         = "Allow"
-	HeaderAuthorization                 = "Authorization"
-	HeaderContentDisposition            = "Content-Disposition"
-	HeaderContentEncoding               = "Content-Encoding"
-	HeaderContentLength                 = "Content-Length"
-	HeaderContentType                   = "Content-Type"
-	HeaderCookie                        = "Cookie"
-	HeaderSetCookie                     = "Set-Cookie"
-	HeaderIfModifiedSince               = "If-Modified-Since"
-	HeaderLastModified                  = "Last-Modified"
-	HeaderLocation                      = "Location"
-	HeaderUpgrade                       = "Upgrade"
-	HeaderVary                          = "Vary"
-	HeaderWWWAuthenticate               = "WWW-Authenticate"
-	HeaderXForwardedProto               = "X-Forwarded-Proto"
-	HeaderXHTTPMethodOverride           = "X-HTTP-Method-Override"
-	HeaderXForwardedFor                 = "X-Forwarded-For"
-	HeaderXRealIP                       = "X-Real-IP"
-	HeaderServer                        = "Server"
-	HeaderOrigin                        = "Origin"
-	HeaderAccessControlRequestMethod    = "Access-Control-Request-Method"
-	HeaderAccessControlRequestHeaders   = "Access-Control-Request-Headers"
-	HeaderAccessControlAllowOrigin      = "Access-Control-Allow-Origin"
-	HeaderAccessControlAllowMethods     = "Access-Control-Allow-Methods"
-	HeaderAccessControlAllowHeaders     = "Access-Control-Allow-Headers"
-	HeaderAccessControlAllowCredentials = "Access-Control-Allow-Credentials"
-	HeaderAccessControlExposeHeaders    = "Access-Control-Expose-Headers"
-	HeaderAccessControlMaxAge           = "Access-Control-Max-Age"
-
-	HeaderStrictTransportSecurity = "Strict-Transport-Security"
-	HeaderXContentTypeOptions     = "X-Content-Type-Options"
-	HeaderXXSSProtection          = "X-XSS-Protection"
-	HeaderXFrameOptions           = "X-Frame-Options"
-	HeaderContentSecurityPolicy   = "Content-Security-Policy"
-	HeaderXCSRFToken              = "X-CSRF-Token"
-)
-
 type contextKey struct {
 	name string
 }
@@ -83,7 +21,6 @@ type contextKey struct {
 // Gear global values
 var (
 	GearParamsKey = &contextKey{"Gear-Params-Key"}
-	GearLogsKey   = &contextKey{"Gear-Logs-Key"}
 )
 
 // Context represents the context of the current HTTP request. It holds request and
@@ -93,7 +30,8 @@ type Context struct {
 	cancelCtx context.CancelFunc
 	app       *Gear
 
-	// Log recodes key-value pairs for logs. See gear.NewLogger
+	// Log recodes key-value pairs for logs, see gear.NewLogger. Default to nil.
+	// It will be initialized by NewLogger middleware.
 	Log        Log
 	Req        *http.Request
 	Res        *Response
@@ -114,10 +52,10 @@ func NewContext(g *Gear) *Context {
 	return ctx
 }
 
-// Reset initializes the ctx with http.ResponseWriter and http.Request.
-func (ctx *Context) Reset(w http.ResponseWriter, req *http.Request) {
+func (ctx *Context) reset(w http.ResponseWriter, req *http.Request) {
 	ctx.Req = req
 	ctx.Res.reset(w)
+	ctx.Log = nil
 	ctx.ended = false
 	if w == nil {
 		ctx.ctx = nil
@@ -126,9 +64,7 @@ func (ctx *Context) Reset(w http.ResponseWriter, req *http.Request) {
 		ctx.afterHooks = nil
 		ctx.endHooks = nil
 		ctx.cancelCtx = nil
-		ctx.Log = nil
 	} else {
-		ctx.Log = make(Log)
 		ctx.Host = req.Host
 		ctx.Method = req.Method
 		ctx.Path = normalizePath(req.URL.Path) // fix "/abc//ef" to "/abc/ef"
@@ -290,16 +226,6 @@ func (ctx *Context) String(str string) {
 	ctx.Res.Body = stringToBytes(str)
 }
 
-// Error set a error message with status code to response.
-// It will end the ctx. The middlewares after current middleware and "after hooks" will not run.
-// "end hooks" will run normally.
-// Note that this will not stop the current handler.
-func (ctx *Context) Error(err *textproto.Error) {
-	ctx.ended = true
-	ctx.afterHooks = nil // clear afterHooks when error
-	http.Error(ctx.Res, err.Error(), err.Code)
-}
-
 // HTML set an Html body with status code to response.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" and "end hooks" will run normally.
@@ -404,7 +330,8 @@ func (ctx *Context) Render(code int, name string, data interface{}) (err error) 
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error) {
-	ctx.End(code)
+	ctx.ended = true
+	ctx.Status(code)
 	ctx.Type(contentType)
 	_, err = io.Copy(ctx.Res, r)
 	return
@@ -445,6 +372,16 @@ func (ctx *Context) Redirect(code int, url string) error {
 	return nil
 }
 
+// Error set a error message with status code to response.
+// It will end the ctx. The middlewares after current middleware and "after hooks" will not run.
+// "end hooks" will run normally.
+// Note that this will not stop the current handler.
+func (ctx *Context) Error(err *textproto.Error) {
+	ctx.ended = true
+	ctx.afterHooks = nil // clear afterHooks when error
+	http.Error(ctx.Res, err.Error(), err.Code)
+}
+
 // End end the ctx with bytes and status code optionally.
 // After it's called, the rest of middleware handles will not run.
 // But "after hooks" and "end hooks" will run normally.
@@ -457,6 +394,7 @@ func (ctx *Context) End(code int, buf ...[]byte) {
 	if len(buf) != 0 {
 		ctx.Res.Body = buf[0]
 	}
+	ctx.Res.respond()
 }
 
 // IsEnded return the ctx' ended status.
@@ -479,7 +417,8 @@ func (ctx *Context) OnEnd(hook Hook) {
 }
 
 func (ctx *Context) runAfterHooks() {
-	ctx.ended = true // ensure ctx.ended to true
+	// ensure ctx.ended to true, can't add "after hook" when edned
+	ctx.ended = true
 	for _, hook := range ctx.afterHooks {
 		if ctx.Res.finished {
 			break
@@ -490,7 +429,8 @@ func (ctx *Context) runAfterHooks() {
 }
 
 func (ctx *Context) runEndHooks() {
-	ctx.Res.finished = true // ensure ctx.Res.finished to true
+	// ensure ctx.Res.finished to true, can't add "end hook" when finished
+	ctx.Res.finished = true
 	for _, hook := range ctx.endHooks {
 		hook(ctx)
 	}

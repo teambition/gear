@@ -14,22 +14,22 @@ import (
 
 // NewFavicon returns a middleware to serve favicon from the provided directory.
 //
-//	package main
+//  package main
 //
-//	import (
-//		"github.com/teambition/gear"
-//		"github.com/teambition/gear/middleware"
-//	)
+//  import (
+//  	"github.com/teambition/gear"
+//  	"github.com/teambition/gear/middleware"
+//  )
 //
-//	func main() {
-//		app := gear.New()
-//		app.Use(gear.NewDefaultLogger())
-//		app.Use(middleware.NewFavicon("./testdata/favicon.ico"))
-//		app.Use(func(ctx *gear.Context) error {
-//			return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-//		})
-//		app.Error(app.Listen(":3000"))
-//	}
+//  func main() {
+//  	app := gear.New()
+//  	app.Use(gear.NewDefaultLogger())
+//  	app.Use(middleware.NewFavicon("./testdata/favicon.ico"))
+//  	app.Use(func(ctx *gear.Context) error {
+//  		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+//  	})
+//  	app.Error(app.Listen(":3000"))
+//  }
 //
 func NewFavicon(iconpath string) gear.Middleware {
 	iconpath = filepath.FromSlash(iconpath)
