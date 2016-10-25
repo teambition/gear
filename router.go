@@ -138,7 +138,7 @@ func (r *Router) Serve(ctx *Context) error {
 	}
 
 	if res.params != nil {
-		ctx.SetValue(GearParamsKey, res.params)
+		ctx.SetAny(paramsKey, res.params)
 	}
 	err := r.run(ctx, handle)
 	if err == nil && r.IsEndpoint {

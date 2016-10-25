@@ -3,15 +3,33 @@ package gear
 import (
 	"bytes"
 	"errors"
+	"io"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"net/textproto"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/mozillazg/request"
 	"github.com/stretchr/testify/require"
 )
+
+// ----- test utils -----
+func EqualPtr(t *testing.T, a, b interface{}) {
+	require.Equal(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
+}
+
+func NotEqualPtr(t *testing.T, a, b interface{}) {
+	require.NotEqual(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
+}
+
+func NewCtx(app *Gear, method, url string, body io.Reader) *Context {
+	req := httptest.NewRequest(method, url, body)
+	res := httptest.NewRecorder()
+	return NewContext(app, res, req)
+}
 
 func NewRequst() *request.Request {
 	c := &http.Client{}

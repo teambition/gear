@@ -77,20 +77,20 @@ const (
 	HeaderXCSRFToken              = "X-CSRF-Token"
 )
 
-// Handler is the interface that wraps the HandlerFunc function.
+// Handler interface is used by app.UseHandler as a middleware.
 type Handler interface {
 	Serve(*Context) error
 }
 
-// Renderer is the interface that wraps the Render function.
+// Renderer interface is used by ctx.Render.
 type Renderer interface {
 	Render(*Context, io.Writer, string, interface{}) error
 }
 
-// Hook defines a function to process hook.
+// Hook defines a function to process as hook.
 type Hook func(*Context)
 
-// Middleware defines a function to process middleware.
+// Middleware defines a function to process as middleware.
 type Middleware func(*Context) error
 
 // NewError create a textproto.Error instance with error and status code.
@@ -160,7 +160,7 @@ func New() *Gear {
 	g.Server = new(http.Server)
 	g.middleware = make([]Middleware, 0)
 	g.pool.New = func() interface{} {
-		return NewContext(g)
+		return newContext(g)
 	}
 	g.OnError = func(ctx *Context, err error) *textproto.Error {
 		return NewError(err, 500)

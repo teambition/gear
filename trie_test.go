@@ -1,19 +1,10 @@
 package gear
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
-
-func EqualPtr(t *testing.T, a, b interface{}) {
-	require.Equal(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
-}
-
-func NotEqualPtr(t *testing.T, a, b interface{}) {
-	require.NotEqual(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
-}
 
 func TestGearTrie(t *testing.T) {
 	t.Run("trie.define", func(t *testing.T) {

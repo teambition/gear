@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -14,14 +15,14 @@ import (
 	"time"
 )
 
-type contextKey struct {
-	name string
-}
+type contextKey int
 
-// Gear global values
-var (
-	GearParamsKey = &contextKey{"Gear-Params-Key"}
-)
+const paramsKey contextKey = 0
+
+// Any interface is used by ctx.Any.
+type Any interface {
+	New(*Context) (interface{}, error)
+}
 
 // Context represents the context of the current HTTP request. It holds request and
 // response objects, path, path parameters, data, registered handler and content.Context.
@@ -40,13 +41,20 @@ type Context struct {
 	Path       string
 	ended      bool
 	query      url.Values
-	vals       map[interface{}]interface{}
+	kv         map[interface{}]interface{}
 	afterHooks []Hook
 	endHooks   []Hook
 }
 
 // NewContext creates an instance of Context. It is useful for testing a middleware.
-func NewContext(g *Gear) *Context {
+func NewContext(g *Gear, w http.ResponseWriter, req *http.Request) *Context {
+	ctx := &Context{app: g, Res: &Response{}}
+	ctx.Res.ctx = ctx
+	ctx.reset(w, req)
+	return ctx
+}
+
+func newContext(g *Gear) *Context {
 	ctx := &Context{app: g, Res: &Response{}}
 	ctx.Res.ctx = ctx
 	return ctx
@@ -59,7 +67,7 @@ func (ctx *Context) reset(w http.ResponseWriter, req *http.Request) {
 	ctx.ended = false
 	if w == nil {
 		ctx.ctx = nil
-		ctx.vals = nil
+		ctx.kv = nil
 		ctx.query = nil
 		ctx.afterHooks = nil
 		ctx.endHooks = nil
@@ -68,7 +76,7 @@ func (ctx *Context) reset(w http.ResponseWriter, req *http.Request) {
 		ctx.Host = req.Host
 		ctx.Method = req.Method
 		ctx.Path = normalizePath(req.URL.Path) // fix "/abc//ef" to "/abc/ef"
-		ctx.vals = make(map[interface{}]interface{})
+		ctx.kv = make(map[interface{}]interface{})
 		ctx.ctx, ctx.cancelCtx = context.WithCancel(req.Context())
 	}
 }
@@ -96,11 +104,7 @@ func (ctx *Context) Err() error {
 // if no value is associated with key. Successive calls to Value with
 // the same key returns the same result.
 func (ctx *Context) Value(key interface{}) (val interface{}) {
-	var ok bool
-	if val, ok = ctx.vals[key]; !ok {
-		val = ctx.ctx.Value(key)
-	}
-	return
+	return ctx.ctx.Value(key)
 }
 
 // Cancel cancel the ctx and all it' children context.
@@ -132,9 +136,45 @@ func (ctx *Context) WithValue(key, val interface{}) context.Context {
 	return context.WithValue(ctx.ctx, key, val)
 }
 
-// SetValue save a key and value to the ctx.
-func (ctx *Context) SetValue(key, val interface{}) {
-	ctx.vals[key] = val
+// Any returns the value on this ctx for key. If key is instance of Any and
+// value not set, any.New will be called to eval the value, and then set to the ctx.
+// if any.New returns error, the value will not be set.
+//
+//  // create some Any type for your project.
+//  type someAnyType struct{}
+//  type someAnyResult struct {
+//  	r *http.Request
+//  }
+//
+//  var someAnyKey = &someAnyType{}
+//
+//  func (t *someAnyType) New(ctx *gear.Context) (interface{}, error) {
+//  	return &someAnyResult{r: ctx.Req}, nil
+//  }
+//
+//  // use it in app
+//  if val, err := ctx.Any(someAnyKey); err == nil {
+//  	res := val.(*someAnyResult)
+//  }
+//
+func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
+	var ok bool
+	if val, ok = ctx.kv[any]; !ok {
+		switch res := any.(type) {
+		case Any:
+			if val, err = res.New(ctx); err == nil {
+				ctx.kv[any] = val
+			}
+		default:
+			return nil, errors.New("non-existent key")
+		}
+	}
+	return
+}
+
+// SetAny save a key, value pair on the ctx.
+func (ctx *Context) SetAny(key, val interface{}) {
+	ctx.kv[key] = val
 }
 
 // IP returns the client's network address based on `X-Forwarded-For`
@@ -153,8 +193,8 @@ func (ctx *Context) IP() string {
 
 // Param returns path parameter by name.
 func (ctx *Context) Param(key string) (val string) {
-	if params := ctx.Value(GearParamsKey); params != nil {
-		val, _ = params.(map[string]string)[key]
+	if res, err := ctx.Any(paramsKey); err == nil {
+		val, _ = res.(map[string]string)[key]
 	}
 	return
 }
@@ -174,7 +214,7 @@ func (ctx *Context) Cookie(name string) (*http.Cookie, error) {
 
 // SetCookie adds a `Set-Cookie` header in HTTP response.
 func (ctx *Context) SetCookie(cookie *http.Cookie) {
-	http.SetCookie(ctx.Res.res, cookie)
+	http.SetCookie(ctx.Res, cookie)
 }
 
 // Cookies returns the HTTP cookies sent with the request.
