@@ -7,7 +7,89 @@ import (
 )
 
 // Router is a tire base HTTP request handler for Gear which can be used to
-// dispatch requests to different handler functions
+// dispatch requests to different handler functions.
+// A trivial example is:
+//
+//  package main
+//
+//  import (
+//  	"fmt"
+//
+//  	"github.com/teambition/gear"
+//  )
+//
+//  func SomeRouterMiddleware(ctx *gear.Context) error {
+//  	// do some thing.
+//  	fmt.Println("Router middleware...")
+//  	return nil
+//  }
+//
+//  func ViewHello(ctx *gear.Context) error {
+//  	return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+//  }
+//
+//  func main() {
+//  	app := gear.New()
+//  	// Add app middleware
+//  	app.Use(gear.NewDefaultLogger())
+//
+//  	router := gear.NewRouter("", true)
+//  	router.Use(SomeRouterMiddleware) // Add router middleware, optionally
+//  	router.Get("/", ViewHello)
+//
+//  	app.UseHandler(router)
+//  	app.Error(app.Listen(":3000"))
+//  }
+//
+// The router matches incoming requests by the request method and the path.
+// If a handle is registered for this path and method, the router delegates the
+// request to that function.
+//
+// The registered path, against which the router matches incoming requests, can
+// contain three types of parameters:
+//
+//  Syntax         Type
+//  :name          named parameter
+//  :name*         named with catch-all parameter
+//  :name(regexp)  named with regexp parameter
+//
+// Named parameters are dynamic path segments. They match anything until the
+// next '/' or the path end:
+//
+//  Path: /api/:type/:ID
+//
+//  Requests:
+//   /api/user/123             match: type="user", ID="123"
+//   /api/user                 no match
+//   /api/user/123/comments    no match
+//
+// Named with catch-all parameters match anything until the path end, including the
+// directory index (the '/' before the catch-all). Since they match anything
+// until the end, catch-all parameters must always be the final path element.
+//
+//  Path: /files/:filepath*
+//
+//  Requests:
+//   /files                              no match
+//   /files/LICENSE                      match: filepath="LICENSE"
+//   /files/templates/article.html       match: filepath="templates/article.html"
+//
+// Named with regexp parameters match anything using regexp until the
+// next '/' or the path end:
+//
+//  Path: /api/:type/:ID(^\\d+$)
+//
+//  Requests:
+//   /api/user/123             match: type="user", ID="123"
+//   /api/user                 no match
+//   /api/user/abc             no match
+//   /api/user/123/comments    no match
+//
+// The value of parameters is saved on the gear.Context. Retrieve the value of a parameter by name:
+//
+//  type := ctx.Param("type")
+//  id   := ctx.Param("ID")
+//
 type Router struct {
 	root       string
 	trie       *trie
@@ -16,6 +98,25 @@ type Router struct {
 }
 
 // NewRouter returns a new Router instance with root path and ignoreCase option.
+// Gear support multi-routers. For example:
+//
+//  // Create app
+//  app := gear.New()
+//
+//  // Create views router
+//  viewRouter := gear.NewRouter("", true)
+//  viewRouter.Get("/", Ctl.IndexView)
+//  // add more ...
+//
+//  apiRouter := gear.NewRouter("/api", true)
+//  apiRouter.Get("/user/:id", API.User)
+//  // add more ..
+//
+//  app.UseHandler(apiRouter) // Must add apiRouter first.
+//  app.UseHandler(viewRouter)
+//  // Start app at 3000
+//  app.Listen(":3000")
+//
 func NewRouter(root string, ignoreCase bool) *Router {
 	t := newTrie(ignoreCase)
 	if root == "" {
@@ -28,12 +129,18 @@ func NewRouter(root string, ignoreCase bool) *Router {
 	}
 }
 
-// Use registers a new Middleware handler in the router.
+// Use registers a new Middleware in the router, that will be called when router mathed.
 func (r *Router) Use(handle Middleware) {
 	r.middleware = append(r.middleware, handle)
 }
 
 // Handle registers a new Middleware handler with method and path in the router.
+// For GET, POST, PUT, PATCH and DELETE requests the respective shortcut
+// functions can be used.
+//
+// This function is intended for bulk loading and to allow the usage of less
+// frequently used, non-standardized or custom methods (e.g. for internal
+// communication with a proxy).
 func (r *Router) Handle(method, pattern string, handle Middleware) {
 	if method == "" {
 		panic(NewAppError("invalid method"))
