@@ -29,14 +29,14 @@ import (
 //  	panic("this middleware unreachable")
 //  })
 //
-func NewTimeout(du time.Duration, h gear.Hook) gear.Middleware {
+func NewTimeout(du time.Duration, hook gear.Hook) gear.Middleware {
 	return func(ctx *gear.Context) error {
 		c, _ := ctx.WithTimeout(du)
 		go func() {
 			select {
 			case <-c.Done():
 				ctx.Cancel()
-				h(ctx)
+				hook(ctx)
 			case <-ctx.Done():
 			}
 		}()

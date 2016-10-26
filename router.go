@@ -9,14 +9,6 @@ import (
 // Router is a tire base HTTP request handler for Gear which can be used to
 // dispatch requests to different handler functions
 type Router struct {
-	// If enabled, the router automatically replies to OPTIONS requests.
-	// Default to true
-	HandleOPTIONS bool
-
-	// If enabled, the router automatically replies to OPTIONS requests.
-	// Default to true
-	IsEndpoint bool
-
 	root       string
 	trie       *trie
 	otherwise  Middleware
@@ -30,11 +22,9 @@ func NewRouter(root string, ignoreCase bool) *Router {
 		root = "/"
 	}
 	return &Router{
-		HandleOPTIONS: true,
-		IsEndpoint:    true,
-		root:          root,
-		trie:          t,
-		middleware:    make([]Middleware, 0),
+		root:       root,
+		trie:       t,
+		middleware: make([]Middleware, 0),
 	}
 }
 
@@ -79,11 +69,6 @@ func (r *Router) Patch(pattern string, handle Middleware) {
 	r.Handle(http.MethodPatch, pattern, handle)
 }
 
-// Del registers a new DELETE route for a path with matching handler in the router.
-func (r *Router) Del(pattern string, handle Middleware) {
-	r.Handle(http.MethodDelete, pattern, handle)
-}
-
 // Delete registers a new DELETE route for a path with matching handler in the router.
 func (r *Router) Delete(pattern string, handle Middleware) {
 	r.Handle(http.MethodDelete, pattern, handle)
@@ -104,59 +89,55 @@ func (r *Router) Otherwise(handle Middleware) {
 func (r *Router) Serve(ctx *Context) error {
 	path := ctx.Path
 	method := ctx.Method
+	var handle Middleware
 
 	if !strings.HasPrefix(path, r.root) {
 		return nil
 	}
 
-	path = strings.TrimPrefix(path, r.root)
-	res := r.trie.match(path)
+	res := r.trie.match(strings.TrimPrefix(path, r.root))
 	if res.node == nil {
-		if r.otherwise != nil {
-			r.run(ctx, r.otherwise)
+		if r.otherwise == nil {
+			return &Error{Code: 501, Msg: fmt.Sprintf(`"%s" not implemented`, path)}
 		}
-		ctx.Status(501)
-		return fmt.Errorf("%s not implemented", path)
-	}
+		handle = r.otherwise
+	} else {
+		handle = res.node.methods[method]
+		if handle == nil {
+			// OPTIONS support
+			if method == http.MethodOptions {
+				ctx.Set(HeaderAllow, res.node.allowMethods)
+				ctx.End(204)
+				return nil
+			}
 
-	// OPTIONS support
-	if method == http.MethodOptions && r.HandleOPTIONS {
-		ctx.Set(HeaderAllow, res.node.allowMethods)
-		ctx.End(204)
-		return nil
-	}
-
-	handle := res.node.methods[method]
-	if handle == nil {
-		if r.otherwise != nil {
-			r.run(ctx, r.otherwise)
+			if r.otherwise == nil {
+				// If no route handler is returned, it's a 405 error
+				ctx.Set(HeaderAllow, res.node.allowMethods)
+				return &Error{Code: 405, Msg: fmt.Sprintf(`"%s" not allowed in "%s"`, method, path)}
+			}
+			handle = r.otherwise
 		}
-		// If no route handler is returned, it's a 405 error
-		ctx.Status(405)
-		ctx.Set(HeaderAllow, res.node.allowMethods)
-		return fmt.Errorf("%s not allowed in %s", method, path)
 	}
 
 	if res.params != nil {
 		ctx.SetAny(paramsKey, res.params)
 	}
 	err := r.run(ctx, handle)
-	if err == nil && r.IsEndpoint {
-		ctx.End(0)
-	}
+	ctx.setEnd(true)
 	return err
 }
 
-func (r *Router) run(ctx *Context, h Middleware) (err error) {
+func (r *Router) run(ctx *Context, fn Middleware) (err error) {
 	for _, handle := range r.middleware {
 		if err = handle(ctx); err != nil {
 			return
 		}
 		if ctx.IsEnded() {
-			return
+			return // middleware and fn should not run if true
 		}
 	}
-	return h(ctx)
+	return fn(ctx)
 }
 
 func normalizePath(path string) string {

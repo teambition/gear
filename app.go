@@ -12,7 +12,7 @@ import (
 )
 
 // Version is Gear's version
-const Version = "v0.9.0"
+const Version = "v0.10.0"
 
 // MIME types
 const (
@@ -87,20 +87,58 @@ type Renderer interface {
 	Render(*Context, io.Writer, string, interface{}) error
 }
 
+// HTTPError interface is used to create a server error that include status code and error message.
+type HTTPError interface {
+	Error() string
+	Status() int
+}
+
 // Hook defines a function to process as hook.
 type Hook func(*Context)
 
 // Middleware defines a function to process as middleware.
 type Middleware func(*Context) error
 
-// NewError create a textproto.Error instance with error and status code.
-func NewError(err error, code int) *textproto.Error {
-	return &textproto.Error{Msg: err.Error(), Code: code}
+// Error represents a numeric error with optional meta. It can be used in middleware as a return result.
+type Error struct {
+	Code int
+	Msg  string
+	Meta interface{}
+}
+
+// Status return error's http status code.
+func (err *Error) Status() int {
+	return err.Code
+}
+
+func (err *Error) Error() string {
+	return err.Msg
 }
 
 // NewAppError create a error instance with "[Gear] " prefix.
 func NewAppError(err string) error {
 	return fmt.Errorf("[Gear] %s", err)
+}
+
+// ParseError parse a error, textproto.Error or HTTPError to *Error
+func ParseError(e error, code ...int) *Error {
+	var err *Error
+	switch e.(type) {
+	case *Error:
+		err = e.(*Error)
+	case *textproto.Error:
+		_e := e.(*textproto.Error)
+		err = &Error{Code: _e.Code, Msg: _e.Msg, Meta: e}
+	case HTTPError:
+		_e := e.(HTTPError)
+		err = &Error{Code: _e.Status(), Msg: _e.Error(), Meta: e}
+	default:
+		err = &Error{Code: 500, Msg: e.Error(), Meta: e}
+		if len(code) > 0 && code[0] > 0 {
+			err.Code = code[0]
+		}
+	}
+	return err
 }
 
 // ServerListener is returned by a non-blocking app instance.
@@ -146,8 +184,8 @@ type Gear struct {
 	pool       sync.Pool
 
 	// OnError is default ctx error handler.
-	// Override it for your business logic.
-	OnError  func(*Context, error) *textproto.Error
+	// Override it for yourself.
+	OnError  func(*Context, error) *Error
 	Renderer Renderer
 	// ErrorLog specifies an optional logger for app's errors. Default to nil
 	ErrorLog *log.Logger
@@ -162,8 +200,12 @@ func New() *Gear {
 	g.pool.New = func() interface{} {
 		return newContext(g)
 	}
-	g.OnError = func(ctx *Context, err error) *textproto.Error {
-		return NewError(err, 500)
+	g.OnError = func(ctx *Context, err error) *Error {
+		var code int
+		if ctx.Res.Status > 400 {
+			code = ctx.Res.Status
+		}
+		return ParseError(err, code)
 	}
 	return g
 }
@@ -255,7 +297,7 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if err := recover(); err != nil {
 			httprequest, _ := httputil.DumpRequest(ctx.Req, false)
-			ctx.Error(&textproto.Error{Code: 500, Msg: http.StatusText(500)})
+			ctx.Error(&Error{Code: 500, Msg: http.StatusText(500)})
 			h.app.Error(fmt.Errorf("panic recovered:\n%s\n%s\n", string(httprequest), err))
 		}
 		ctx.reset(nil, nil)
@@ -267,13 +309,13 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err = handle(ctx); err != nil {
 			break
 		}
-		if ctx.ended || ctx.Res.finished {
+		if ctx.IsEnded() {
 			break // end up the middleware process
 		}
 	}
 
 	// set ended to true after app's middleware process
-	ctx.ended = true
+	ctx.setEnd(true)
 	if err != nil {
 		ctx.afterHooks = nil // clear afterHooks when error
 		if ctxErr := h.app.OnError(ctx, err); ctxErr != nil {
@@ -283,7 +325,7 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			// app.Error only receive 5xx Server Error
 			if ctx.Res.Status >= 500 {
-				h.app.Error(err)
+				h.app.Error(ctxErr)
 			}
 			ctx.Error(ctxErr)
 		}

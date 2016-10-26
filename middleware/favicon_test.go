@@ -2,12 +2,34 @@ package middleware
 
 import (
 	"net/http"
+	"reflect"
 	"testing"
 
 	"github.com/mozillazg/request"
 	"github.com/stretchr/testify/require"
 	"github.com/teambition/gear"
 )
+
+// ----- Test Helpers -----
+
+func EqualPtr(t *testing.T, a, b interface{}) {
+	require.Equal(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
+}
+
+func NotEqualPtr(t *testing.T, a, b interface{}) {
+	require.NotEqual(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
+}
+
+func PickRes(res interface{}, err error) interface{} {
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
+func PickError(res interface{}, err error) error {
+	return err
+}
 
 func NewRequst() *request.Request {
 	c := &http.Client{}

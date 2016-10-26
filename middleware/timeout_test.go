@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"io/ioutil"
-	"net/http"
 	"testing"
 	"time"
 
@@ -12,18 +10,20 @@ import (
 
 func TestGearMiddlewareTimeout(t *testing.T) {
 	app := gear.New()
-	app.Use(NewTimeout(time.Second, func(ctx *gear.Context) {
+	req := NewRequst()
+
+	app.Use(NewTimeout(time.Millisecond*100, func(ctx *gear.Context) {
 		ctx.Status(504)
 		ctx.String("Service timeout")
 	}))
 	app.Use(func(ctx *gear.Context) error {
 		ts := time.Now()
-		c, _ := ctx.WithTimeout(time.Second * 2)
+		c, _ := ctx.WithTimeout(time.Second * 10)
 		select {
 		case <-ctx.Done(): // this case will always reached
 		case <-c.Done(): // this case maybe reached... but elapsed time should be 1 sec.
 		}
-		require.True(t, (time.Now().Sub(ts)-time.Second) < time.Millisecond*200)
+		require.True(t, time.Now().Sub(ts) > time.Millisecond*100)
 		return nil
 	})
 	app.Use(func(ctx *gear.Context) error {
@@ -32,14 +32,9 @@ func TestGearMiddlewareTimeout(t *testing.T) {
 	srv := app.Start()
 	defer srv.Close()
 
-	url := "http://" + srv.Addr().String()
-	res, err := http.Get(url)
+	res, err := req.Get("http://" + srv.Addr().String())
 	require.Nil(t, err)
-	require.Equal(t, res.StatusCode, 504)
-
-	body, err := ioutil.ReadAll(res.Body)
+	require.Equal(t, 504, res.StatusCode)
+	require.Equal(t, "Service timeout", PickRes(res.Text()).(string))
 	res.Body.Close()
-
-	require.Nil(t, err)
-	require.Equal(t, body, []byte("Service timeout"))
 }

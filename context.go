@@ -10,8 +10,8 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/textproto"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -39,11 +39,13 @@ type Context struct {
 	Host       string
 	Method     string
 	Path       string
-	ended      bool
+	ended      bool // indicate that app middlewares run out.
+	finished   bool // indicate that headers has been written.
 	query      url.Values
 	kv         map[interface{}]interface{}
 	afterHooks []Hook
 	endHooks   []Hook
+	mu         sync.Mutex
 }
 
 // NewContext creates an instance of Context. It is useful for testing a middleware.
@@ -64,7 +66,6 @@ func (ctx *Context) reset(w http.ResponseWriter, req *http.Request) {
 	ctx.Req = req
 	ctx.Res.reset(w)
 	ctx.Log = nil
-	ctx.ended = false
 	if w == nil {
 		ctx.ctx = nil
 		ctx.kv = nil
@@ -73,6 +74,8 @@ func (ctx *Context) reset(w http.ResponseWriter, req *http.Request) {
 		ctx.endHooks = nil
 		ctx.cancelCtx = nil
 	} else {
+		ctx.setEnd(false)
+		ctx.setFinish(false)
 		ctx.Host = req.Host
 		ctx.Method = req.Method
 		ctx.Path = normalizePath(req.URL.Path) // fix "/abc//ef" to "/abc/ef"
@@ -111,7 +114,7 @@ func (ctx *Context) Value(key interface{}) (val interface{}) {
 // The ctx' process will ended too.
 func (ctx *Context) Cancel() {
 	ctx.cancelCtx()
-	ctx.ended = true
+	ctx.setEnd(true)
 	ctx.afterHooks = nil // clear afterHooks when error
 }
 
@@ -370,7 +373,7 @@ func (ctx *Context) Render(code int, name string, data interface{}) (err error) 
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error) {
-	ctx.ended = true
+	ctx.setEnd(true)
 	ctx.Status(code)
 	ctx.Type(contentType)
 	_, err = io.Copy(ctx.Res, r)
@@ -396,7 +399,7 @@ func (ctx *Context) Inline(name string, content io.ReadSeeker) error {
 }
 
 func (ctx *Context) contentDisposition(dispositionType, name string, content io.ReadSeeker) error {
-	ctx.ended = true
+	ctx.setEnd(true)
 	ctx.Set(HeaderContentDisposition, fmt.Sprintf("%s; filename=%s", dispositionType, name))
 	http.ServeContent(ctx.Res, ctx.Req, name, time.Time{}, content)
 	return nil
@@ -407,7 +410,7 @@ func (ctx *Context) contentDisposition(dispositionType, name string, content io.
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) Redirect(code int, url string) error {
-	ctx.ended = true
+	ctx.setEnd(true)
 	http.Redirect(ctx.Res, ctx.Req, url, code)
 	return nil
 }
@@ -416,10 +419,11 @@ func (ctx *Context) Redirect(code int, url string) error {
 // It will end the ctx. The middlewares after current middleware and "after hooks" will not run.
 // "end hooks" will run normally.
 // Note that this will not stop the current handler.
-func (ctx *Context) Error(err *textproto.Error) {
-	ctx.ended = true
+func (ctx *Context) Error(err error) {
+	ctx.setEnd(true)
 	ctx.afterHooks = nil // clear afterHooks when error
-	http.Error(ctx.Res, err.Error(), err.Code)
+	e := ParseError(err)
+	http.Error(ctx.Res, e.Error(), e.Code)
 }
 
 // End end the ctx with bytes and status code optionally.
@@ -427,7 +431,7 @@ func (ctx *Context) Error(err *textproto.Error) {
 // But "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) End(code int, buf ...[]byte) {
-	ctx.ended = true
+	ctx.setEnd(true)
 	if code != 0 {
 		ctx.Status(code)
 	}
@@ -439,7 +443,7 @@ func (ctx *Context) End(code int, buf ...[]byte) {
 
 // IsEnded return the ctx' ended status.
 func (ctx *Context) IsEnded() bool {
-	return ctx.ended || ctx.Res.finished
+	return ctx.ended || ctx.finished
 }
 
 // After add a "after hook" to the ctx that will run after app's Middleware.
@@ -451,16 +455,16 @@ func (ctx *Context) After(hook Hook) {
 
 // OnEnd add a "end hook" to the ctx that will run before response.WriteHeader.
 func (ctx *Context) OnEnd(hook Hook) {
-	if !ctx.Res.finished { // should not add endHooks if ctx.Res.finished
+	if !ctx.finished { // should not add endHooks if ctx.finished
 		ctx.endHooks = append(ctx.endHooks, hook)
 	}
 }
 
 func (ctx *Context) runAfterHooks() {
 	// ensure ctx.ended to true, can't add "after hook" when edned
-	ctx.ended = true
+	ctx.setEnd(true)
 	for _, hook := range ctx.afterHooks {
-		if ctx.Res.finished {
+		if ctx.finished {
 			break
 		}
 		hook(ctx)
@@ -469,10 +473,22 @@ func (ctx *Context) runAfterHooks() {
 }
 
 func (ctx *Context) runEndHooks() {
-	// ensure ctx.Res.finished to true, can't add "end hook" when finished
-	ctx.Res.finished = true
+	// ensure ctx.finished to true, can't add "end hook" when finished
+	ctx.setFinish(true)
 	for _, hook := range ctx.endHooks {
 		hook(ctx)
 	}
 	ctx.endHooks = nil
+}
+
+func (ctx *Context) setEnd(b bool) {
+	ctx.mu.Lock()
+	ctx.ended = b
+	ctx.mu.Unlock()
+}
+
+func (ctx *Context) setFinish(b bool) {
+	ctx.mu.Lock()
+	ctx.finished = b
+	ctx.mu.Unlock()
 }

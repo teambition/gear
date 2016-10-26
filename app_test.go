@@ -3,11 +3,8 @@ package gear
 import (
 	"bytes"
 	"errors"
-	"io"
 	"log"
 	"net/http"
-	"net/http/httptest"
-	"net/textproto"
 	"reflect"
 	"strings"
 	"testing"
@@ -16,7 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ----- test utils -----
+// ----- Test Helpers -----
+
 func EqualPtr(t *testing.T, a, b interface{}) {
 	require.Equal(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
 }
@@ -25,16 +23,23 @@ func NotEqualPtr(t *testing.T, a, b interface{}) {
 	require.NotEqual(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
 }
 
-func NewCtx(app *Gear, method, url string, body io.Reader) *Context {
-	req := httptest.NewRequest(method, url, body)
-	res := httptest.NewRecorder()
-	return NewContext(app, res, req)
+func PickRes(res interface{}, err error) interface{} {
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
+func PickError(res interface{}, err error) error {
+	return err
 }
 
 func NewRequst() *request.Request {
 	c := &http.Client{}
 	return request.NewRequest(c)
 }
+
+// ----- Test App -----
 
 func TestGearAppHello(t *testing.T) {
 	app := New()
@@ -48,11 +53,9 @@ func TestGearAppHello(t *testing.T) {
 	req := NewRequst()
 	res, err := req.Get("http://" + srv.Addr().String())
 	require.Nil(t, err)
-	require.Equal(t, res.StatusCode, 200)
-	body, err := res.Text()
+	require.Equal(t, 200, res.StatusCode)
+	require.Equal(t, "<h1>Hello!</h1>", PickRes(res.Text()).(string))
 	res.Body.Close()
-	require.Nil(t, err)
-	require.Equal(t, body, "<h1>Hello!</h1>")
 }
 
 func TestGearError(t *testing.T) {
@@ -61,9 +64,9 @@ func TestGearError(t *testing.T) {
 
 		app := New()
 		app.ErrorLog = log.New(&buf, "TEST: ", 0)
-		app.OnError = func(ctx *Context, err error) *textproto.Error {
+		app.OnError = func(ctx *Context, err error) *Error {
 			ctx.Type("html")
-			return NewError(err, 501)
+			return ParseError(err, 501)
 		}
 
 		app.Use(func(ctx *Context) error {
@@ -75,12 +78,10 @@ func TestGearError(t *testing.T) {
 		req := NewRequst()
 		res, err := req.Get("http://" + srv.Addr().String())
 		require.Nil(t, err)
-		require.Equal(t, res.StatusCode, 501)
-		body, err := res.Text()
-		res.Body.Close()
-		require.Nil(t, err)
-		require.Equal(t, "501 Some error\n", body)
+		require.Equal(t, 501, res.StatusCode)
+		require.Equal(t, "Some error\n", PickRes(res.Text()).(string))
 		require.Equal(t, "TEST: Some error\n", buf.String())
+		res.Body.Close()
 	})
 
 	t.Run("panic recovered", func(t *testing.T) {
@@ -89,6 +90,7 @@ func TestGearError(t *testing.T) {
 		app := New()
 		app.ErrorLog = log.New(&buf, "TEST: ", 0)
 		app.Use(func(ctx *Context) error {
+			ctx.Status(400)
 			panic("Some error")
 		})
 		srv := app.Start()
@@ -97,15 +99,13 @@ func TestGearError(t *testing.T) {
 		req := NewRequst()
 		res, err := req.Get("http://" + srv.Addr().String())
 		require.Nil(t, err)
-		require.Equal(t, res.StatusCode, 500)
-		body, err := res.Text()
-		res.Body.Close()
-		require.Nil(t, err)
+		require.Equal(t, 500, res.StatusCode)
+		require.Equal(t, "Internal Server Error\n", PickRes(res.Text()).(string))
 
-		require.Equal(t, "500 Internal Server Error\n", body)
 		log := buf.String()
 		require.True(t, strings.Contains(log, "TEST: panic recovered")) // recovered title
 		require.True(t, strings.Contains(log, "GET /"))                 // http request content
 		require.True(t, strings.Contains(log, "Some error"))            // panic content
+		res.Body.Close()
 	})
 }

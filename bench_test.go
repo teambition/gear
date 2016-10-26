@@ -27,4 +27,5 @@ func BenchmarkGearAppHello(b *testing.B) {
 		}
 	}
 	// 2016-10-22: 5000	    382967 ns/op
+	// 2016-10-22: 5000	    336106 ns/op
 }

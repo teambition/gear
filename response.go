@@ -8,13 +8,12 @@ import (
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.
 type Response struct {
-	ctx      *Context
-	res      http.ResponseWriter
-	Status   int         // response Status
-	Type     string      // response Content-Type
-	Body     []byte      // response Content
-	header   http.Header // response Header
-	finished bool
+	ctx    *Context
+	res    http.ResponseWriter
+	Status int         // response Status
+	Type   string      // response Content-Type
+	Body   []byte      // response Content
+	header http.Header // response Header
 }
 
 func (r *Response) reset(w http.ResponseWriter) {
@@ -22,7 +21,6 @@ func (r *Response) reset(w http.ResponseWriter) {
 	r.Type = ""
 	r.Body = nil
 	r.Status = 500
-	r.finished = false
 	if w != nil {
 		r.header = w.Header()
 	} else {
@@ -58,7 +56,7 @@ func (r *Response) Header() http.Header {
 // Write writes the data to the connection as part of an HTTP reply.
 func (r *Response) Write(buf []byte) (int, error) {
 	// Some http Handler will call Write directly.
-	if !r.finished {
+	if !r.ctx.finished {
 		r.WriteHeader(r.Status)
 	}
 	return r.res.Write(buf)
@@ -70,18 +68,13 @@ func (r *Response) Write(buf []byte) (int, error) {
 // Thus explicit calls to WriteHeader are mainly used to send error codes.
 func (r *Response) WriteHeader(code int) {
 	r.Status = code
-	if r.ctx.afterHooks != nil {
-		r.ctx.runAfterHooks()
-	}
-	if r.ctx.endHooks != nil {
-		r.ctx.runEndHooks()
-	}
-	r.finished = true
+	r.ctx.runAfterHooks()
+	r.ctx.runEndHooks()
 	r.res.WriteHeader(r.Status) // r.Status maybe changed in hooks
 }
 
 func (r *Response) respond() {
-	if r.finished {
+	if r.ctx.finished {
 		return
 	}
 	r.WriteHeader(r.Status)
