@@ -12,83 +12,37 @@ Gear implements a web framework with context.Context for Go. It focuses on perfo
 package main
 
 import (
-	"errors"
 	"fmt"
+	"os"
 
 	"github.com/teambition/gear"
 	"github.com/teambition/gear/middleware"
 )
 
+// SomeRouterMiddleware as example.
+func SomeRouterMiddleware(ctx *gear.Context) error {
+	// do some thing.
+	fmt.Println("Router middleware...", ctx.Path)
+	return nil
+}
+
+// ViewHello as example.
+func ViewHello(ctx *gear.Context) error {
+	return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+}
+
 func main() {
-	// Create app
 	app := gear.New()
+	// Add app middleware
+	logger := &middleware.DefaultLogger{Writer: os.Stdout}
+	app.Use(middleware.NewLogger(logger))
 
-	// Use a default logger middleware
-	app.Use(gear.NewDefaultLogger())
+	router := gear.NewRouter("", true)
+	// Add router middleware
+	router.Use(SomeRouterMiddleware)
+	router.Get("/", ViewHello)
 
-	// Add a static server middleware
-	// http://localhost:3000/middleware/static.go
-	app.Use(middleware.NewStatic(middleware.StaticOptions{
-		Root:        "./dist",
-		Prefix:      "/static",
-		StripPrefix: true,
-	}))
-
-	// Add some middleware to app
-	app.Use(func(ctx *gear.Context) (err error) {
-		// Do something...
-		return
-	})
-
-	// Create views router
-	ViewRouter := gear.NewRouter("", true)
-	// "http://localhost:3000"
-	ViewRouter.Get("/", func(ctx *gear.Context) error {
-		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-	})
-	// "http://localhost:3000/view/abc"
-	// "http://localhost:3000/view/123"
-	ViewRouter.Get("/view/:view", func(ctx *gear.Context) error {
-		view := ctx.Param("view")
-		if view == "" {
-			ctx.Status(400)
-			return errors.New("Invalid view")
-		}
-		return ctx.HTML(200, "View: "+view)
-	})
-	// "http://localhost:3000/abc"
-	// "http://localhost:3000/abc/efg"
-	ViewRouter.Get("/:others*", func(ctx *gear.Context) error {
-		others := ctx.Param("others")
-		if others == "" {
-			ctx.Status(400)
-			return errors.New("Invalid path")
-		}
-		return ctx.HTML(200, "Request path: /"+others)
-	})
-
-	// Create API router
-	APIRouter := gear.NewRouter("/api", true)
-	// "http://localhost:3000/api/user/abc"
-	// "http://localhost:3000/abc/user/123"
-	APIRouter.Get("/user/:id", func(ctx *gear.Context) error {
-		id := ctx.Param("id")
-		if id == "" {
-			ctx.Status(400)
-			return errors.New("Invalid user id")
-		}
-		return ctx.JSON(200, map[string]string{
-			"Method": ctx.Method,
-			"Path":   ctx.Path,
-			"UserID": id,
-		})
-	})
-
-	// Must add APIRouter first.
-	app.UseHandler(APIRouter)
-	app.UseHandler(ViewRouter)
-
-	// Start app at 3000
+	app.UseHandler(router)
 	app.Error(app.Listen(":3000"))
 }
 ```
@@ -100,22 +54,122 @@ func main() {
 import "github.com/teambition/gear"
 ```
 
-## Document
+## Full Document
 
 https://godoc.org/github.com/teambition/gear
 
-## Middleware
+## About Router
+[gear.Router](https://godoc.org/github.com/teambition/gear#Router) is a tire base HTTP request handler.
+Features:
 
-https://godoc.org/github.com/teambition/gear/middleware
+1. Support regexp
+2. Support multi-router
+3. Support router layer middleware
+4. Best Performance
+
+The registered path, against which the router matches incoming requests, can contain three types of parameters:
+```
+ Syntax         Type
+ :name          named parameter
+ :name*         named with catch-all parameter
+ :name(regexp)  named with regexp parameter
+```
+
+Named parameters are dynamic path segments. They match anything until the next '/' or the path end:
+```
+ Path: /api/:type/:ID
+
+ Requests:
+  /api/user/123             match: type="user", ID="123"
+  /api/user                 no match
+  /api/user/123/comments    no match
+```
+
+Named with catch-all parameters match anything until the path end, including the directory index (the '/' before the catch-all). Since they match anything until the end, catch-all parameters must always be the final path element.
+```
+ Path: /files/:filepath*
+
+ Requests:
+  /files                              no match
+  /files/LICENSE                      match: filepath="LICENSE"
+  /files/templates/article.html       match: filepath="templates/article.html"
+```
+
+Named with regexp parameters match anything using regexp until the next '/' or the path end:
+```
+ Path: /api/:type/:ID(^\\d+$)
+
+ Requests:
+  /api/user/123             match: type="user", ID="123"
+  /api/user                 no match
+  /api/user/abc             no match
+  /api/user/123/comments    no match
+```
+
+The value of parameters is saved on the gear.Context. Retrieve the value of a parameter by name:
+```
+ type := ctx.Param("type")
+ id   := ctx.Param("ID")
+```
+
+## About Middleware
+```go
+// Middleware defines a function to process as middleware.
+type Middleware func(*gear.Context) error
+```
+
+`Middleware` can be used in app layer or router layer or middleware inside. It be good at composition.
+We should write any module as a middleware. We should use middleware to compose all our business.
+
+There are four build-in middlewares currently: https://godoc.org/github.com/teambition/gear/middleware
 
 ```go
 // package middleware
 import "github.com/teambition/gear/middleware"
 ```
 
-1. [Favicon middleware](https://godoc.org/github.com/teambition/gear/middleware#NewFavicon)
-2. [Static server middleware](https://godoc.org/github.com/teambition/gear/middleware#NewStatic)
-3. [Timeout middleware](https://godoc.org/github.com/teambition/gear/middleware#NewTimeout)
+1. [Favicon middleware](https://godoc.org/github.com/teambition/gear/middleware#NewFavicon) Use to serve favicon.ico.
+2. [Logger middleware](https://godoc.org/github.com/teambition/gear/middleware#NewFavicon) Use to logging.
+3. [Static server middleware](https://godoc.org/github.com/teambition/gear/middleware#NewStatic) Use to serve static files.
+4. [Timeout middleware](https://godoc.org/github.com/teambition/gear/middleware#NewTimeout) Use to set timeout for request.
+
+All this middlewares can be use in app layer, router layer or middleware layer.
+
+## About Hook
+```go
+// Hook defines a function to process as hook.
+type Hook func(*Context)
+```
+`Hook` can be used to some teardowm job dynamically. For example, Logger middleware use `ctx.OnEnd` to write logs to underlayer. Hooks are executed in LIFO order, just like go `defer`. `Hook` can only be add in middleware. You can't add another hook in a hook.
+
+```go
+ctx.After(hook gear.Hook)
+```
+Add one or more "after hook" to current request process. They will run after middleware process(means context process `ended`, `ctx.IsEnded() == true`), and before `Response.WriteHeader`. If some middleware return `error`, the middleware process will stop, all "after hooks" will be clear and not run.
+
+```go
+ctx.OnEnd(hook gear.Hook)
+```
+Add one or more "end hook" to current request process. They will run after `Response.WriteHeader` called. The middleware error will not stop "end hook" process.
+
+Here is example using "end hook" in Logger middleware.
+```go
+func NewLogger(logger Logger) gear.Middleware {
+	return func(ctx *gear.Context) error {
+		log := middleware.Log{}
+		ctx.SetAny(logger, log)
+		logger.InitLog(log, ctx)
+
+		// Add a "end hook" to flush logs.
+		ctx.OnEnd(func(ctx *gear.Context) {
+			log["Status"] = ctx.Res.Status
+			log["Length"] = len(ctx.Res.Body)
+			logger.WriteLog(log)
+		})
+		return nil
+	}
+}
+```
 
 ## Bench
 https://godoc.org/github.com/teambition/gear/blob/master/bench

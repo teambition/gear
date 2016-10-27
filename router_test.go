@@ -43,7 +43,7 @@ func TestGearRouter(t *testing.T) {
 		require.Nil(t, err)
 		require.Equal(t, 0, called)
 		require.Equal(t, 501, res.StatusCode)
-		require.Equal(t, "\"/api\" not implemented\n", PickRes(res.Text()).(string))
+		require.Equal(t, "\"/api\" not implemented", PickRes(res.Text()).(string))
 		res.Body.Close()
 
 		res, err = req.Get(host + "/api/users")
@@ -128,7 +128,7 @@ func TestGearRouter(t *testing.T) {
 		res, err := req.Get(host)
 		require.Nil(t, err)
 		require.Equal(t, 501, res.StatusCode)
-		require.Equal(t, "\"/\" not implemented\n", PickRes(res.Text()).(string))
+		require.Equal(t, "\"/\" not implemented", PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 
@@ -146,7 +146,7 @@ func TestGearRouter(t *testing.T) {
 		res, err := req.Put(host + "/abc")
 		require.Nil(t, err)
 		require.Equal(t, 405, res.StatusCode)
-		require.Equal(t, "\"PUT\" not allowed in \"/abc\"\n", PickRes(res.Text()).(string))
+		require.Equal(t, "\"PUT\" not allowed in \"/abc\"", PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 

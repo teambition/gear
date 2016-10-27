@@ -60,8 +60,7 @@ func NewFavicon(iconpath string) gear.Middleware {
 				status = 405
 			}
 			ctx.Set(gear.HeaderAllow, "GET, HEAD, OPTIONS")
-			ctx.End(status)
-			return
+			return ctx.End(status)
 		}
 		ctx.Type("image/x-icon")
 		http.ServeContent(ctx.Res, ctx.Req, "favicon.ico", info.ModTime(), reader)

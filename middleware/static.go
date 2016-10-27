@@ -28,7 +28,7 @@ type StaticOptions struct {
 //
 //  func main() {
 //  	app := gear.New()
-//  	app.Use(gear.NewDefaultLogger())
+//  	app.Use(middleware.NewDefaultLogger())
 //  	app.Use(middleware.NewFavicon("./testdata/favicon.ico"))
 //  	app.Use(middleware.NewStatic(middleware.StaticOptions{
 //  		Root:        "./testdata",
@@ -73,8 +73,7 @@ func NewStatic(opts StaticOptions) gear.Middleware {
 				status = 405
 			}
 			ctx.Set(gear.HeaderAllow, "GET, HEAD, OPTIONS")
-			ctx.End(status)
-			return
+			return ctx.End(status)
 		}
 		if opts.StripPrefix {
 			path = strings.TrimPrefix(path, opts.Prefix)

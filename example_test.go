@@ -1,8 +1,8 @@
 package gear_test
 
 import (
-	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/teambition/gear"
@@ -12,8 +12,11 @@ import (
 func Example() {
 	// Create app
 	app := gear.New()
+
 	// Use a default logger middleware
-	app.Use(gear.NewDefaultLogger())
+	logger := &middleware.DefaultLogger{Writer: os.Stdout}
+	app.Use(middleware.NewLogger(logger))
+
 	// Add a static middleware
 	// http://localhost:3000/middleware/static.go
 	app.Use(middleware.NewStatic(middleware.StaticOptions{
@@ -46,8 +49,7 @@ func Example() {
 	ViewRouter.Get("/view/:view", func(ctx *gear.Context) error {
 		view := ctx.Param("view")
 		if view == "" {
-			ctx.Status(400)
-			return errors.New("Invalid view")
+			return &gear.Error{Code: 400, Msg: "Invalid view"}
 		}
 		return ctx.HTML(200, "View: "+view)
 	})
@@ -56,8 +58,7 @@ func Example() {
 	ViewRouter.Get("/:others*", func(ctx *gear.Context) error {
 		others := ctx.Param("others")
 		if others == "" {
-			ctx.Status(400)
-			return errors.New("Invalid path")
+			return &gear.Error{Code: 400, Msg: "Invalid path"}
 		}
 		return ctx.HTML(200, "Request path: /"+others)
 	})
@@ -69,8 +70,7 @@ func Example() {
 	APIRouter.Get("/user/:id", func(ctx *gear.Context) error {
 		id := ctx.Param("id")
 		if id == "" {
-			ctx.Status(400)
-			return errors.New("Invalid user id")
+			return &gear.Error{Code: 400, Msg: "Invalid user id"}
 		}
 		return ctx.JSON(200, map[string]string{
 			"Method": ctx.Method,
@@ -90,8 +90,7 @@ func ExampleBackgroundAPP() {
 	app := gear.New()
 
 	app.Use(func(ctx *gear.Context) error {
-		ctx.End(200, []byte("<h1>Hello!</h1>"))
-		return nil
+		return ctx.End(200, []byte("<h1>Hello!</h1>"))
 	})
 
 	s := app.Start() // Start at random addr.

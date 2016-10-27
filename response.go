@@ -8,12 +8,13 @@ import (
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.
 type Response struct {
-	ctx    *Context
-	res    http.ResponseWriter
-	Status int         // response Status
-	Type   string      // response Content-Type
-	Body   []byte      // response Content
-	header http.Header // response Header
+	ctx         *Context
+	res         http.ResponseWriter
+	Status      int         // response Status
+	Type        string      // response Content-Type
+	Body        []byte      // response Content
+	header      http.Header // response Header
+	wroteHeader bool
 }
 
 func (r *Response) reset(w http.ResponseWriter) {
@@ -21,6 +22,7 @@ func (r *Response) reset(w http.ResponseWriter) {
 	r.Type = ""
 	r.Body = nil
 	r.Status = 500
+	r.wroteHeader = false
 	if w != nil {
 		r.header = w.Header()
 	} else {
@@ -56,7 +58,7 @@ func (r *Response) Header() http.Header {
 // Write writes the data to the connection as part of an HTTP reply.
 func (r *Response) Write(buf []byte) (int, error) {
 	// Some http Handler will call Write directly.
-	if !r.ctx.finished {
+	if !r.wroteHeader {
 		r.WriteHeader(r.Status)
 	}
 	return r.res.Write(buf)
@@ -67,26 +69,40 @@ func (r *Response) Write(buf []byte) (int, error) {
 // will trigger an implicit WriteHeader(http.StatusOK).
 // Thus explicit calls to WriteHeader are mainly used to send error codes.
 func (r *Response) WriteHeader(code int) {
-	r.Status = code
-	r.ctx.runAfterHooks()
-	r.ctx.runEndHooks()
-	r.res.WriteHeader(r.Status) // r.Status maybe changed in hooks
-}
-
-func (r *Response) respond() {
-	if r.ctx.finished {
+	r.ctx.mu.Lock()
+	if r.wroteHeader {
+		r.ctx.mu.Unlock()
 		return
 	}
-	r.WriteHeader(r.Status)
-	if r.Body == nil && r.Status >= 300 {
-		r.Body = stringToBytes(http.StatusText(r.Status))
+	r.wroteHeader = true
+	r.ctx.mu.Unlock()
+
+	r.Status = code
+	// ensure that ended is true
+	r.ctx.ended = true
+	// execute "after hooks" in LIFO order before Response.WriteHeader
+	for i := len(r.ctx.afterHooks) - 1; i >= 0; i-- {
+		r.ctx.afterHooks[i](r.ctx)
 	}
-	if r.Body != nil {
-		if _, err := r.Write(r.Body); err != nil {
-			r.ctx.app.Error(err)
+	// r.Status maybe changed in hooks
+	r.res.WriteHeader(r.Status)
+	// execute "end hooks" in LIFO order after Response.WriteHeader
+	for i := len(r.ctx.endHooks) - 1; i >= 0; i-- {
+		r.ctx.endHooks[i](r.ctx)
+	}
+}
+
+func (r *Response) respond() (err error) {
+	if !r.wroteHeader {
+		r.WriteHeader(r.Status)
+		if r.Body == nil && r.Status >= 300 {
+			r.Body = stringToBytes(http.StatusText(r.Status))
+		}
+		if r.Body != nil {
+			_, err = r.Write(r.Body)
 		}
 	}
-	return
+	return err
 }
 
 func stringToBytes(str string) []byte {

@@ -91,7 +91,7 @@ func TestGearContextAny(t *testing.T) {
 		ctx := NewCtx(app, "POST", "http://example.com/foo", nil)
 		val, err := ctx.Ctx.Any(struct{}{})
 		require.Nil(t, val)
-		require.Equal(t, "non-existent key", err.Error())
+		require.Equal(t, "[Gear] non-existent key", err.Error())
 
 		ctx.Ctx.SetAny(struct{}{}, true)
 		val, err = ctx.Ctx.Any(struct{}{})

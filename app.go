@@ -124,6 +124,7 @@ func NewAppError(err string) error {
 func ParseError(e error, code ...int) *Error {
 	var err *Error
 	switch e.(type) {
+	case nil:
 	case *Error:
 		err = e.(*Error)
 	case *textproto.Error:
@@ -309,29 +310,28 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err = handle(ctx); err != nil {
 			break
 		}
-		if ctx.IsEnded() {
+		if ctx.ended {
 			break // end up the middleware process
 		}
 	}
 
-	// set ended to true after app's middleware process
-	ctx.setEnd(true)
+	// ensure that ended is true after middleware process finished.
+	ctx.ended = true
 	if err != nil {
+		ctx.Type("text")     // reset Content-Type, but you can set it in OnError again.
 		ctx.afterHooks = nil // clear afterHooks when error
+		// process middleware error with OnError
 		if ctxErr := h.app.OnError(ctx, err); ctxErr != nil {
-			// process middleware error with OnCtxError
-			if ctx.Res.Status < 400 {
-				ctx.Res.Status = 500
-			}
-			// app.Error only receive 5xx Server Error
+			ctx.Status(ctxErr.Status())
+			// 5xx Server Error will send to app.Error
 			if ctx.Res.Status >= 500 {
 				h.app.Error(ctxErr)
 			}
-			ctx.Error(ctxErr)
+			ctx.String(ctxErr.Error())
 		}
 	}
 
-	// try to respond to client
+	// ensure respond
 	ctx.Res.respond()
 }
 

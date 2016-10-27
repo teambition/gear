@@ -1,28 +1,32 @@
-package gear
+package middleware
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/teambition/gear"
 )
 
-type testLogger struct{}
-
-func (l *testLogger) Init(ctx *Context) {
-	ctx.Log["IP"] = ctx.IP()
-	ctx.Log["Method"] = ctx.Method
-	ctx.Log["URL"] = ctx.Req.URL.String()
-	ctx.Log["Start"] = time.Now()
-	ctx.Log["UserAgent"] = ctx.Get(HeaderUserAgent)
+type testLogger struct {
+	W io.Writer
 }
 
-func (l *testLogger) Format(log Log) string {
-	// Tiny format: ":Date INFO :JSONInfo"
+func (l *testLogger) InitLog(log Log, ctx *gear.Context) {
+	log["IP"] = ctx.IP()
+	log["Method"] = ctx.Method
+	log["URL"] = ctx.Req.URL.String()
+	log["Start"] = time.Now()
+	log["UserAgent"] = ctx.Get(gear.HeaderUserAgent)
+}
+
+func (l *testLogger) WriteLog(log Log) {
+	// Format: ":Date INFO :JSONString"
 	end := time.Now()
 	info := map[string]interface{}{
 		"IP":        log["IP"],
@@ -34,20 +38,35 @@ func (l *testLogger) Format(log Log) string {
 		"Data":      log["Data"],
 		"Time":      end.Sub(log["Start"].(time.Time)) / 1e6,
 	}
-	res, err := json.Marshal(info)
-	if err != nil {
-		return fmt.Sprintf("%s ERROR %s", end.Format(time.RFC3339), err.Error())
+
+	var str string
+	switch res, err := json.Marshal(info); err == nil {
+	case true:
+		str = fmt.Sprintf("%s INFO %s", end.Format(time.RFC3339), bytes.NewBuffer(res).String())
+	default:
+		str = fmt.Sprintf("%s ERROR %s", end.Format(time.RFC3339), err.Error())
 	}
-	return fmt.Sprintf("%s INFO %s", end.Format(time.RFC3339), bytes.NewBuffer(res).String())
+	// Don't block current process.
+	go func() {
+		if _, err := fmt.Fprintln(l.W, str); err != nil {
+			panic(err)
+		}
+	}()
 }
 
 func TestGearLogger(t *testing.T) {
 	t.Run("Simple log", func(t *testing.T) {
 		var buf bytes.Buffer
-		app := New()
-		app.Use(NewLogger(&buf, &testLogger{}))
-		app.Use(func(ctx *Context) (err error) {
-			ctx.Log["Data"] = map[string]interface{}{}
+		app := gear.New()
+		logger := &testLogger{&buf}
+		app.Use(NewLogger(logger))
+		app.Use(func(ctx *gear.Context) error {
+			any, err := ctx.Any(logger)
+			if err != nil {
+				return err
+			}
+			log := any.(Log)
+			log["Data"] = []int{1, 2, 3}
 			return ctx.HTML(200, "OK")
 		})
 		srv := app.Start()
@@ -57,11 +76,12 @@ func TestGearLogger(t *testing.T) {
 		res, err := req.Get("http://" + srv.Addr().String())
 		require.Nil(t, err)
 		require.Equal(t, 200, res.StatusCode)
-		require.Equal(t, "text/html; charset=utf-8", res.Header.Get(HeaderContentType))
+		require.Equal(t, "text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		log := buf.String()
+		fmt.Println(log)
 		require.Contains(t, log, time.Now().Format(time.RFC3339)[0:19])
 		require.Contains(t, log, " INFO ")
-		require.Contains(t, log, `"Data":{}`)
+		require.Contains(t, log, `"Data":[1,2,3]`)
 		require.Contains(t, log, `"Method":"GET"`)
 		require.Contains(t, log, `"Status":200`)
 		require.Contains(t, log, `"UserAgent":`)
@@ -72,11 +92,17 @@ func TestGearLogger(t *testing.T) {
 		var buf bytes.Buffer
 		var errbuf bytes.Buffer
 
-		app := New()
+		app := gear.New()
+		logger := &testLogger{&buf}
 		app.ErrorLog = log.New(&errbuf, "TEST: ", 0)
-		app.Use(NewLogger(&buf, &testLogger{}))
-		app.Use(func(ctx *Context) (err error) {
-			ctx.Log["Data"] = map[string]interface{}{}
+		app.Use(NewLogger(logger))
+		app.Use(func(ctx *gear.Context) (err error) {
+			any, err := ctx.Any(logger)
+			if err != nil {
+				return err
+			}
+			log := any.(Log)
+			log["Data"] = map[string]interface{}{"a": 0}
 			panic("Some error")
 		})
 		srv := app.Start()
@@ -86,11 +112,11 @@ func TestGearLogger(t *testing.T) {
 		res, err := req.Post("http://" + srv.Addr().String())
 		require.Nil(t, err)
 		require.Equal(t, 500, res.StatusCode)
-		require.Equal(t, "text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
+		require.Equal(t, "text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		log := buf.String()
 		require.Contains(t, log, time.Now().Format(time.RFC3339)[0:19])
 		require.Contains(t, log, " INFO ")
-		require.Contains(t, log, `"Data":{}`)
+		require.Contains(t, log, `"Data":{"a":0}`)
 		require.Contains(t, log, `"Method":"POST"`)
 		require.Contains(t, log, `"Status":500`)
 		require.Contains(t, log, `"UserAgent":`)

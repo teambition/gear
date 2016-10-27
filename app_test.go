@@ -79,7 +79,8 @@ func TestGearError(t *testing.T) {
 		res, err := req.Get("http://" + srv.Addr().String())
 		require.Nil(t, err)
 		require.Equal(t, 501, res.StatusCode)
-		require.Equal(t, "Some error\n", PickRes(res.Text()).(string))
+		require.Equal(t, "text/html; charset=utf-8", res.Header.Get(HeaderContentType))
+		require.Equal(t, "Some error", PickRes(res.Text()).(string))
 		require.Equal(t, "TEST: Some error\n", buf.String())
 		res.Body.Close()
 	})
@@ -100,7 +101,7 @@ func TestGearError(t *testing.T) {
 		res, err := req.Get("http://" + srv.Addr().String())
 		require.Nil(t, err)
 		require.Equal(t, 500, res.StatusCode)
-		require.Equal(t, "Internal Server Error\n", PickRes(res.Text()).(string))
+		require.Equal(t, "Internal Server Error", PickRes(res.Text()).(string))
 
 		log := buf.String()
 		require.True(t, strings.Contains(log, "TEST: panic recovered")) // recovered title

@@ -214,8 +214,7 @@ func (r *Router) Serve(ctx *Context) error {
 			// OPTIONS support
 			if method == http.MethodOptions {
 				ctx.Set(HeaderAllow, res.node.allowMethods)
-				ctx.End(204)
-				return nil
+				return ctx.End(204)
 			}
 
 			if r.otherwise == nil {
@@ -231,7 +230,7 @@ func (r *Router) Serve(ctx *Context) error {
 		ctx.SetAny(paramsKey, res.params)
 	}
 	err := r.run(ctx, handle)
-	ctx.setEnd(true)
+	ctx.ended = true
 	return err
 }
 
@@ -240,7 +239,7 @@ func (r *Router) run(ctx *Context, fn Middleware) (err error) {
 		if err = handle(ctx); err != nil {
 			return
 		}
-		if ctx.IsEnded() {
+		if ctx.ended {
 			return // middleware and fn should not run if true
 		}
 	}
