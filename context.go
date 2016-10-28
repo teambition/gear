@@ -259,7 +259,7 @@ func (ctx *Context) Type(str string) {
 
 // String set a string to response.
 func (ctx *Context) String(str string) {
-	ctx.Res.Body = stringToBytes(str)
+	ctx.Res.Body = []byte(str)
 }
 
 // HTML set an Html body with status code to response.
@@ -268,7 +268,7 @@ func (ctx *Context) String(str string) {
 // Note that this will not stop the current handler.
 func (ctx *Context) HTML(code int, str string) error {
 	ctx.Type("html")
-	return ctx.End(code, stringToBytes(str))
+	return ctx.End(code, []byte(str))
 }
 
 // JSON set a JSON body with status code to response.
@@ -311,7 +311,7 @@ func (ctx *Context) JSONP(code int, callback string, val interface{}) error {
 // Note that this will not stop the current handler.
 func (ctx *Context) JSONPBlob(code int, callback string, buf []byte) error {
 	ctx.Type("js")
-	buf = bytes.Join([][]byte{stringToBytes(callback + "("), buf, stringToBytes(");")}, []byte{})
+	buf = bytes.Join([][]byte{[]byte(callback + "("), buf, []byte(");")}, []byte{})
 	return ctx.End(code, buf)
 }
 
@@ -410,7 +410,7 @@ func (ctx *Context) Redirect(code int, url string) (err error) {
 func (ctx *Context) Error(e error) (err error) {
 	ctx.afterHooks = nil // clear afterHooks when any error
 	if e := ParseError(e); e != nil {
-		return ctx.End(e.Status(), stringToBytes(e.Error()))
+		return ctx.End(e.Status(), []byte(e.Error()))
 	}
 	return &Error{Code: 500, Msg: NewAppError("nil-error").Error()}
 }

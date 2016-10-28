@@ -1,9 +1,6 @@
 package gear
 
-import (
-	"bytes"
-	"net/http"
-)
+import "net/http"
 
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.
@@ -96,15 +93,11 @@ func (r *Response) respond() (err error) {
 	if !r.wroteHeader {
 		r.WriteHeader(r.Status)
 		if r.Body == nil && r.Status >= 300 {
-			r.Body = stringToBytes(http.StatusText(r.Status))
+			r.Body = []byte(http.StatusText(r.Status))
 		}
 		if r.Body != nil {
 			_, err = r.Write(r.Body)
 		}
 	}
 	return err
-}
-
-func stringToBytes(str string) []byte {
-	return bytes.NewBufferString(str).Bytes()
 }

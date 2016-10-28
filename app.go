@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/textproto"
+	"reflect"
+	"strings"
 	"sync"
 )
 
@@ -123,20 +125,21 @@ func NewAppError(err string) error {
 // ParseError parse a error, textproto.Error or HTTPError to *Error
 func ParseError(e error, code ...int) *Error {
 	var err *Error
-	switch e.(type) {
-	case nil:
-	case *Error:
-		err = e.(*Error)
-	case *textproto.Error:
-		_e := e.(*textproto.Error)
-		err = &Error{Code: _e.Code, Msg: _e.Msg, Meta: e}
-	case HTTPError:
-		_e := e.(HTTPError)
-		err = &Error{Code: _e.Status(), Msg: _e.Error(), Meta: e}
-	default:
-		err = &Error{Code: 500, Msg: e.Error(), Meta: e}
-		if len(code) > 0 && code[0] > 0 {
-			err.Code = code[0]
+	if !isNil(e) {
+		switch e.(type) {
+		case *Error:
+			err = e.(*Error)
+		case *textproto.Error:
+			_e := e.(*textproto.Error)
+			err = &Error{Code: _e.Code, Msg: _e.Msg, Meta: e}
+		case HTTPError:
+			_e := e.(HTTPError)
+			err = &Error{Code: _e.Status(), Msg: _e.Error(), Meta: e}
+		default:
+			err = &Error{Code: 500, Msg: e.Error(), Meta: e}
+			if len(code) > 0 && code[0] > 0 {
+				err.Code = code[0]
+			}
 		}
 	}
 	return err
@@ -275,7 +278,7 @@ func (g *Gear) Start(addr ...string) *ServerListener {
 
 // Error writes error to underlayer logging system (ErrorLog).
 func (g *Gear) Error(err error) {
-	if err != nil {
+	if !isNil(err) {
 		if g.ErrorLog != nil {
 			g.ErrorLog.Println(err)
 		} else {
@@ -299,7 +302,8 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err := recover(); err != nil {
 			httprequest, _ := httputil.DumpRequest(ctx.Req, false)
 			ctx.Error(&Error{Code: 500, Msg: http.StatusText(500)})
-			h.app.Error(fmt.Errorf("panic recovered:\n%s\n%s\n", string(httprequest), err))
+			h.app.Error(fmt.Errorf("panic recovered: %s; %s",
+				err, strings.Replace(string(httprequest), "\n", "\\n", -1)))
 		}
 		ctx.reset(nil, nil)
 		h.app.pool.Put(ctx)
@@ -307,7 +311,7 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// process app middleware
 	for _, handle := range h.middleware {
-		if err = handle(ctx); err != nil {
+		if err = handle(ctx); !isNil(err) {
 			break
 		}
 		if ctx.ended {
@@ -348,5 +352,20 @@ func WrapHandlerFunc(h http.HandlerFunc) Middleware {
 	return func(ctx *Context) error {
 		h(ctx.Res, ctx.Req)
 		return nil
+	}
+}
+
+// isNil checks if a specified object is nil or not, without Failing.
+func isNil(val interface{}) bool {
+	if val == nil {
+		return true
+	}
+
+	value := reflect.ValueOf(val)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr, reflect.Interface, reflect.Slice:
+		return value.IsNil()
+	default:
+		return false
 	}
 }

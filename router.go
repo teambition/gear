@@ -236,7 +236,7 @@ func (r *Router) Serve(ctx *Context) error {
 
 func (r *Router) run(ctx *Context, fn Middleware) (err error) {
 	for _, handle := range r.middleware {
-		if err = handle(ctx); err != nil {
+		if err = handle(ctx); !isNil(err) {
 			return
 		}
 		if ctx.ended {
