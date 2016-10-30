@@ -437,11 +437,6 @@ func (ctx *Context) End(code int, buf ...[]byte) (err error) {
 	return
 }
 
-// IsEnded return the ctx' ended status.
-func (ctx *Context) IsEnded() bool {
-	return ctx.ended
-}
-
 // After add a "after hook" to the ctx that will run after middleware process,
 // but before Response.WriteHeader.
 func (ctx *Context) After(hook Hook) {
