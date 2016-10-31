@@ -86,6 +86,34 @@ func TestGearError(t *testing.T) {
 		res.Body.Close()
 	})
 
+	t.Run("return nil HTTPError", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		app := New()
+		app.ErrorLog = log.New(&buf, "TEST: ", 0)
+		app.OnError = func(ctx *Context, err error) *Error {
+			ctx.Type("html")
+			return ParseError(err, 501)
+		}
+
+		app.Use(func(ctx *Context) error {
+			var err *Error
+			ctx.Status(204)
+			return err
+		})
+		srv := app.Start()
+		defer srv.Close()
+
+		req := NewRequst()
+		res, err := req.Get("http://" + srv.Addr().String())
+		require.Nil(t, err)
+		require.Equal(t, 204, res.StatusCode)
+		require.Equal(t, "", res.Header.Get(HeaderContentType))
+		require.Equal(t, "", PickRes(res.Text()).(string))
+		require.Equal(t, "", buf.String())
+		res.Body.Close()
+	})
+
 	t.Run("panic recovered", func(t *testing.T) {
 		var buf bytes.Buffer
 
@@ -172,6 +200,20 @@ func TestGearParseError(t *testing.T) {
 		}()
 		// fmt.Println(err6, err6 == nil) // <nil> false
 		err = ParseError(err6)
+		require.True(t, err == nil)
+
+		err7 := func() *Error {
+			var e *Error
+			return e
+		}()
+		require.True(t, err7 == nil)
+
+		err8 := func() HTTPError {
+			var e *testHTTPError1
+			return e
+		}()
+		// fmt.Println(err8, err8 == nil) // <nil> false
+		err = ParseError(err8)
 		require.True(t, err == nil)
 	})
 

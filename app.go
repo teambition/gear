@@ -321,7 +321,7 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// ensure that ended is true after middleware process finished.
 	ctx.ended = true
-	if err != nil {
+	if !isNil(err) {
 		ctx.Type("text")     // reset Content-Type, but you can set it in OnError again.
 		ctx.afterHooks = nil // clear afterHooks when error
 		// process middleware error with OnError
@@ -340,17 +340,17 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // WrapHandler wrap a http.Handler to Gear Middleware
-func WrapHandler(h http.Handler) Middleware {
+func WrapHandler(handler http.Handler) Middleware {
 	return func(ctx *Context) error {
-		h.ServeHTTP(ctx.Res, ctx.Req)
+		handler.ServeHTTP(ctx.Res, ctx.Req)
 		return nil
 	}
 }
 
 // WrapHandlerFunc wrap a http.HandlerFunc to Gear Middleware
-func WrapHandlerFunc(h http.HandlerFunc) Middleware {
+func WrapHandlerFunc(fn http.HandlerFunc) Middleware {
 	return func(ctx *Context) error {
-		h(ctx.Res, ctx.Req)
+		fn(ctx.Res, ctx.Req)
 		return nil
 	}
 }
