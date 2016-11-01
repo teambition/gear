@@ -29,7 +29,7 @@ func (c *ContextTest) Body() (val string) {
 	return
 }
 
-func NewCtx(app *Gear, method, url string, body io.Reader) *ContextTest {
+func NewCtx(app *App, method, url string, body io.Reader) *ContextTest {
 	req := httptest.NewRequest(method, url, body)
 	res := httptest.NewRecorder()
 	return &ContextTest{Ctx: NewContext(app, res, req), Res: res}
@@ -91,7 +91,7 @@ func TestGearContextAny(t *testing.T) {
 		ctx := NewCtx(app, "POST", "http://example.com/foo", nil)
 		val, err := ctx.Ctx.Any(struct{}{})
 		require.Nil(t, val)
-		require.Equal(t, "[Gear] non-existent key", err.Error())
+		require.Equal(t, "[App] non-existent key", err.Error())
 
 		ctx.Ctx.SetAny(struct{}{}, true)
 		val, err = ctx.Ctx.Any(struct{}{})

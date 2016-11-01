@@ -117,9 +117,9 @@ func (err *Error) Error() string {
 	return err.Msg
 }
 
-// NewAppError create a error instance with "[Gear] " prefix.
+// NewAppError create a error instance with "[App] " prefix.
 func NewAppError(err string) error {
-	return fmt.Errorf("[Gear] %s", err)
+	return fmt.Errorf("[App] %s", err)
 }
 
 // ParseError parse a error, textproto.Error or HTTPError to *Error
@@ -131,12 +131,12 @@ func ParseError(e error, code ...int) *Error {
 			err = e.(*Error)
 		case *textproto.Error:
 			_e := e.(*textproto.Error)
-			err = &Error{Code: _e.Code, Msg: _e.Msg, Meta: e}
+			err = &Error{_e.Code, _e.Msg, e}
 		case HTTPError:
 			_e := e.(HTTPError)
-			err = &Error{Code: _e.Status(), Msg: _e.Error(), Meta: e}
+			err = &Error{_e.Status(), _e.Error(), e}
 		default:
-			err = &Error{Code: 500, Msg: e.Error(), Meta: e}
+			err = &Error{500, e.Error(), e}
 			if len(code) > 0 && code[0] > 0 {
 				err.Code = code[0]
 			}
@@ -166,7 +166,7 @@ func (s *ServerListener) Wait() error {
 	return <-s.c
 }
 
-// Gear is the top-level framework app instance.
+// App is the top-level framework app instance.
 //
 // Hello Gear!
 //
@@ -183,7 +183,7 @@ func (s *ServerListener) Wait() error {
 //  	app.Error(app.Listen(":3000"))
 //  }
 //
-type Gear struct {
+type App struct {
 	middleware []Middleware
 	pool       sync.Pool
 
@@ -196,72 +196,72 @@ type Gear struct {
 	Server   *http.Server
 }
 
-// New creates an instance of Gear.
-func New() *Gear {
-	g := new(Gear)
-	g.Server = new(http.Server)
-	g.middleware = make([]Middleware, 0)
-	g.pool.New = func() interface{} {
-		return newContext(g)
+// New creates an instance of App.
+func New() *App {
+	app := new(App)
+	app.Server = new(http.Server)
+	app.middleware = make([]Middleware, 0)
+	app.pool.New = func() interface{} {
+		return newContext(app)
 	}
-	g.OnError = func(ctx *Context, err error) *Error {
+	app.OnError = func(ctx *Context, err error) *Error {
 		var code int
-		if ctx.Res.Status > 400 {
+		if ctx.Res.Status >= 400 {
 			code = ctx.Res.Status
 		}
 		return ParseError(err, code)
 	}
-	return g
+	return app
 }
 
-func (g *Gear) toServeHandler() *serveHandler {
-	if len(g.middleware) == 0 {
+func (app *App) toServeHandler() *serveHandler {
+	if len(app.middleware) == 0 {
 		panic(NewAppError("no middleware"))
 	}
-	return &serveHandler{middleware: g.middleware[0:], app: g}
+	return &serveHandler{app, app.middleware[:]}
 }
 
 // Use uses the given middleware `handle`.
-func (g *Gear) Use(handle Middleware) {
-	g.middleware = append(g.middleware, handle)
+func (app *App) Use(handle Middleware) {
+	app.middleware = append(app.middleware, handle)
 }
 
 // UseHandler uses a instance that implemented Handler interface.
-func (g *Gear) UseHandler(h Handler) {
-	g.middleware = append(g.middleware, h.Serve)
+func (app *App) UseHandler(h Handler) {
+	app.middleware = append(app.middleware, h.Serve)
 }
 
 // Listen starts the HTTP server.
-func (g *Gear) Listen(addr string) error {
-	g.Server.Addr = addr
-	g.Server.Handler = g.toServeHandler()
-	if g.ErrorLog != nil {
-		g.Server.ErrorLog = g.ErrorLog
+func (app *App) Listen(addr string) error {
+	app.Server.Addr = addr
+	app.Server.Handler = app.toServeHandler()
+	if app.ErrorLog != nil {
+		app.Server.ErrorLog = app.ErrorLog
 	}
-	return g.Server.ListenAndServe()
+	return app.Server.ListenAndServe()
 }
 
 // ListenTLS starts the HTTPS server.
-func (g *Gear) ListenTLS(addr, certFile, keyFile string) error {
-	g.Server.Addr = addr
-	g.Server.Handler = g.toServeHandler()
-	if g.ErrorLog != nil {
-		g.Server.ErrorLog = g.ErrorLog
+func (app *App) ListenTLS(addr, certFile, keyFile string) error {
+	app.Server.Addr = addr
+	app.Server.Handler = app.toServeHandler()
+	if app.ErrorLog != nil {
+		app.Server.ErrorLog = app.ErrorLog
 	}
-	return g.Server.ListenAndServeTLS(certFile, keyFile)
+	return app.Server.ListenAndServeTLS(certFile, keyFile)
 }
 
 // Start starts a non-blocking app instance. It is useful for testing.
 // If addr omit, the app will listen on a random addr, use ServerListener.Addr() to get it.
 // The non-blocking app instance must close by ServerListener.Close().
-func (g *Gear) Start(addr ...string) *ServerListener {
+func (app *App) Start(addr ...string) *ServerListener {
 	laddr := "127.0.0.1:0"
 	if len(addr) > 0 && addr[0] != "" {
 		laddr = addr[0]
 	}
-	g.Server.Handler = g.toServeHandler()
-	if g.ErrorLog != nil {
-		g.Server.ErrorLog = g.ErrorLog
+	app.Server.Handler = app.toServeHandler()
+	if app.ErrorLog != nil {
+		app.Server.ErrorLog = app.ErrorLog
 	}
 
 	l, err := net.Listen("tcp", laddr)
@@ -271,16 +271,16 @@ func (g *Gear) Start(addr ...string) *ServerListener {
 
 	c := make(chan error)
 	go func() {
-		c <- g.Server.Serve(l)
+		c <- app.Server.Serve(l)
 	}()
 	return &ServerListener{l, c}
 }
 
 // Error writes error to underlayer logging system (ErrorLog).
-func (g *Gear) Error(err error) {
+func (app *App) Error(err error) {
 	if !isNil(err) {
-		if g.ErrorLog != nil {
-			g.ErrorLog.Println(err)
+		if app.ErrorLog != nil {
+			app.ErrorLog.Println(err)
 		} else {
 			log.Println(err)
 		}
@@ -288,7 +288,7 @@ func (g *Gear) Error(err error) {
 }
 
 type serveHandler struct {
-	app        *Gear
+	app        *App
 	middleware []Middleware
 }
 

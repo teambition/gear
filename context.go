@@ -28,7 +28,7 @@ type Any interface {
 type Context struct {
 	ctx       context.Context
 	cancelCtx context.CancelFunc
-	app       *Gear
+	app       *App
 
 	Req        *http.Request
 	Res        *Response
@@ -43,16 +43,16 @@ type Context struct {
 	mu         sync.Mutex
 }
 
-// NewContext creates an instance of Context. It is useful for testing a middleware.
-func NewContext(g *Gear, w http.ResponseWriter, req *http.Request) *Context {
-	ctx := &Context{app: g, Res: &Response{}}
+// NewContext creates an instance of Context. Export for testing middleware.
+func NewContext(app *App, w http.ResponseWriter, req *http.Request) *Context {
+	ctx := &Context{app: app, Res: &Response{}}
 	ctx.Res.ctx = ctx
 	ctx.reset(w, req)
 	return ctx
 }
 
-func newContext(g *Gear) *Context {
-	ctx := &Context{app: g, Res: &Response{}}
+func newContext(app *App) *Context {
+	ctx := &Context{app: app, Res: &Response{}}
 	ctx.Res.ctx = ctx
 	return ctx
 }
