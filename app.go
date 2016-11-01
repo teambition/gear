@@ -14,7 +14,7 @@ import (
 )
 
 // Version is Gear's version
-const Version = "v0.10.0"
+const Version = "v0.11.0"
 
 // MIME types
 const (

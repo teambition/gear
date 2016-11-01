@@ -34,7 +34,7 @@ func ViewHello(ctx *gear.Context) error {
 func main() {
 	app := gear.New()
 	// Add app middleware
-	logger := &middleware.DefaultLogger{Writer: os.Stdout}
+	logger := &middleware.DefaultLogger{W: os.Stdout}
 	app.Use(middleware.NewLogger(logger))
 
 	router := gear.NewRouter("", true)
@@ -145,7 +145,7 @@ type Hook func(*Context)
 ```go
 ctx.After(hook gear.Hook)
 ```
-Add one or more "after hook" to current request process. They will run after middleware process(means context process `ended`, `ctx.IsEnded() == true`), and before `Response.WriteHeader`. If some middleware return `error`, the middleware process will stop, all "after hooks" will be clear and not run.
+Add one or more "after hook" to current request process. They will run after middleware process(means context process `ended`), and before `Response.WriteHeader`. If some middleware return `error`, the middleware process will stop, all "after hooks" will be clear and not run.
 
 ```go
 ctx.OnEnd(hook gear.Hook)
@@ -156,12 +156,10 @@ Here is example using "end hook" in Logger middleware.
 ```go
 func NewLogger(logger Logger) gear.Middleware {
 	return func(ctx *gear.Context) error {
-		log := middleware.Log{}
-		ctx.SetAny(logger, log)
-		logger.InitLog(log, ctx)
-
 		// Add a "end hook" to flush logs.
 		ctx.OnEnd(func(ctx *gear.Context) {
+			log := logger.FromCtx(ctx)
+
 			log["Status"] = ctx.Res.Status
 			log["Length"] = len(ctx.Res.Body)
 			logger.WriteLog(log)

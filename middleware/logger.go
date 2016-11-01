@@ -15,7 +15,12 @@ type Log map[string]interface{}
 
 // Logger is a interface for logging. See DefaultLogger.
 type Logger interface {
-	InitLog(Log, *gear.Context)
+	// FromCtx retrieve the log instance from the ctx with ctx.Any.
+	// if log instance not exists, FromCtx should create one and save it to the ctx with ctx.SetAny.
+	// Here also some initialization work run after created. See DefaultLogger.
+	FromCtx(*gear.Context) Log
+
+	// WriteLog will be called on a "end hook". WriteLog should write the log to underlayer logging system.
 	WriteLog(Log)
 }
 
@@ -26,15 +31,22 @@ type Logger interface {
 //  	W io.Writer
 //  }
 //
-//  func (l *myLogger) InitLog(log middleware.Log, ctx *gear.Context) {
+//  func (logger *myLogger) FromCtx(ctx *gear.Context) Log {
+//  	if any, err := ctx.Any(logger); err == nil {
+//  		return any.(Log)
+//  	}
+//  	log := Log{}
+//  	ctx.SetAny(logger, log)
+//
 //  	log["IP"] = ctx.IP()
 //  	log["Method"] = ctx.Method
 //  	log["URL"] = ctx.Req.URL.String()
 //  	log["Start"] = time.Now()
 //  	log["UserAgent"] = ctx.Get(gear.HeaderUserAgent)
+//  	return log
 //  }
 //
-//  func (l *myLogger) WriteLog(log middleware.Log) {
+//  func (logger *myLogger) WriteLog(log middleware.Log) {
 //  	// Format: ":Date INFO :JSONString"
 //  	end := time.Now()
 //  	info := map[string]interface{}{
@@ -57,26 +69,33 @@ type Logger interface {
 //  	}
 //  	// Don't block current process.
 //  	go func() {
-//  		if _, err := fmt.Fprintln(l.W, str); err != nil {
+//  		if _, err := fmt.Fprintln(logger.W, str); err != nil {
 //  			panic(err)
 //  		}
 //  	}()
 //  }
 //
 type DefaultLogger struct {
-	Writer io.Writer
+	W io.Writer
 }
 
-// InitLog implements Logger interface
-func (d *DefaultLogger) InitLog(log Log, ctx *gear.Context) {
+// FromCtx implements Logger interface
+func (logger *DefaultLogger) FromCtx(ctx *gear.Context) Log {
+	if any, err := ctx.Any(logger); err == nil {
+		return any.(Log)
+	}
+	log := Log{}
+	ctx.SetAny(logger, log)
+
 	log["IP"] = ctx.IP()
 	log["Method"] = ctx.Method
 	log["URL"] = ctx.Req.URL.String()
 	log["Start"] = time.Now()
+	return log
 }
 
 // WriteLog implements Logger interface
-func (d *DefaultLogger) WriteLog(log Log) {
+func (logger *DefaultLogger) WriteLog(log Log) {
 	// Tiny format: "Method Url Status Content-Length - Response-time ms"
 	str := fmt.Sprintf("%s %s %s %d - %.3f ms",
 		ColorMethod(log["Method"].(string)),
@@ -87,23 +106,19 @@ func (d *DefaultLogger) WriteLog(log Log) {
 	)
 	// Don't block current process.
 	go func() {
-		if _, err := fmt.Fprintln(d.Writer, str); err != nil {
+		if _, err := fmt.Fprintln(logger.W, str); err != nil {
 			panic(err)
 		}
 	}()
 }
 
-// NewLogger creates a logger middleware with os.Stdout.
+// NewLogger creates a middleware with a Logger instance.
 //
 //  app := gear.New()
 //  logger := &myLogger{os.Stdout}
 //  app.Use(middleware.NewLogger(logger))
 //  app.Use(func(ctx *gear.Context) error {
-//  	any, err := ctx.Any(logger)
-//  	if err != nil {
-//  		return err
-//  	}
-//  	log := any.(middleware.Log) // Retrieve the log
+//  	log := logger.FromCtx(ctx)
 //  	log["Data"] = []int{1, 2, 3}
 //  	return ctx.HTML(200, "OK")
 //  })
@@ -114,12 +129,10 @@ func (d *DefaultLogger) WriteLog(log Log) {
 //
 func NewLogger(logger Logger) gear.Middleware {
 	return func(ctx *gear.Context) error {
-		log := Log{}
-		ctx.SetAny(logger, log)
-		logger.InitLog(log, ctx)
-
 		// Add a "end hook" to flush logs.
 		ctx.OnEnd(func(ctx *gear.Context) {
+			log := logger.FromCtx(ctx)
+
 			log["Status"] = ctx.Res.Status
 			log["Length"] = len(ctx.Res.Body)
 			logger.WriteLog(log)

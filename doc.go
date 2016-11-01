@@ -19,7 +19,7 @@ Example:
 		app := gear.New()
 
 		// Use a default logger middleware
-		logger := &middleware.DefaultLogger{Writer: os.Stdout}
+		logger := &middleware.DefaultLogger{W: os.Stdout}
 		app.Use(middleware.NewLogger(logger))
 
 		// Add a static middleware

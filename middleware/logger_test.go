@@ -17,15 +17,22 @@ type testLogger struct {
 	W io.Writer
 }
 
-func (l *testLogger) InitLog(log Log, ctx *gear.Context) {
+func (logger *testLogger) FromCtx(ctx *gear.Context) Log {
+	if any, err := ctx.Any(logger); err == nil {
+		return any.(Log)
+	}
+	log := Log{}
+	ctx.SetAny(logger, log)
+
 	log["IP"] = ctx.IP()
 	log["Method"] = ctx.Method
 	log["URL"] = ctx.Req.URL.String()
 	log["Start"] = time.Now()
 	log["UserAgent"] = ctx.Get(gear.HeaderUserAgent)
+	return log
 }
 
-func (l *testLogger) WriteLog(log Log) {
+func (logger *testLogger) WriteLog(log Log) {
 	// Format: ":Date INFO :JSONString"
 	end := time.Now()
 	info := map[string]interface{}{
@@ -48,7 +55,7 @@ func (l *testLogger) WriteLog(log Log) {
 	}
 	// Don't block current process.
 	go func() {
-		if _, err := fmt.Fprintln(l.W, str); err != nil {
+		if _, err := fmt.Fprintln(logger.W, str); err != nil {
 			panic(err)
 		}
 	}()
@@ -61,11 +68,7 @@ func TestGearLogger(t *testing.T) {
 		logger := &testLogger{&buf}
 		app.Use(NewLogger(logger))
 		app.Use(func(ctx *gear.Context) error {
-			any, err := ctx.Any(logger)
-			if err != nil {
-				return err
-			}
-			log := any.(Log)
+			log := logger.FromCtx(ctx)
 			log["Data"] = []int{1, 2, 3}
 			return ctx.HTML(200, "OK")
 		})
@@ -97,11 +100,7 @@ func TestGearLogger(t *testing.T) {
 		app.ErrorLog = log.New(&errbuf, "TEST: ", 0)
 		app.Use(NewLogger(logger))
 		app.Use(func(ctx *gear.Context) (err error) {
-			any, err := ctx.Any(logger)
-			if err != nil {
-				return err
-			}
-			log := any.(Log)
+			log := logger.FromCtx(ctx)
 			log["Data"] = map[string]interface{}{"a": 0}
 			panic("Some error")
 		})
