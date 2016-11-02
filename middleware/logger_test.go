@@ -96,8 +96,9 @@ func TestGearLogger(t *testing.T) {
 		var errbuf bytes.Buffer
 
 		app := gear.New()
+		app.Set("AppLogger", log.New(&errbuf, "TEST: ", 0))
+
 		logger := &testLogger{&buf}
-		app.ErrorLog = log.New(&errbuf, "TEST: ", 0)
 		app.Use(NewLogger(logger))
 		app.Use(func(ctx *gear.Context) (err error) {
 			log := logger.FromCtx(ctx)

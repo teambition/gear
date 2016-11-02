@@ -189,6 +189,19 @@ func (ctx *Context) SetAny(key, val interface{}) {
 	ctx.kv[key] = val
 }
 
+// Setting returns App's settings by key
+//
+//  fmt.Println(ctx.Setting("AppEnv").(string) == "development")
+//  app.Set("AppEnv", "production")
+//  fmt.Println(ctx.Setting("AppEnv").(string) == "development")
+//
+func (ctx *Context) Setting(key string) interface{} {
+	if val, ok := ctx.app.settings[key]; ok {
+		return val
+	}
+	return nil
+}
+
 // IP returns the client's network address based on `X-Forwarded-For`
 // or `X-Real-IP` request header.
 func (ctx *Context) IP() string {
@@ -358,11 +371,11 @@ func (ctx *Context) XMLBlob(code int, buf []byte) error {
 // "after hooks" (if no error) and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) Render(code int, name string, data interface{}) (err error) {
-	if ctx.app.Renderer == nil {
+	if ctx.app.renderer == nil {
 		return NewAppError("renderer not registered")
 	}
 	buf := new(bytes.Buffer)
-	if err = ctx.app.Renderer.Render(ctx, buf, name, data); err == nil {
+	if err = ctx.app.renderer.Render(ctx, buf, name, data); err == nil {
 		ctx.Type("html")
 		return ctx.End(code, buf.Bytes())
 	}

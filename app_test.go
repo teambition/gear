@@ -59,16 +59,21 @@ func TestGearAppHello(t *testing.T) {
 	res.Body.Close()
 }
 
+type testOnError struct{}
+
+// OnError implemented OnError interface.
+func (o *testOnError) OnError(ctx *Context, err error) *Error {
+	ctx.Type("html")
+	return ParseError(err, 501)
+}
+
 func TestGearError(t *testing.T) {
 	t.Run("ErrorLog and OnError", func(t *testing.T) {
 		var buf bytes.Buffer
 
 		app := New()
-		app.ErrorLog = log.New(&buf, "TEST: ", 0)
-		app.OnError = func(ctx *Context, err error) *Error {
-			ctx.Type("html")
-			return ParseError(err, 501)
-		}
+		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
+		app.Set("AppOnError", &testOnError{})
 
 		app.Use(func(ctx *Context) error {
 			return errors.New("Some error")
@@ -90,11 +95,8 @@ func TestGearError(t *testing.T) {
 		var buf bytes.Buffer
 
 		app := New()
-		app.ErrorLog = log.New(&buf, "TEST: ", 0)
-		app.OnError = func(ctx *Context, err error) *Error {
-			ctx.Type("html")
-			return ParseError(err, 501)
-		}
+		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
+		app.Set("AppOnError", &testOnError{})
 
 		app.Use(func(ctx *Context) error {
 			var err *Error
@@ -118,7 +120,7 @@ func TestGearError(t *testing.T) {
 		var buf bytes.Buffer
 
 		app := New()
-		app.ErrorLog = log.New(&buf, "TEST: ", 0)
+		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
 		app.Use(func(ctx *Context) error {
 			ctx.Status(400)
 			panic("Some error")

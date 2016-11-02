@@ -89,17 +89,31 @@ type Renderer interface {
 	Render(*Context, io.Writer, string, interface{}) error
 }
 
-// HTTPError interface is used to create a server error that include status code and error message.
-type HTTPError interface {
-	Error() string
-	Status() int
+// OnError interface is use to deal with ctx error.
+type OnError interface {
+	OnError(*Context, error) *Error
 }
 
-// Hook defines a function to process as hook.
-type Hook func(*Context)
+// DefaultOnError is default ctx error handler.
+type DefaultOnError struct{}
 
-// Middleware defines a function to process as middleware.
-type Middleware func(*Context) error
+// OnError implemented OnError interface.
+func (o *DefaultOnError) OnError(ctx *Context, err error) *Error {
+	var code int
+	if ctx.Res.Status >= 400 {
+		code = ctx.Res.Status
+	}
+	return ParseError(err, code)
+}
+
+// HTTPError interface is used to create a server error that include status code and error message.
+type HTTPError interface {
+	// Error returns error's message.
+	Error() string
+
+	// Status returns error's http status code.
+	Status() int
+}
 
 // Error represents a numeric error with optional meta. It can be used in middleware as a return result.
 type Error struct {
@@ -108,14 +122,21 @@ type Error struct {
 	Meta interface{}
 }
 
-// Status return error's http status code.
+// Status implemented HTTPError interface.
 func (err *Error) Status() int {
 	return err.Code
 }
 
+// Error implemented HTTPError interface.
 func (err *Error) Error() string {
 	return err.Msg
 }
+
+// Hook defines a function to process as hook.
+type Hook func(*Context)
+
+// Middleware defines a function to process as middleware.
+type Middleware func(*Context) error
 
 // NewAppError create a error instance with "[App] " prefix.
 func NewAppError(err string) error {
@@ -184,16 +205,16 @@ func (s *ServerListener) Wait() error {
 //  }
 //
 type App struct {
-	middleware []Middleware
 	pool       sync.Pool
+	middleware []Middleware
+	settings   map[string]interface{}
 
-	// OnError is default ctx error handler.
-	// Override it for yourself.
-	OnError  func(*Context, error) *Error
-	Renderer Renderer
+	onerror  OnError
+	renderer Renderer
 	// ErrorLog specifies an optional logger for app's errors. Default to nil
-	ErrorLog *log.Logger
-	Server   *http.Server
+	logger *log.Logger
+
+	Server *http.Server
 }
 
 // New creates an instance of App.
@@ -201,16 +222,12 @@ func New() *App {
 	app := new(App)
 	app.Server = new(http.Server)
 	app.middleware = make([]Middleware, 0)
+	app.settings = make(map[string]interface{})
 	app.pool.New = func() interface{} {
 		return newContext(app)
 	}
-	app.OnError = func(ctx *Context, err error) *Error {
-		var code int
-		if ctx.Res.Status >= 400 {
-			code = ctx.Res.Status
-		}
-		return ParseError(err, code)
-	}
+	app.Set("AppOnError", &DefaultOnError{})
+	app.Set("AppEnv", "development")
 	return app
 }
 
@@ -231,12 +248,48 @@ func (app *App) UseHandler(h Handler) {
 	app.middleware = append(app.middleware, h.Serve)
 }
 
+// Set add app settings. The settings can be retrieved by ctx.Setting.
+// There are 4 build-in app settings:
+//
+// 1. app.Set("AppOnError", gear.OnError), default to gear.DefaultOnError
+// 2. app.Set("AppRenderer", gear.Renderer), no default
+// 3. app.Set("AppLogger", *log.Logger), no default
+// 4. app.Set("AppEnv", string), default to "development"
+//
+func (app *App) Set(setting string, val interface{}) {
+	switch setting {
+	case "AppOnError":
+		if onerror, ok := val.(OnError); !ok {
+			panic("AppOnError setting must implemented gear.OnError interface")
+		} else {
+			app.onerror = onerror
+		}
+	case "AppRenderer":
+		if renderer, ok := val.(Renderer); !ok {
+			panic("AppRenderer setting must implemented gear.Renderer interface")
+		} else {
+			app.renderer = renderer
+		}
+	case "AppLogger":
+		if logger, ok := val.(*log.Logger); !ok {
+			panic("AppLogger setting must be *log.Logger instance")
+		} else {
+			app.logger = logger
+		}
+	case "AppEnv":
+		if _, ok := val.(string); !ok {
+			panic("AppEnv setting must be string")
+		}
+	}
+	app.settings[setting] = val
+}
+
 // Listen starts the HTTP server.
 func (app *App) Listen(addr string) error {
 	app.Server.Addr = addr
 	app.Server.Handler = app.toServeHandler()
-	if app.ErrorLog != nil {
-		app.Server.ErrorLog = app.ErrorLog
+	if app.logger != nil {
+		app.Server.ErrorLog = app.logger
 	}
 	return app.Server.ListenAndServe()
 }
@@ -245,8 +298,8 @@ func (app *App) Listen(addr string) error {
 func (app *App) ListenTLS(addr, certFile, keyFile string) error {
 	app.Server.Addr = addr
 	app.Server.Handler = app.toServeHandler()
-	if app.ErrorLog != nil {
-		app.Server.ErrorLog = app.ErrorLog
+	if app.logger != nil {
+		app.Server.ErrorLog = app.logger
 	}
 	return app.Server.ListenAndServeTLS(certFile, keyFile)
 }
@@ -260,8 +313,8 @@ func (app *App) Start(addr ...string) *ServerListener {
 		laddr = addr[0]
 	}
 	app.Server.Handler = app.toServeHandler()
-	if app.ErrorLog != nil {
-		app.Server.ErrorLog = app.ErrorLog
+	if app.logger != nil {
+		app.Server.ErrorLog = app.logger
 	}
 
 	l, err := net.Listen("tcp", laddr)
@@ -279,8 +332,8 @@ func (app *App) Start(addr ...string) *ServerListener {
 // Error writes error to underlayer logging system (ErrorLog).
 func (app *App) Error(err error) {
 	if !isNil(err) {
-		if app.ErrorLog != nil {
-			app.ErrorLog.Println(err)
+		if app.logger != nil {
+			app.logger.Println(err)
 		} else {
 			log.Println(err)
 		}
@@ -325,7 +378,7 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx.Type("text")     // reset Content-Type, but you can set it in OnError again.
 		ctx.afterHooks = nil // clear afterHooks when error
 		// process middleware error with OnError
-		if ctxErr := h.app.OnError(ctx, err); ctxErr != nil {
+		if ctxErr := h.app.onerror.OnError(ctx, err); ctxErr != nil {
 			ctx.Status(ctxErr.Status())
 			// 5xx Server Error will send to app.Error
 			if ctx.Res.Status >= 500 {
