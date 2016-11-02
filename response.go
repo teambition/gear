@@ -7,24 +7,16 @@ import "net/http"
 type Response struct {
 	ctx         *Context
 	res         http.ResponseWriter
-	Status      int         // response Status
-	Type        string      // response Content-Type
-	Body        []byte      // response Content
-	header      http.Header // response Header
 	wroteHeader bool
+	header      http.Header // response Header
+
+	Status int    // response Status
+	Type   string // response Content-Type
+	Body   []byte // response Content
 }
 
-func (r *Response) reset(w http.ResponseWriter) {
-	r.res = w
-	r.Type = ""
-	r.Body = nil
-	r.Status = 500
-	r.wroteHeader = false
-	if w != nil {
-		r.header = w.Header()
-	} else {
-		r.header = nil
-	}
+func newResponse(ctx *Context, w http.ResponseWriter) *Response {
+	return &Response{ctx: ctx, res: w, header: w.Header(), Status: 500}
 }
 
 // Add adds the key, value pair to the header. It appends to any existing values associated with key.

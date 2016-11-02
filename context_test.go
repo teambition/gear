@@ -98,4 +98,9 @@ func TestGearContextAny(t *testing.T) {
 		require.Nil(t, err)
 		require.True(t, val.(bool))
 	})
+
+	t.Run("Setting", func(t *testing.T) {
+		ctx := NewCtx(app, "POST", "http://example.com/foo", nil)
+		require.Equal(t, "development", ctx.Ctx.Setting("AppEnv").(string))
+	})
 }

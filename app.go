@@ -10,11 +10,10 @@ import (
 	"net/textproto"
 	"reflect"
 	"strings"
-	"sync"
 )
 
 // Version is Gear's version
-const Version = "v0.11.0"
+const Version = "v0.12.0"
 
 // MIME types
 const (
@@ -205,7 +204,6 @@ func (s *ServerListener) Wait() error {
 //  }
 //
 type App struct {
-	pool       sync.Pool
 	middleware []Middleware
 	settings   map[string]interface{}
 
@@ -223,9 +221,6 @@ func New() *App {
 	app.Server = new(http.Server)
 	app.middleware = make([]Middleware, 0)
 	app.settings = make(map[string]interface{})
-	app.pool.New = func() interface{} {
-		return newContext(app)
-	}
 	app.Set("AppOnError", &DefaultOnError{})
 	app.Set("AppEnv", "development")
 	return app
@@ -251,10 +246,10 @@ func (app *App) UseHandler(h Handler) {
 // Set add app settings. The settings can be retrieved by ctx.Setting.
 // There are 4 build-in app settings:
 //
-// 1. app.Set("AppOnError", gear.OnError), default to gear.DefaultOnError
-// 2. app.Set("AppRenderer", gear.Renderer), no default
-// 3. app.Set("AppLogger", *log.Logger), no default
-// 4. app.Set("AppEnv", string), default to "development"
+//  app.Set("AppOnError", gear.OnError)   // default to gear.DefaultOnError
+//  app.Set("AppRenderer", gear.Renderer) // no default
+//  app.Set("AppLogger", *log.Logger)     // no default
+//  app.Set("AppEnv", string)             // default to "development"
 //
 func (app *App) Set(setting string, val interface{}) {
 	switch setting {
@@ -347,10 +342,8 @@ type serveHandler struct {
 
 func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
-	ctx := h.app.pool.Get().(*Context)
-	ctx.reset(w, r)
-
-	// reuse Context instance, recover panic error
+	ctx := NewContext(h.app, w, r)
+	// recover panic error
 	defer func() {
 		if err := recover(); err != nil {
 			httprequest, _ := httputil.DumpRequest(ctx.Req, false)
@@ -358,8 +351,12 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.app.Error(fmt.Errorf("panic recovered: %s; %s",
 				err, strings.Replace(string(httprequest), "\n", "\\n", -1)))
 		}
-		ctx.reset(nil, nil)
-		h.app.pool.Put(ctx)
+	}()
+
+	go func() {
+		<-ctx.Done()
+		// cancel middleware process if request context canceled
+		ctx.ended = true
 	}()
 
 	// process app middleware

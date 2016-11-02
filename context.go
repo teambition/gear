@@ -26,55 +26,35 @@ type Any interface {
 // Context represents the context of the current HTTP request. It holds request and
 // response objects, path, path parameters, data, registered handler and content.Context.
 type Context struct {
-	ctx       context.Context
-	cancelCtx context.CancelFunc
-	app       *App
+	app *App
+	Req *http.Request
+	Res *Response
 
-	Req        *http.Request
-	Res        *Response
-	Host       string
-	Method     string
-	Path       string
+	Host   string
+	Method string
+	Path   string
+
 	ended      bool // indicate that app middlewares run out.
 	query      url.Values
-	kv         map[interface{}]interface{}
 	afterHooks []Hook
 	endHooks   []Hook
+	ctx        context.Context
+	cancelCtx  context.CancelFunc
+	kv         map[interface{}]interface{}
 	mu         sync.Mutex
 }
 
 // NewContext creates an instance of Context. Export for testing middleware.
 func NewContext(app *App, w http.ResponseWriter, req *http.Request) *Context {
-	ctx := &Context{app: app, Res: &Response{}}
-	ctx.Res.ctx = ctx
-	ctx.reset(w, req)
-	return ctx
-}
+	ctx := &Context{app: app, Req: req}
+	ctx.Res = newResponse(ctx, w)
 
-func newContext(app *App) *Context {
-	ctx := &Context{app: app, Res: &Response{}}
-	ctx.Res.ctx = ctx
+	ctx.Host = req.Host
+	ctx.Method = req.Method
+	ctx.Path = normalizePath(req.URL.Path) // fix "/abc//ef" to "/abc/ef"
+	ctx.kv = make(map[interface{}]interface{})
+	ctx.ctx, ctx.cancelCtx = context.WithCancel(req.Context())
 	return ctx
-}
-
-func (ctx *Context) reset(w http.ResponseWriter, req *http.Request) {
-	ctx.Req = req
-	ctx.Res.reset(w)
-	ctx.ended = false
-	if w == nil {
-		ctx.ctx = nil
-		ctx.kv = nil
-		ctx.query = nil
-		ctx.afterHooks = nil
-		ctx.endHooks = nil
-		ctx.cancelCtx = nil
-	} else {
-		ctx.Host = req.Host
-		ctx.Method = req.Method
-		ctx.Path = normalizePath(req.URL.Path) // fix "/abc//ef" to "/abc/ef"
-		ctx.kv = make(map[interface{}]interface{})
-		ctx.ctx, ctx.cancelCtx = context.WithCancel(req.Context())
-	}
 }
 
 // ----- implement context.Context interface ----- //
@@ -193,7 +173,7 @@ func (ctx *Context) SetAny(key, val interface{}) {
 //
 //  fmt.Println(ctx.Setting("AppEnv").(string) == "development")
 //  app.Set("AppEnv", "production")
-//  fmt.Println(ctx.Setting("AppEnv").(string) == "development")
+//  fmt.Println(ctx.Setting("AppEnv").(string) == "production")
 //
 func (ctx *Context) Setting(key string) interface{} {
 	if val, ok := ctx.app.settings[key]; ok {
