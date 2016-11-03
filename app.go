@@ -14,7 +14,7 @@ import (
 )
 
 // Version is Gear's version
-const Version = "v0.12.0"
+const Version = "v0.13.0"
 
 // MIME types
 const (
@@ -62,6 +62,7 @@ const (
 	HeaderXRealIP                       = "X-Real-IP"
 	HeaderServer                        = "Server"
 	HeaderOrigin                        = "Origin"
+	HeaderTransferEncoding              = "Transfer-Encoding"
 	HeaderAccessControlRequestMethod    = "Access-Control-Request-Method"
 	HeaderAccessControlRequestHeaders   = "Access-Control-Request-Headers"
 	HeaderAccessControlAllowOrigin      = "Access-Control-Allow-Origin"
@@ -104,6 +105,12 @@ func (o *DefaultOnError) OnError(ctx *Context, err error) *Error {
 		code = ctx.Res.Status
 	}
 	return ParseError(err, code)
+}
+
+// DefaultCompressFilter is the default compress type filter which
+// will alway return true.
+func DefaultCompressFilter(_ string) bool {
+	return true
 }
 
 // HTTPError interface is used to create a server error that include status code and error message.
@@ -189,6 +196,12 @@ type App struct {
 
 	onerror  OnError
 	renderer Renderer
+	// Compress enables the response compression
+	compress bool
+	// CompressFilter checks the response content type to decide whether
+	// to compress.
+	compressFilter func(string) bool
+
 	// ErrorLog specifies an optional logger for app's errors. Default to nil
 	logger *log.Logger
 
@@ -205,6 +218,8 @@ func New() *App {
 	app.Set("AppEnv", "development")
 	app.Set("AppOnError", &DefaultOnError{})
 	app.Set("AppLogger", log.New(os.Stderr, "", log.LstdFlags))
+	app.Set("AppCompressFilter", DefaultCompressFilter)
+
 	return app
 }
 
@@ -252,6 +267,18 @@ func (app *App) Set(setting string, val interface{}) {
 			panic("AppLogger setting must be *log.Logger instance")
 		} else {
 			app.logger = logger
+		}
+	case "AppCompress":
+		if compress, ok := val.(bool); !ok {
+			panic("AppCompress setting must be bool")
+		} else {
+			app.compress = compress
+		}
+	case "AppCompressFilter":
+		if compressFilter, ok := val.(func(string) bool); !ok {
+			panic("AppCompressFilter setting must be func(string) bool")
+		} else {
+			app.compressFilter = compressFilter
 		}
 	case "AppEnv":
 		if _, ok := val.(string); !ok {
@@ -315,6 +342,11 @@ type serveHandler struct {
 func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	ctx := NewContext(h.app, w, r)
+
+	if ok, writer := ctx.handleCompress(); ok {
+		defer writer.Close()
+	}
+
 	// recover panic error
 	defer func() {
 		if err := recover(); err != nil {
