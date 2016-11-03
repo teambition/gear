@@ -4,11 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 	"github.com/teambition/gear"
 )
 
 func TestGearMiddlewareTimeout(t *testing.T) {
+	assert := assert.New(t)
+
 	app := gear.New()
 	req := NewRequst()
 
@@ -23,7 +25,7 @@ func TestGearMiddlewareTimeout(t *testing.T) {
 		case <-ctx.Done(): // this case will always reached
 		case <-c.Done(): // this case maybe reached... but elapsed time should be 1 sec.
 		}
-		require.True(t, time.Now().Sub(ts) > time.Millisecond*100)
+		assert.True(time.Now().Sub(ts) > time.Millisecond*100)
 		return nil
 	})
 	app.Use(func(ctx *gear.Context) error {
@@ -33,8 +35,8 @@ func TestGearMiddlewareTimeout(t *testing.T) {
 	defer srv.Close()
 
 	res, err := req.Get("http://" + srv.Addr().String())
-	require.Nil(t, err)
-	require.Equal(t, 504, res.StatusCode)
-	require.Equal(t, "Service timeout", PickRes(res.Text()).(string))
+	assert.Nil(err)
+	assert.Equal(504, res.StatusCode)
+	assert.Equal("Service timeout", PickRes(res.Text()).(string))
 	res.Body.Close()
 }

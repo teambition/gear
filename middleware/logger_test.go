@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 	"github.com/teambition/gear"
 )
 
@@ -63,6 +63,8 @@ func (logger *testLogger) WriteLog(log Log) {
 
 func TestGearLogger(t *testing.T) {
 	t.Run("Simple log", func(t *testing.T) {
+		assert := assert.New(t)
+
 		var buf bytes.Buffer
 		app := gear.New()
 		logger := &testLogger{&buf}
@@ -77,21 +79,23 @@ func TestGearLogger(t *testing.T) {
 
 		req := NewRequst()
 		res, err := req.Get("http://" + srv.Addr().String())
-		require.Nil(t, err)
-		require.Equal(t, 200, res.StatusCode)
-		require.Equal(t, "text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		log := buf.String()
 		fmt.Println(log)
-		require.Contains(t, log, time.Now().Format(time.RFC3339)[0:19])
-		require.Contains(t, log, " INFO ")
-		require.Contains(t, log, `"Data":[1,2,3]`)
-		require.Contains(t, log, `"Method":"GET"`)
-		require.Contains(t, log, `"Status":200`)
-		require.Contains(t, log, `"UserAgent":`)
+		assert.Contains(log, time.Now().Format(time.RFC3339)[0:19])
+		assert.Contains(log, " INFO ")
+		assert.Contains(log, `"Data":[1,2,3]`)
+		assert.Contains(log, `"Method":"GET"`)
+		assert.Contains(log, `"Status":200`)
+		assert.Contains(log, `"UserAgent":`)
 		res.Body.Close()
 	})
 
 	t.Run("Work with panic", func(t *testing.T) {
+		assert := assert.New(t)
+
 		var buf bytes.Buffer
 		var errbuf bytes.Buffer
 
@@ -110,17 +114,17 @@ func TestGearLogger(t *testing.T) {
 
 		req := NewRequst()
 		res, err := req.Post("http://" + srv.Addr().String())
-		require.Nil(t, err)
-		require.Equal(t, 500, res.StatusCode)
-		require.Equal(t, "text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		log := buf.String()
-		require.Contains(t, log, time.Now().Format(time.RFC3339)[0:19])
-		require.Contains(t, log, " INFO ")
-		require.Contains(t, log, `"Data":{"a":0}`)
-		require.Contains(t, log, `"Method":"POST"`)
-		require.Contains(t, log, `"Status":500`)
-		require.Contains(t, log, `"UserAgent":`)
-		require.Contains(t, errbuf.String(), "Some error")
+		assert.Contains(log, time.Now().Format(time.RFC3339)[0:19])
+		assert.Contains(log, " INFO ")
+		assert.Contains(log, `"Data":{"a":0}`)
+		assert.Contains(log, `"Method":"POST"`)
+		assert.Contains(log, `"Status":500`)
+		assert.Contains(log, `"UserAgent":`)
+		assert.Contains(errbuf.String(), "Some error")
 		res.Body.Close()
 	})
 }

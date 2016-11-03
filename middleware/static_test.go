@@ -3,12 +3,12 @@ package middleware
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 	"github.com/teambition/gear"
 )
 
 func TestGearMiddlewareStatic(t *testing.T) {
-	require.Panics(t, func() {
+	assert.Panics(t, func() {
 		NewStatic(StaticOptions{
 			Root:        "../testdata1",
 			Prefix:      "/",
@@ -28,52 +28,64 @@ func TestGearMiddlewareStatic(t *testing.T) {
 	req := NewRequst()
 
 	t.Run("GET", func(t *testing.T) {
+		assert := assert.New(t)
+
 		res, err := req.Get("http://" + srv.Addr().String() + "/hello.html")
-		require.Nil(t, err)
-		require.Equal(t, 200, res.StatusCode)
-		require.Equal(t, "text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		res.Body.Close()
 	})
 
 	t.Run("HEAD", func(t *testing.T) {
+		assert := assert.New(t)
+
 		res, err := req.Head("http://" + srv.Addr().String() + "/hello.html")
-		require.Nil(t, err)
-		require.Equal(t, 200, res.StatusCode)
-		require.Equal(t, "text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		res.Body.Close()
 	})
 
 	t.Run("OPTIONS", func(t *testing.T) {
+		assert := assert.New(t)
+
 		res, err := req.Options("http://" + srv.Addr().String() + "/hello.html")
-		require.Nil(t, err)
-		require.Equal(t, 200, res.StatusCode)
-		require.Equal(t, "text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
-		require.Equal(t, "GET, HEAD, OPTIONS", res.Header.Get(gear.HeaderAllow))
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		assert.Equal("GET, HEAD, OPTIONS", res.Header.Get(gear.HeaderAllow))
 		res.Body.Close()
 	})
 
 	t.Run("Other method", func(t *testing.T) {
+		assert := assert.New(t)
+
 		res, err := req.Patch("http://" + srv.Addr().String() + "/hello.html")
-		require.Nil(t, err)
-		require.Equal(t, 405, res.StatusCode)
-		require.Equal(t, "text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
-		require.Equal(t, "GET, HEAD, OPTIONS", res.Header.Get(gear.HeaderAllow))
+		assert.Nil(err)
+		assert.Equal(405, res.StatusCode)
+		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		assert.Equal("GET, HEAD, OPTIONS", res.Header.Get(gear.HeaderAllow))
 		res.Body.Close()
 	})
 
 	t.Run("Other file", func(t *testing.T) {
+		assert := assert.New(t)
+
 		res, err := req.Get("http://" + srv.Addr().String() + "/favicon.ico")
-		require.Nil(t, err)
-		require.Equal(t, 200, res.StatusCode)
-		require.Equal(t, "image/x-icon", res.Header.Get(gear.HeaderContentType))
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("image/x-icon", res.Header.Get(gear.HeaderContentType))
 		res.Body.Close()
 	})
 
 	t.Run("404", func(t *testing.T) {
+		assert := assert.New(t)
+
 		res, err := req.Get("http://" + srv.Addr().String() + "/none.html")
-		require.Nil(t, err)
-		require.Equal(t, 404, res.StatusCode)
-		require.Equal(t, "text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		assert.Nil(err)
+		assert.Equal(404, res.StatusCode)
+		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		res.Body.Close()
 	})
 }

@@ -11,17 +11,17 @@ import (
 	"testing"
 
 	"github.com/mozillazg/request"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 // ----- Test Helpers -----
 
 func EqualPtr(t *testing.T, a, b interface{}) {
-	require.Equal(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
+	assert.Equal(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
 }
 
 func NotEqualPtr(t *testing.T, a, b interface{}) {
-	require.NotEqual(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
+	assert.NotEqual(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
 }
 
 func PickRes(res interface{}, err error) interface{} {
@@ -43,6 +43,7 @@ func NewRequst() *request.Request {
 // ----- Test App -----
 
 func TestGearAppHello(t *testing.T) {
+	assert := assert.New(t)
 	app := New()
 	app.Use(func(ctx *Context) error {
 		ctx.End(200, []byte("<h1>Hello!</h1>"))
@@ -53,9 +54,9 @@ func TestGearAppHello(t *testing.T) {
 
 	req := NewRequst()
 	res, err := req.Get("http://" + srv.Addr().String())
-	require.Nil(t, err)
-	require.Equal(t, 200, res.StatusCode)
-	require.Equal(t, "<h1>Hello!</h1>", PickRes(res.Text()).(string))
+	assert.Nil(err)
+	assert.Equal(200, res.StatusCode)
+	assert.Equal("<h1>Hello!</h1>", PickRes(res.Text()).(string))
 	res.Body.Close()
 }
 
@@ -69,8 +70,9 @@ func (o *testOnError) OnError(ctx *Context, err error) *Error {
 
 func TestGearError(t *testing.T) {
 	t.Run("ErrorLog and OnError", func(t *testing.T) {
-		var buf bytes.Buffer
+		assert := assert.New(t)
 
+		var buf bytes.Buffer
 		app := New()
 		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
 		app.Set("AppOnError", &testOnError{})
@@ -83,17 +85,18 @@ func TestGearError(t *testing.T) {
 
 		req := NewRequst()
 		res, err := req.Get("http://" + srv.Addr().String())
-		require.Nil(t, err)
-		require.Equal(t, 501, res.StatusCode)
-		require.Equal(t, "text/html; charset=utf-8", res.Header.Get(HeaderContentType))
-		require.Equal(t, "Some error", PickRes(res.Text()).(string))
-		require.Equal(t, "TEST: Some error\n", buf.String())
+		assert.Nil(err)
+		assert.Equal(501, res.StatusCode)
+		assert.Equal("text/html; charset=utf-8", res.Header.Get(HeaderContentType))
+		assert.Equal("Some error", PickRes(res.Text()).(string))
+		assert.Equal("TEST: Some error\n", buf.String())
 		res.Body.Close()
 	})
 
 	t.Run("return nil HTTPError", func(t *testing.T) {
-		var buf bytes.Buffer
+		assert := assert.New(t)
 
+		var buf bytes.Buffer
 		app := New()
 		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
 		app.Set("AppOnError", &testOnError{})
@@ -108,17 +111,18 @@ func TestGearError(t *testing.T) {
 
 		req := NewRequst()
 		res, err := req.Get("http://" + srv.Addr().String())
-		require.Nil(t, err)
-		require.Equal(t, 204, res.StatusCode)
-		require.Equal(t, "", res.Header.Get(HeaderContentType))
-		require.Equal(t, "", PickRes(res.Text()).(string))
-		require.Equal(t, "", buf.String())
+		assert.Nil(err)
+		assert.Equal(204, res.StatusCode)
+		assert.Equal("", res.Header.Get(HeaderContentType))
+		assert.Equal("", PickRes(res.Text()).(string))
+		assert.Equal("", buf.String())
 		res.Body.Close()
 	})
 
 	t.Run("panic recovered", func(t *testing.T) {
-		var buf bytes.Buffer
+		assert := assert.New(t)
 
+		var buf bytes.Buffer
 		app := New()
 		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
 		app.Use(func(ctx *Context) error {
@@ -130,14 +134,14 @@ func TestGearError(t *testing.T) {
 
 		req := NewRequst()
 		res, err := req.Get("http://" + srv.Addr().String())
-		require.Nil(t, err)
-		require.Equal(t, 500, res.StatusCode)
-		require.Equal(t, "Internal Server Error", PickRes(res.Text()).(string))
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal("Internal Server Error", PickRes(res.Text()).(string))
 
 		log := buf.String()
-		require.True(t, strings.Contains(log, "TEST: panic recovered")) // recovered title
-		require.True(t, strings.Contains(log, "GET /"))                 // http request content
-		require.True(t, strings.Contains(log, "Some error"))            // panic content
+		assert.True(strings.Contains(log, "TEST: panic recovered")) // recovered title
+		assert.True(strings.Contains(log, "GET /"))                 // http request content
+		assert.True(strings.Contains(log, "Some error"))            // panic content
 		res.Body.Close()
 	})
 }
@@ -172,29 +176,31 @@ func (e testHTTPError2) Status() int {
 
 func TestGearParseError(t *testing.T) {
 	t.Run("nil", func(t *testing.T) {
+		assert := assert.New(t)
+
 		var err0 error
 		err := ParseError(err0)
-		require.True(t, err == nil)
+		assert.True(err == nil)
 
 		var err1 *testHTTPError1
 		err = ParseError(err1)
-		require.True(t, err == nil)
+		assert.True(err == nil)
 
 		var err2 *testHTTPError2
 		err = ParseError(err2)
-		require.True(t, err == nil)
+		assert.True(err == nil)
 
 		var err3 *textproto.Error
 		err = ParseError(err3)
-		require.True(t, err == nil)
+		assert.True(err == nil)
 
 		var err4 *Error
 		err = ParseError(err4)
-		require.True(t, err == nil)
+		assert.True(err == nil)
 
 		var err5 HTTPError
 		err = ParseError(err5)
-		require.True(t, err == nil)
+		assert.True(err == nil)
 
 		err6 := func() error {
 			var e *testHTTPError1
@@ -202,13 +208,13 @@ func TestGearParseError(t *testing.T) {
 		}()
 		// fmt.Println(err6, err6 == nil) // <nil> false
 		err = ParseError(err6)
-		require.True(t, err == nil)
+		assert.True(err == nil)
 
 		err7 := func() *Error {
 			var e *Error
 			return e
 		}()
-		require.True(t, err7 == nil)
+		assert.True(err7 == nil)
 
 		err8 := func() HTTPError {
 			var e *testHTTPError1
@@ -216,7 +222,7 @@ func TestGearParseError(t *testing.T) {
 		}()
 		// fmt.Println(err8, err8 == nil) // <nil> false
 		err = ParseError(err8)
-		require.True(t, err == nil)
+		assert.True(err == nil)
 	})
 
 	t.Run("Error", func(t *testing.T) {
@@ -266,23 +272,25 @@ func TestGearParseError(t *testing.T) {
 	})
 
 	t.Run("error", func(t *testing.T) {
+		assert := assert.New(t)
+
 		err1 := errors.New("test")
 		err := ParseError(err1)
 		EqualPtr(t, err1, err.Meta)
-		require.Equal(t, err.Code, 500)
+		assert.Equal(err.Code, 500)
 
 		err2 := func() error {
 			return errors.New("test")
 		}()
 		err = ParseError(err2, 0)
 		EqualPtr(t, err2, err.Meta)
-		require.Equal(t, err.Code, 500)
+		assert.Equal(err.Code, 500)
 
 		err3 := func() error {
 			return errors.New("test")
 		}()
 		err = ParseError(err3, 400)
 		EqualPtr(t, err3, err.Meta)
-		require.Equal(t, err.Code, 400)
+		assert.Equal(err.Code, 400)
 	})
 }
