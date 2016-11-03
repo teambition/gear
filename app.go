@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/textproto"
+	"os"
 	"reflect"
 	"strings"
 )
@@ -165,27 +166,6 @@ func ParseError(e error, code ...int) *Error {
 	return err
 }
 
-// ServerListener is returned by a non-blocking app instance.
-type ServerListener struct {
-	l net.Listener
-	c <-chan error
-}
-
-// Close closes the non-blocking app instance.
-func (s *ServerListener) Close() error {
-	return s.l.Close()
-}
-
-// Addr returns the non-blocking app instance addr.
-func (s *ServerListener) Addr() net.Addr {
-	return s.l.Addr()
-}
-
-// Wait make the non-blocking app instance blocking.
-func (s *ServerListener) Wait() error {
-	return <-s.c
-}
-
 // App is the top-level framework app instance.
 //
 // Hello Gear!
@@ -221,8 +201,10 @@ func New() *App {
 	app.Server = new(http.Server)
 	app.middleware = make([]Middleware, 0)
 	app.settings = make(map[string]interface{})
-	app.Set("AppOnError", &DefaultOnError{})
+
 	app.Set("AppEnv", "development")
+	app.Set("AppOnError", &DefaultOnError{})
+	app.Set("AppLogger", log.New(os.Stderr, "", log.LstdFlags))
 	return app
 }
 
@@ -282,20 +264,16 @@ func (app *App) Set(setting string, val interface{}) {
 // Listen starts the HTTP server.
 func (app *App) Listen(addr string) error {
 	app.Server.Addr = addr
+	app.Server.ErrorLog = app.logger
 	app.Server.Handler = app.toServeHandler()
-	if app.logger != nil {
-		app.Server.ErrorLog = app.logger
-	}
 	return app.Server.ListenAndServe()
 }
 
 // ListenTLS starts the HTTPS server.
 func (app *App) ListenTLS(addr, certFile, keyFile string) error {
 	app.Server.Addr = addr
+	app.Server.ErrorLog = app.logger
 	app.Server.Handler = app.toServeHandler()
-	if app.logger != nil {
-		app.Server.ErrorLog = app.logger
-	}
 	return app.Server.ListenAndServeTLS(certFile, keyFile)
 }
 
@@ -307,10 +285,8 @@ func (app *App) Start(addr ...string) *ServerListener {
 	if len(addr) > 0 && addr[0] != "" {
 		laddr = addr[0]
 	}
+	app.Server.ErrorLog = app.logger
 	app.Server.Handler = app.toServeHandler()
-	if app.logger != nil {
-		app.Server.ErrorLog = app.logger
-	}
 
 	l, err := net.Listen("tcp", laddr)
 	if err != nil {
@@ -327,11 +303,7 @@ func (app *App) Start(addr ...string) *ServerListener {
 // Error writes error to underlayer logging system (ErrorLog).
 func (app *App) Error(err error) {
 	if !isNil(err) {
-		if app.logger != nil {
-			app.logger.Println(err)
-		} else {
-			log.Println(err)
-		}
+		app.logger.Println(err)
 	}
 }
 
@@ -387,6 +359,27 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// ensure respond
 	ctx.Res.respond()
+}
+
+// ServerListener is returned by a non-blocking app instance.
+type ServerListener struct {
+	l net.Listener
+	c <-chan error
+}
+
+// Close closes the non-blocking app instance.
+func (s *ServerListener) Close() error {
+	return s.l.Close()
+}
+
+// Addr returns the non-blocking app instance addr.
+func (s *ServerListener) Addr() net.Addr {
+	return s.l.Addr()
+}
+
+// Wait make the non-blocking app instance blocking.
+func (s *ServerListener) Wait() error {
+	return <-s.c
 }
 
 // WrapHandler wrap a http.Handler to Gear Middleware
