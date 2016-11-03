@@ -473,3 +473,16 @@ func (ctx *Context) setEnd() (err error) {
 	ctx.mu.Unlock()
 	return
 }
+
+func (ctx *Context) handleCompress() (bool, *compressWriter) {
+	if ctx.app.compress == false ||
+		ctx.app.compressFilter(ctx.Get(HeaderContentType)) == false ||
+		ctx.Method == http.MethodHead {
+		return false, nil
+	}
+
+	writer := &compressWriter{ResponseWriter: ctx.Res.res, Request: ctx.Req}
+	ctx.Res.res = writer
+
+	return true, writer
+}
