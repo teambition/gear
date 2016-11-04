@@ -14,7 +14,7 @@ import (
 )
 
 // Version is Gear's version
-const Version = "v0.12.0"
+const Version = "v0.13.0"
 
 // MIME types
 const (
@@ -62,6 +62,7 @@ const (
 	HeaderXRealIP                       = "X-Real-IP"
 	HeaderServer                        = "Server"
 	HeaderOrigin                        = "Origin"
+	HeaderTransferEncoding              = "Transfer-Encoding"
 	HeaderAccessControlRequestMethod    = "Access-Control-Request-Method"
 	HeaderAccessControlRequestHeaders   = "Access-Control-Request-Headers"
 	HeaderAccessControlAllowOrigin      = "Access-Control-Allow-Origin"
@@ -189,6 +190,14 @@ type App struct {
 
 	onerror  OnError
 	renderer Renderer
+
+	// CompressFilter checks the response content type to decide whether
+	// to compress.
+	compressFilter func(string) bool
+	// compressThreshold is the minimun response size in bytes to compress.
+	// Default value is 1024 (1 kb).
+	compressThreshold int
+
 	// ErrorLog specifies an optional logger for app's errors. Default to nil
 	logger *log.Logger
 
@@ -201,10 +210,12 @@ func New() *App {
 	app.Server = new(http.Server)
 	app.middleware = make([]Middleware, 0)
 	app.settings = make(map[string]interface{})
+	app.compressThreshold = 1024
 
 	app.Set("AppEnv", "development")
 	app.Set("AppOnError", &DefaultOnError{})
 	app.Set("AppLogger", log.New(os.Stderr, "", log.LstdFlags))
+
 	return app
 }
 
@@ -252,6 +263,12 @@ func (app *App) Set(setting string, val interface{}) {
 			panic("AppLogger setting must be *log.Logger instance")
 		} else {
 			app.logger = logger
+		}
+	case "AppCompressFilter":
+		if compressFilter, ok := val.(func(string) bool); !ok {
+			panic("AppCompressFilter setting must be func(string) bool")
+		} else {
+			app.compressFilter = compressFilter
 		}
 	case "AppEnv":
 		if _, ok := val.(string); !ok {
@@ -315,6 +332,11 @@ type serveHandler struct {
 func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	ctx := NewContext(h.app, w, r)
+
+	if writer, ok := ctx.handleCompress(); ok {
+		defer writer.Close()
+	}
+
 	// recover panic error
 	defer func() {
 		if err := recover(); err != nil {

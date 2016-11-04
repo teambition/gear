@@ -2,6 +2,8 @@ package gear
 
 import (
 	"bytes"
+	"compress/flate"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"encoding/xml"
@@ -10,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -472,4 +475,45 @@ func (ctx *Context) setEnd() (err error) {
 	}
 	ctx.mu.Unlock()
 	return
+}
+
+func (ctx *Context) handleCompress() (*compressWriter, bool) {
+	if ctx.app.compressFilter == nil ||
+		!ctx.app.compressFilter(ctx.Get(HeaderContentType)) ||
+		ctx.Method == http.MethodHead {
+		return nil, false
+	}
+
+	var w io.WriteCloser
+
+loop:
+	for _, encoding := range strings.Split(ctx.Get(HeaderAcceptEncoding), ",") {
+		switch encoding {
+		case "gzip":
+			ctx.Set(HeaderContentEncoding, "gzip")
+
+			w = gzip.NewWriter(ctx.Res.res)
+
+			break loop
+		case "deflate":
+			ctx.Set(HeaderContentEncoding, "deflate")
+
+			fw, _ := flate.NewWriter(ctx.Res.res, flate.DefaultCompression)
+			w = fw
+
+			break loop
+		default:
+			return nil, false
+		}
+	}
+
+	cw := &compressWriter{
+		ResponseWriter: ctx.Res.res,
+		body:           &ctx.Res.Body,
+		threshold:      ctx.app.compressThreshold,
+		writer:         w,
+	}
+
+	ctx.Res.res = cw
+	return cw, true
 }
