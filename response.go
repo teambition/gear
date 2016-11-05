@@ -1,6 +1,7 @@
 package gear
 
 import "net/http"
+import "strconv"
 
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.
@@ -74,12 +75,17 @@ func (r *Response) WriteHeader(code int) {
 		r.ctx.afterHooks[i](r.ctx)
 	}
 	// r.Status maybe changed in hooks
+	// check Status
 	if r.Status <= 0 {
 		if r.Body != nil {
 			r.Status = http.StatusOK
 		} else {
 			r.Status = 444 // 444 No Response (from Nginx)
 		}
+	}
+	// check Body and Content Length
+	if r.Body != nil && r.header.Get(HeaderContentLength) == "" {
+		r.header.Set(HeaderContentLength, strconv.FormatInt(int64(len(r.Body)), 10))
 	}
 	r.res.WriteHeader(r.Status)
 	// execute "end hooks" in LIFO order after Response.WriteHeader

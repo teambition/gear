@@ -83,7 +83,6 @@ func TestGearLogger(t *testing.T) {
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		log := buf.String()
-		fmt.Println(log)
 		assert.Contains(log, time.Now().Format(time.RFC3339)[0:19])
 		assert.Contains(log, " INFO ")
 		assert.Contains(log, `"Data":[1,2,3]`)

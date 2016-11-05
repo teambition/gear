@@ -72,14 +72,6 @@ type Hook func(*Context)
 // Middleware defines a function to process as middleware.
 type Middleware func(*Context) error
 
-// DefaultCompressFilter is defalut compressFilter. Use it to enable compress:
-//
-//  app.Set("AppCompressFilter", gear.DefaultCompressFilter)
-//
-func DefaultCompressFilter(_ string) bool {
-	return true
-}
-
 // NewAppError create a error instance with "[App] " prefix.
 func NewAppError(err string) error {
 	return fmt.Errorf("[App] %s", err)
@@ -131,13 +123,8 @@ type App struct {
 
 	onerror  OnError
 	renderer Renderer
-
-	// compressFilter checks the response content type to decide whether to compress.
 	// Default to nil, not compress response content.
-	compressFilter func(string) bool
-	// compressThreshold is the minimun response size in bytes to compress.
-	// Default value is 1024 (1 kb).
-	compressThreshold int
+	compress Compress
 
 	// ErrorLog specifies an optional logger for app's errors. Default to nil.
 	logger *log.Logger
@@ -151,7 +138,6 @@ func New() *App {
 	app.Server = new(http.Server)
 	app.middleware = make([]Middleware, 0)
 	app.settings = make(map[string]interface{})
-	app.compressThreshold = 1024
 
 	app.Set("AppEnv", "development")
 	app.Set("AppOnError", &DefaultOnError{})
@@ -180,11 +166,11 @@ func (app *App) UseHandler(h Handler) {
 // Set add app settings. The settings can be retrieved by ctx.Setting.
 // There are 4 build-in app settings:
 //
-//  app.Set("AppOnError", gear.OnError)   // default to gear.DefaultOnError
-//  app.Set("AppRenderer", gear.Renderer) // no default
-//  app.Set("AppLogger", *log.Logger)     // no default
-//  app.Set("AppEnv", string)             // default to "development"
-//  app.Set("AppCompressFilter", DefaultCompressFilter) // Enable to compress response content.
+//  app.Set("AppOnError", val gear.OnError)   // default to gear.DefaultOnError
+//  app.Set("AppRenderer", val gear.Renderer) // no default
+//  app.Set("AppLogger", val *log.Logger)     // no default
+//  app.Set("AppCompress", val DefaultCompress) // Enable to compress response content.
+//  app.Set("AppEnv", val string)             // default to "development"
 //
 func (app *App) Set(setting string, val interface{}) {
 	switch setting {
@@ -206,11 +192,11 @@ func (app *App) Set(setting string, val interface{}) {
 		} else {
 			app.logger = logger
 		}
-	case "AppCompressFilter":
-		if compressFilter, ok := val.(func(string) bool); !ok {
-			panic("AppCompressFilter setting must be func(string) bool")
+	case "AppCompress":
+		if compress, ok := val.(Compress); !ok {
+			panic("AppCompress setting must implemented gear.Compress interface")
 		} else {
-			app.compressFilter = compressFilter
+			app.compress = compress
 		}
 	case "AppEnv":
 		if _, ok := val.(string); !ok {
@@ -275,8 +261,8 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	ctx := NewContext(h.app, w, r)
 
-	if writer, ok := ctx.handleCompress(); ok {
-		defer writer.Close()
+	if compressWriter := ctx.handleCompress(); compressWriter != nil {
+		defer compressWriter.Close()
 	}
 
 	// recover panic error
