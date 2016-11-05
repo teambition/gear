@@ -35,8 +35,10 @@ func NewTimeout(du time.Duration, hook gear.Hook) gear.Middleware {
 		go func() {
 			select {
 			case <-c.Done():
-				ctx.Cancel()
-				hook(ctx)
+				if !ctx.Res.HeaderWrote() {
+					ctx.Cancel()
+					hook(ctx)
+				}
 			case <-ctx.Done():
 			}
 		}()

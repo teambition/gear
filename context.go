@@ -250,18 +250,6 @@ func (ctx *Context) Status(code int) {
 
 // Type set a content type to response
 func (ctx *Context) Type(str string) {
-	switch str {
-	case "json":
-		str = MIMEApplicationJSONCharsetUTF8
-	case "js":
-		str = MIMEApplicationJavaScriptCharsetUTF8
-	case "xml":
-		str = MIMEApplicationXMLCharsetUTF8
-	case "text":
-		str = MIMETextPlainCharsetUTF8
-	case "html":
-		str = MIMETextHTMLCharsetUTF8
-	}
 	if str == "" {
 		ctx.Res.Del(HeaderContentType)
 	} else {
@@ -279,7 +267,7 @@ func (ctx *Context) String(str string) {
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) HTML(code int, str string) error {
-	ctx.Type("html")
+	ctx.Type(MIMETextHTMLCharsetUTF8)
 	return ctx.End(code, []byte(str))
 }
 
@@ -300,7 +288,7 @@ func (ctx *Context) JSON(code int, val interface{}) error {
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) JSONBlob(code int, buf []byte) error {
-	ctx.Type("json")
+	ctx.Type(MIMEApplicationJSONCharsetUTF8)
 	return ctx.End(code, buf)
 }
 
@@ -322,7 +310,7 @@ func (ctx *Context) JSONP(code int, callback string, val interface{}) error {
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) JSONPBlob(code int, callback string, buf []byte) error {
-	ctx.Type("js")
+	ctx.Type(MIMEApplicationJavaScriptCharsetUTF8)
 	buf = bytes.Join([][]byte{[]byte(callback + "("), buf, []byte(");")}, []byte{})
 	return ctx.End(code, buf)
 }
@@ -344,7 +332,7 @@ func (ctx *Context) XML(code int, val interface{}) error {
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) XMLBlob(code int, buf []byte) error {
-	ctx.Type("xml")
+	ctx.Type(MIMEApplicationXMLCharsetUTF8)
 	return ctx.End(code, buf)
 }
 
@@ -359,7 +347,7 @@ func (ctx *Context) Render(code int, name string, data interface{}) (err error) 
 	}
 	buf := new(bytes.Buffer)
 	if err = ctx.app.renderer.Render(ctx, buf, name, data); err == nil {
-		ctx.Type("html")
+		ctx.Type(MIMETextHTMLCharsetUTF8)
 		return ctx.End(code, buf.Bytes())
 	}
 	return

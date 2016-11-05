@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func NewCtx(app *App, method, url string, body io.Reader) *Context {
+func CtxTest(app *App, method, url string, body io.Reader) *Context {
 	req := httptest.NewRequest(method, url, body)
 	res := httptest.NewRecorder()
 	return NewContext(app, res, req)
@@ -54,7 +54,7 @@ func TestGearContextAny(t *testing.T) {
 		t.Run("should get the same value with the same ctx", func(t *testing.T) {
 			assert := assert.New(t)
 
-			ctx := NewCtx(app, "GET", "http://example.com/foo", nil)
+			ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
 			val, err := ctx.Any(ctxAny)
 			assert.Nil(err)
 			res := val.(*ctxAnyResult)
@@ -68,11 +68,11 @@ func TestGearContextAny(t *testing.T) {
 		t.Run("should get different value with different ctx", func(t *testing.T) {
 			assert := assert.New(t)
 
-			ctx := NewCtx(app, "GET", "http://example.com/foo", nil)
+			ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
 			val, err := ctx.Any(ctxAny)
 			assert.Nil(err)
 
-			ctx2 := NewCtx(app, "GET", "http://example.com/foo", nil)
+			ctx2 := CtxTest(app, "GET", "http://example.com/foo", nil)
 			val2, err2 := ctx2.Any(ctxAny)
 			assert.Nil(err2)
 			NotEqualPtr(t, val, val2)
@@ -81,7 +81,7 @@ func TestGearContextAny(t *testing.T) {
 		t.Run("should get error", func(t *testing.T) {
 			assert := assert.New(t)
 
-			ctx := NewCtx(app, "POST", "http://example.com/foo", nil)
+			ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
 			val, err := ctx.Any(ctxAny)
 			assert.Nil(val)
 			assert.NotNil(err)
@@ -92,7 +92,7 @@ func TestGearContextAny(t *testing.T) {
 	t.Run("SetAny with interface{}", func(t *testing.T) {
 		assert := assert.New(t)
 
-		ctx := NewCtx(app, "POST", "http://example.com/foo", nil)
+		ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
 		val, err := ctx.Any(struct{}{})
 		assert.Nil(val)
 		assert.Equal("[App] non-existent key", err.Error())
@@ -106,7 +106,7 @@ func TestGearContextAny(t *testing.T) {
 	t.Run("Setting", func(t *testing.T) {
 		assert := assert.New(t)
 
-		ctx := NewCtx(app, "POST", "http://example.com/foo", nil)
+		ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
 		assert.Equal("development", ctx.Setting("AppEnv").(string))
 	})
 }

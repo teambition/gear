@@ -64,7 +64,7 @@ type testOnError struct{}
 
 // OnError implemented OnError interface.
 func (o *testOnError) OnError(ctx *Context, err error) *Error {
-	ctx.Type("html")
+	ctx.Type(MIMETextHTMLCharsetUTF8)
 	return ParseError(err, 501)
 }
 

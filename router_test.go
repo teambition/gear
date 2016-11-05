@@ -37,8 +37,8 @@ func TestGearRouter(t *testing.T) {
 		res, err := req.Get(host)
 		assert.Nil(err)
 		assert.Equal(0, called)
-		assert.Equal(500, res.StatusCode)
-		assert.Equal("Internal Server Error", PickRes(res.Text()).(string))
+		assert.Equal(444, res.StatusCode)
+		assert.Equal("", PickRes(res.Text()).(string))
 		res.Body.Close()
 
 		res, err = req.Get(host + "/api")

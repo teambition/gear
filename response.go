@@ -7,8 +7,8 @@ import "net/http"
 type Response struct {
 	ctx         *Context
 	res         http.ResponseWriter
-	wroteHeader bool
 	header      http.Header // response Header
+	wroteHeader bool
 
 	Status int    // response Status
 	Type   string // response Content-Type
@@ -16,7 +16,7 @@ type Response struct {
 }
 
 func newResponse(ctx *Context, w http.ResponseWriter) *Response {
-	return &Response{ctx: ctx, res: w, header: w.Header(), Status: 500}
+	return &Response{ctx: ctx, res: w, header: w.Header()}
 }
 
 // Add adds the key, value pair to the header. It appends to any existing values associated with key.
@@ -74,6 +74,13 @@ func (r *Response) WriteHeader(code int) {
 		r.ctx.afterHooks[i](r.ctx)
 	}
 	// r.Status maybe changed in hooks
+	if r.Status <= 0 {
+		if r.Body != nil {
+			r.Status = http.StatusOK
+		} else {
+			r.Status = 444 // 444 No Response (from Nginx)
+		}
+	}
 	r.res.WriteHeader(r.Status)
 	// execute "end hooks" in LIFO order after Response.WriteHeader
 	for i := len(r.ctx.endHooks) - 1; i >= 0; i-- {
@@ -81,12 +88,14 @@ func (r *Response) WriteHeader(code int) {
 	}
 }
 
+// HeaderWrote indecates that whether the reply header has been (logically) written.
+func (r *Response) HeaderWrote() bool {
+	return r.wroteHeader
+}
+
 func (r *Response) respond() (err error) {
 	if !r.wroteHeader {
 		r.WriteHeader(r.Status)
-		if r.Body == nil && r.Status >= 300 {
-			r.Body = []byte(http.StatusText(r.Status))
-		}
 		if r.Body != nil {
 			_, err = r.Write(r.Body)
 		}

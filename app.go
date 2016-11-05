@@ -13,73 +13,6 @@ import (
 	"strings"
 )
 
-// Version is Gear's version
-const Version = "v0.13.0"
-
-// MIME types
-const (
-	// All const values got from https://github.com/labstack/echo
-	charsetUTF8 = "charset=utf-8"
-
-	MIMEApplicationJSON                  = "application/json"
-	MIMEApplicationJSONCharsetUTF8       = MIMEApplicationJSON + "; " + charsetUTF8
-	MIMEApplicationJavaScript            = "application/javascript"
-	MIMEApplicationJavaScriptCharsetUTF8 = MIMEApplicationJavaScript + "; " + charsetUTF8
-	MIMEApplicationXML                   = "application/xml"
-	MIMEApplicationXMLCharsetUTF8        = MIMEApplicationXML + "; " + charsetUTF8
-	MIMEApplicationForm                  = "application/x-www-form-urlencoded"
-	MIMEApplicationProtobuf              = "application/protobuf"
-	MIMEApplicationMsgpack               = "application/msgpack"
-	MIMETextHTML                         = "text/html"
-	MIMETextHTMLCharsetUTF8              = MIMETextHTML + "; " + charsetUTF8
-	MIMETextPlain                        = "text/plain"
-	MIMETextPlainCharsetUTF8             = MIMETextPlain + "; " + charsetUTF8
-	MIMEMultipartForm                    = "multipart/form-data"
-	MIMEOctetStream                      = "application/octet-stream"
-)
-
-// Headers
-const (
-	HeaderAcceptEncoding                = "Accept-Encoding"
-	HeaderAllow                         = "Allow"
-	HeaderAuthorization                 = "Authorization"
-	HeaderContentDisposition            = "Content-Disposition"
-	HeaderContentEncoding               = "Content-Encoding"
-	HeaderContentLength                 = "Content-Length"
-	HeaderContentType                   = "Content-Type"
-	HeaderCookie                        = "Cookie"
-	HeaderSetCookie                     = "Set-Cookie"
-	HeaderIfModifiedSince               = "If-Modified-Since"
-	HeaderLastModified                  = "Last-Modified"
-	HeaderLocation                      = "Location"
-	HeaderUpgrade                       = "Upgrade"
-	HeaderUserAgent                     = "User-Agent"
-	HeaderVary                          = "Vary"
-	HeaderWWWAuthenticate               = "WWW-Authenticate"
-	HeaderXForwardedProto               = "X-Forwarded-Proto"
-	HeaderXHTTPMethodOverride           = "X-HTTP-Method-Override"
-	HeaderXForwardedFor                 = "X-Forwarded-For"
-	HeaderXRealIP                       = "X-Real-IP"
-	HeaderServer                        = "Server"
-	HeaderOrigin                        = "Origin"
-	HeaderTransferEncoding              = "Transfer-Encoding"
-	HeaderAccessControlRequestMethod    = "Access-Control-Request-Method"
-	HeaderAccessControlRequestHeaders   = "Access-Control-Request-Headers"
-	HeaderAccessControlAllowOrigin      = "Access-Control-Allow-Origin"
-	HeaderAccessControlAllowMethods     = "Access-Control-Allow-Methods"
-	HeaderAccessControlAllowHeaders     = "Access-Control-Allow-Headers"
-	HeaderAccessControlAllowCredentials = "Access-Control-Allow-Credentials"
-	HeaderAccessControlExposeHeaders    = "Access-Control-Expose-Headers"
-	HeaderAccessControlMaxAge           = "Access-Control-Max-Age"
-
-	HeaderStrictTransportSecurity = "Strict-Transport-Security"
-	HeaderXContentTypeOptions     = "X-Content-Type-Options"
-	HeaderXXSSProtection          = "X-XSS-Protection"
-	HeaderXFrameOptions           = "X-Frame-Options"
-	HeaderContentSecurityPolicy   = "Content-Security-Policy"
-	HeaderXCSRFToken              = "X-CSRF-Token"
-)
-
 // Handler interface is used by app.UseHandler as a middleware.
 type Handler interface {
 	Serve(*Context) error
@@ -139,6 +72,14 @@ type Hook func(*Context)
 // Middleware defines a function to process as middleware.
 type Middleware func(*Context) error
 
+// DefaultCompressFilter is defalut compressFilter. Use it to enable compress:
+//
+//  app.Set("AppCompressFilter", gear.DefaultCompressFilter)
+//
+func DefaultCompressFilter(_ string) bool {
+	return true
+}
+
 // NewAppError create a error instance with "[App] " prefix.
 func NewAppError(err string) error {
 	return fmt.Errorf("[App] %s", err)
@@ -191,14 +132,14 @@ type App struct {
 	onerror  OnError
 	renderer Renderer
 
-	// CompressFilter checks the response content type to decide whether
-	// to compress.
+	// compressFilter checks the response content type to decide whether to compress.
+	// Default to nil, not compress response content.
 	compressFilter func(string) bool
 	// compressThreshold is the minimun response size in bytes to compress.
 	// Default value is 1024 (1 kb).
 	compressThreshold int
 
-	// ErrorLog specifies an optional logger for app's errors. Default to nil
+	// ErrorLog specifies an optional logger for app's errors. Default to nil.
 	logger *log.Logger
 
 	Server *http.Server
@@ -243,6 +184,7 @@ func (app *App) UseHandler(h Handler) {
 //  app.Set("AppRenderer", gear.Renderer) // no default
 //  app.Set("AppLogger", *log.Logger)     // no default
 //  app.Set("AppEnv", string)             // default to "development"
+//  app.Set("AppCompressFilter", DefaultCompressFilter) // Enable to compress response content.
 //
 func (app *App) Set(setting string, val interface{}) {
 	switch setting {
@@ -366,8 +308,8 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// ensure that ended is true after middleware process finished.
 	ctx.ended = true
 	if !isNil(err) {
-		ctx.Type("text")     // reset Content-Type, but you can set it in OnError again.
-		ctx.afterHooks = nil // clear afterHooks when error
+		ctx.Type(MIMETextHTMLCharsetUTF8) // reset Content-Type, but you can set it in OnError again.
+		ctx.afterHooks = nil              // clear afterHooks when error
 		// process middleware error with OnError
 		if ctxErr := h.app.onerror.OnError(ctx, err); ctxErr != nil {
 			ctx.Status(ctxErr.Status())
@@ -380,7 +322,9 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ensure respond
-	ctx.Res.respond()
+	if err = ctx.Res.respond(); err != nil {
+		panic(err)
+	}
 }
 
 // ServerListener is returned by a non-blocking app instance.
