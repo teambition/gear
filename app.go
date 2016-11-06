@@ -123,7 +123,7 @@ type App struct {
 
 	onerror  OnError
 	renderer Renderer
-	// Default to nil, not compress response content.
+	// Default to nil, do not compress response content.
 	compress Compress
 
 	// ErrorLog specifies an optional logger for app's errors. Default to nil.
@@ -166,11 +166,11 @@ func (app *App) UseHandler(h Handler) {
 // Set add app settings. The settings can be retrieved by ctx.Setting.
 // There are 4 build-in app settings:
 //
-//  app.Set("AppOnError", val gear.OnError)   // default to gear.DefaultOnError
-//  app.Set("AppRenderer", val gear.Renderer) // no default
-//  app.Set("AppLogger", val *log.Logger)     // no default
-//  app.Set("AppCompress", val DefaultCompress) // Enable to compress response content.
-//  app.Set("AppEnv", val string)             // default to "development"
+//  app.Set("AppOnError", val gear.OnError)     // Default to gear.DefaultOnError
+//  app.Set("AppRenderer", val gear.Renderer)   // No default
+//  app.Set("AppLogger", val *log.Logger)       // No default
+//  app.Set("AppCompress", val gear.Compress)   // Enable to compress response content.
+//  app.Set("AppEnv", val string)               // Default to "development"
 //
 func (app *App) Set(setting string, val interface{}) {
 	switch setting {

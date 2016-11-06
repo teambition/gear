@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"time"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,6 +31,102 @@ func CtxBody(ctx *Context) (val string) {
 		val = bytes.NewBuffer(body).String()
 	}
 	return
+}
+
+func TestGearContextContextInterface(t *testing.T) {
+	assert := assert.New(t)
+
+	done := false
+	app := New()
+	app.Use(func(ctx *Context) error {
+		// ctx.Deadline
+		_, ok := ctx.Deadline()
+		assert.False(ok)
+		// ctx.Err
+		assert.Nil(ctx.Err())
+		// ctx.Value
+		s := ctx.Value(http.ServerContextKey)
+		EqualPtr(t, s, app.Server)
+
+		go func() {
+			// ctx.Done
+			<-ctx.Done()
+			done = true
+		}()
+
+		return ctx.End(204)
+	})
+	srv := app.Start()
+	defer srv.Close()
+
+	req := NewRequst()
+	res, err := req.Get("http://" + srv.Addr().String())
+	assert.Nil(err)
+	assert.Equal(204, res.StatusCode)
+	assert.True(done)
+}
+
+func TestGearContextWithContext(t *testing.T) {
+	assert := assert.New(t)
+
+	cancelDone := false
+	deadlineDone := false
+	timeoutDone := false
+
+	app := New()
+	app.Use(func(ctx *Context) error {
+		// ctx.WithValue
+		c := ctx.WithValue("test", "abc")
+		assert.Equal("abc", c.Value("test").(string))
+		s := c.Value(http.ServerContextKey)
+		EqualPtr(t, s, app.Server)
+
+		c1, _ := ctx.WithCancel()
+		c2, _ := ctx.WithDeadline(time.Now().Add(time.Second))
+		c3, _ := ctx.WithTimeout(time.Second)
+
+		go func() {
+			<-c1.Done()
+			assert.True(ctx.ended)
+			assert.Nil(ctx.afterHooks)
+			cancelDone = true
+		}()
+
+		go func() {
+			<-c2.Done()
+			assert.True(ctx.ended)
+			assert.Nil(ctx.afterHooks)
+			deadlineDone = true
+		}()
+
+		go func() {
+			<-c3.Done()
+			assert.True(ctx.ended)
+			assert.Nil(ctx.afterHooks)
+			timeoutDone = true
+		}()
+
+		ctx.Status(404)
+		ctx.Cancel()
+		assert.True(ctx.ended)
+		assert.Nil(ctx.afterHooks)
+
+		return nil
+	})
+	app.Use(func(ctx *Context) error {
+		panic("this middleware unreachable")
+	})
+
+	srv := app.Start()
+	defer srv.Close()
+
+	req := NewRequst()
+	res, err := req.Get("http://" + srv.Addr().String())
+	assert.Nil(err)
+	assert.Equal(404, res.StatusCode)
+	assert.True(cancelDone)
+	assert.True(deadlineDone)
+	assert.True(timeoutDone)
 }
 
 // ----- Test Context.Any -----

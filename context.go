@@ -86,9 +86,9 @@ func (ctx *Context) Value(key interface{}) (val interface{}) {
 // Cancel cancel the ctx and all it' children context.
 // The ctx' process will ended too.
 func (ctx *Context) Cancel() {
+	ctx.ended = true     // end the middleware process
+	ctx.afterHooks = nil // clear afterHooks
 	ctx.cancelCtx()
-	ctx.setEnd()         // ignore setEnd error
-	ctx.afterHooks = nil // clear afterHooks when error
 }
 
 // WithCancel returns a copy of the ctx with a new Done channel.

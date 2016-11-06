@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"time"
 
 	"github.com/teambition/gear"
@@ -35,7 +36,7 @@ func NewTimeout(du time.Duration, hook gear.Hook) gear.Middleware {
 		go func() {
 			select {
 			case <-c.Done():
-				if !ctx.Res.HeaderWrote() {
+				if err := c.Err(); err == context.DeadlineExceeded {
 					ctx.Cancel()
 					hook(ctx)
 				}
