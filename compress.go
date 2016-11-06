@@ -85,19 +85,20 @@ func (cw *compressWriter) WriteHeader(code int) {
 
 	header := cw.res.Header()
 	if cw.compress.Compressible(header.Get(HeaderContentType)) {
-		header.Set(HeaderVary, HeaderAcceptEncoding)
-		header.Set(HeaderContentEncoding, cw.encoding)
-		header.Del(HeaderContentLength)
+		var w io.WriteCloser
 
 		switch cw.encoding {
 		case "gzip":
-			if w, err := gzip.NewWriterLevel(cw.res, gzip.DefaultCompression); err == nil {
-				cw.writer = w
-			}
+			w, _ = gzip.NewWriterLevel(cw.res, gzip.DefaultCompression)
 		case "deflate":
-			if w, err := flate.NewWriter(cw.res, flate.DefaultCompression); err == nil {
-				cw.writer = w
-			}
+			w, _ = flate.NewWriter(cw.res, flate.DefaultCompression)
+		}
+
+		if w != nil {
+			cw.writer = w
+			header.Set(HeaderVary, HeaderAcceptEncoding)
+			header.Set(HeaderContentEncoding, cw.encoding)
+			header.Del(HeaderContentLength)
 		}
 	}
 }
