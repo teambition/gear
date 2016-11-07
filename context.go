@@ -112,7 +112,7 @@ func (ctx *Context) WithValue(key, val interface{}) context.Context {
 	return context.WithValue(ctx.ctx, key, val)
 }
 
-// Any returns the value on this ctx for key. If key is instance of Any and
+// Any returns the value on this ctx by key. If key is instance of Any and
 // value not set, any.New will be called to eval the value, and then set to the ctx.
 // if any.New returns error, the value will not be set.
 //
@@ -149,7 +149,7 @@ func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
 }
 
 // SetAny save a key, value pair on the ctx.
-// logger middleware used ctx.SetAny and ctx.Any to implement FromCtx:
+// logger middleware used ctx.SetAny and ctx.Any to implement "logger.FromCtx":
 //
 //  func (logger *DefaultLogger) FromCtx(ctx *gear.Context) Log {
 //  	if any, err := ctx.Any(logger); err == nil {
@@ -184,7 +184,7 @@ func (ctx *Context) Setting(key string) interface{} {
 
 // IP returns the client's network address based on `X-Forwarded-For`
 // or `X-Real-IP` request header.
-func (ctx *Context) IP() string {
+func (ctx *Context) IP() net.IP {
 	ra := ctx.Req.RemoteAddr
 	if ip := ctx.Req.Header.Get(HeaderXForwardedFor); ip != "" {
 		ra = ip
@@ -193,7 +193,7 @@ func (ctx *Context) IP() string {
 	} else {
 		ra, _, _ = net.SplitHostPort(ra)
 	}
-	return ra
+	return net.ParseIP(ra)
 }
 
 // Param returns path parameter by name.
@@ -210,6 +210,14 @@ func (ctx *Context) Query(name string) string {
 		ctx.query = ctx.Req.URL.Query()
 	}
 	return ctx.query.Get(name)
+}
+
+// QueryValues returns all query params for the provided name.
+func (ctx *Context) QueryValues(name string) []string {
+	if ctx.query == nil {
+		ctx.query = ctx.Req.URL.Query()
+	}
+	return ctx.query[name]
 }
 
 // Cookie returns the named cookie provided in the request.

@@ -208,3 +208,133 @@ func TestGearContextAny(t *testing.T) {
 		assert.Equal("development", ctx.Setting("AppEnv").(string))
 	})
 }
+
+func TestGearContextSetting(t *testing.T) {
+	assert := assert.New(t)
+	val := map[string]int{"abc": 123}
+
+	app := New()
+	app.Set("someKey", val)
+	ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
+
+	assert.Nil(ctx.Setting("key"))
+	assert.Equal(val, ctx.Setting("someKey").(map[string]int))
+}
+
+func TestGearContextIP(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	r := NewRouter("", false)
+	r.Get("/XForwardedFor", func(ctx *Context) error {
+		assert.Equal("127.0.0.10", ctx.IP().String())
+		return ctx.End(http.StatusNoContent)
+	})
+	r.Get("/XRealIP", func(ctx *Context) error {
+		assert.Equal("127.0.0.20", ctx.IP().String())
+		return ctx.End(http.StatusNoContent)
+	})
+	r.Get("/", func(ctx *Context) error {
+		assert.NotNil(ctx.IP())
+		return ctx.End(http.StatusNoContent)
+	})
+	r.Get("/err", func(ctx *Context) error {
+		assert.Nil(ctx.IP())
+		return ctx.End(http.StatusNoContent)
+	})
+	app.UseHandler(r)
+
+	srv := app.Start()
+	defer srv.Close()
+
+	host := "http://" + srv.Addr().String()
+	req := NewRequst()
+	req.Headers["X-Forwarded-For"] = "127.0.0.10"
+	res, err := req.Get(host + "/XForwardedFor")
+	assert.Nil(err)
+	assert.Equal(204, res.StatusCode)
+
+	req = NewRequst()
+	req.Headers["X-Real-IP"] = "127.0.0.20"
+	res, err = req.Get(host + "/XRealIP")
+	assert.Nil(err)
+	assert.Equal(204, res.StatusCode)
+
+	req = NewRequst()
+	res, err = req.Get(host)
+	assert.Nil(err)
+	assert.Equal(204, res.StatusCode)
+
+	req = NewRequst()
+	req.Headers["X-Real-IP"] = "1.2.3"
+	res, err = req.Get(host + "/err")
+	assert.Nil(err)
+	assert.Equal(204, res.StatusCode)
+}
+
+func TestGearContextParam(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	r := NewRouter("", false)
+	r.Get("/api/:type/:id", func(ctx *Context) error {
+		assert.Equal("user", ctx.Param("type"))
+		assert.Equal("123", ctx.Param("id"))
+		assert.Equal("", ctx.Param("other"))
+		return ctx.End(http.StatusNoContent)
+	})
+	r.Get("/view/:all*", func(ctx *Context) error {
+		assert.Equal("user/123", ctx.Param("all"))
+		return ctx.End(http.StatusNoContent)
+	})
+	app.UseHandler(r)
+
+	srv := app.Start()
+	defer srv.Close()
+
+	host := "http://" + srv.Addr().String()
+	req := NewRequst()
+	res, err := req.Get(host + "/api/user/123")
+	assert.Nil(err)
+	assert.Equal(204, res.StatusCode)
+
+	req = NewRequst()
+	res, err = req.Get(host + "/view/user/123")
+	assert.Nil(err)
+	assert.Equal(204, res.StatusCode)
+}
+
+func TestGearContextQuery(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	r := NewRouter("", false)
+	r.Get("/api", func(ctx *Context) error {
+		assert.Equal("user", ctx.Query("type"))
+		assert.Equal("123", ctx.Query("id"))
+		assert.Equal([]string{"123"}, ctx.QueryValues("id"))
+		assert.Equal("", ctx.Query("other"))
+		return ctx.End(http.StatusNoContent)
+	})
+	r.Get("/view", func(ctx *Context) error {
+		assert.Equal("123", ctx.Query("id"))
+		assert.Equal([]string{"123", "abc"}, ctx.QueryValues("id"))
+		assert.Nil(ctx.QueryValues("other"))
+		return ctx.End(http.StatusNoContent)
+	})
+	app.UseHandler(r)
+
+	srv := app.Start()
+	defer srv.Close()
+
+	host := "http://" + srv.Addr().String()
+	req := NewRequst()
+	res, err := req.Get(host + "/api?type=user&id=123")
+	assert.Nil(err)
+	assert.Equal(204, res.StatusCode)
+
+	req = NewRequst()
+	res, err = req.Get(host + "/view?id=123&id=abc")
+	assert.Nil(err)
+	assert.Equal(204, res.StatusCode)
+}
