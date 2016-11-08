@@ -44,7 +44,7 @@ Example:
 		})
 
 		// Create views router
-		ViewRouter := gear.NewRouter("", true)
+		ViewRouter := gear.NewRouter()
 		// "http://localhost:3000"
 		ViewRouter.Get("/", func(ctx *gear.Context) error {
 			return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
@@ -69,7 +69,7 @@ Example:
 		})
 
 		// Create API router
-		APIRouter := gear.NewRouter("/api", true)
+		APIRouter := gear.NewRouter(gear.RouterOptions{Root: "/api", IgnoreCase: true})
 		// "http://localhost:3000/api/user/abc"
 		// "http://localhost:3000/abc/user/123"
 		APIRouter.Get("/user/:id", func(ctx *gear.Context) error {
@@ -97,4 +97,4 @@ Learn more at https://github.com/teambition/gear
 package gear
 
 // Version is Gear's version
-const Version = "v0.14.1"
+const Version = "v0.15.0"

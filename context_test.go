@@ -225,7 +225,7 @@ func TestGearContextIP(t *testing.T) {
 	assert := assert.New(t)
 
 	app := New()
-	r := NewRouter("", false)
+	r := NewRouter()
 	r.Get("/XForwardedFor", func(ctx *Context) error {
 		assert.Equal("127.0.0.10", ctx.IP().String())
 		return ctx.End(http.StatusNoContent)
@@ -276,7 +276,7 @@ func TestGearContextParam(t *testing.T) {
 	assert := assert.New(t)
 
 	app := New()
-	r := NewRouter("", false)
+	r := NewRouter()
 	r.Get("/api/:type/:id", func(ctx *Context) error {
 		assert.Equal("user", ctx.Param("type"))
 		assert.Equal("123", ctx.Param("id"))
@@ -308,7 +308,7 @@ func TestGearContextQuery(t *testing.T) {
 	assert := assert.New(t)
 
 	app := New()
-	r := NewRouter("", false)
+	r := NewRouter()
 	r.Get("/api", func(ctx *Context) error {
 		assert.Equal("user", ctx.Query("type"))
 		assert.Equal("123", ctx.Query("id"))

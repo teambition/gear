@@ -20,7 +20,7 @@ func TestGearRouter(t *testing.T) {
 		assert := assert.New(t)
 
 		called := 0
-		r := NewRouter("/api", false)
+		r := NewRouter(RouterOptions{Root: "/api"})
 		r.Use(func(ctx *Context) error {
 			assert.True(strings.HasPrefix(ctx.Path, "/api"))
 			called++
@@ -56,13 +56,49 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 	})
 
+	t.Run("router.Handle with one more middleware", func(t *testing.T) {
+		assert := assert.New(t)
+
+		called := 0
+		r := NewRouter()
+
+		assert.Panics(func() {
+			r.Handle("GET", "/")
+		})
+
+		r.Handle("GET", "/", func(ctx *Context) error {
+			called++
+			assert.Equal(1, called)
+			return nil
+		}, func(ctx *Context) error {
+			called++
+			assert.Equal(2, called)
+			return nil
+		}, func(ctx *Context) error {
+			called++
+			assert.Equal(3, called)
+			return ctx.HTML(200, "OK")
+		})
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(3, called)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("OK", PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
+
 	t.Run("router with http.Method", func(t *testing.T) {
 		assert := assert.New(t)
 
 		middleware := func(ctx *Context) error {
 			return ctx.HTML(200, ctx.Method)
 		}
-		r := NewRouter("/", false)
+		r := NewRouter()
 		r.Get("/", middleware)
 		r.Head("/", middleware)
 		r.Post("/", middleware)
@@ -70,6 +106,10 @@ func TestGearRouter(t *testing.T) {
 		r.Patch("/", middleware)
 		r.Delete("/", middleware)
 		r.Options("/", middleware)
+
+		assert.Panics(func() {
+			r.Get("", middleware)
+		})
 
 		srv := newApp(r)
 		defer srv.Close()
@@ -118,13 +158,48 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 	})
 
+	t.Run("router.Get with one more middleware", func(t *testing.T) {
+		assert := assert.New(t)
+
+		called := 0
+		r := NewRouter()
+
+		assert.Panics(func() {
+			r.Get("/")
+		})
+
+		r.Get("/", func(ctx *Context) error {
+			called++
+			assert.Equal(1, called)
+			return nil
+		}, func(ctx *Context) error {
+			called++
+			assert.Equal(2, called)
+			return nil
+		}, func(ctx *Context) error {
+			called++
+			assert.Equal(3, called)
+			return ctx.HTML(200, "OK")
+		})
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(3, called)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("OK", PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
+
 	t.Run("router with 501", func(t *testing.T) {
 		assert := assert.New(t)
 
-		r := NewRouter("/", false)
+		r := NewRouter()
 		r.Get("/abc", func(ctx *Context) error {
-			ctx.End(204)
-			return nil
+			return ctx.End(204)
 		})
 
 		srv := newApp(r)
@@ -141,10 +216,9 @@ func TestGearRouter(t *testing.T) {
 	t.Run("router with 405", func(t *testing.T) {
 		assert := assert.New(t)
 
-		r := NewRouter("/", false)
+		r := NewRouter()
 		r.Get("/abc", func(ctx *Context) error {
-			ctx.End(204)
-			return nil
+			return ctx.End(204)
 		})
 
 		srv := newApp(r)
@@ -158,38 +232,17 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 	})
 
-	t.Run("router with auto options respond", func(t *testing.T) {
-		assert := assert.New(t)
-
-		r := NewRouter("/", false)
-		r.Get("/abc", func(ctx *Context) error {
-			ctx.End(204)
-			return nil
-		})
-
-		srv := newApp(r)
-		defer srv.Close()
-		host := "http://" + srv.Addr().String()
-
-		res, err := req.Options(host + "/abc")
-		assert.Nil(err)
-		assert.Equal(204, res.StatusCode)
-		assert.Equal("", PickRes(res.Text()).(string))
-		res.Body.Close()
-	})
-
 	t.Run("router with named pattern", func(t *testing.T) {
 		assert := assert.New(t)
 
 		count := 0
-		r := NewRouter("/", false)
+		r := NewRouter()
 		r.Use(func(ctx *Context) error {
 			count++
 			return nil
 		})
 		r.Get("/api/:type/:ID", func(ctx *Context) error {
-			ctx.HTML(200, ctx.Param("type")+ctx.Param("ID"))
-			return nil
+			return ctx.HTML(200, ctx.Param("type")+ctx.Param("ID"))
 		})
 
 		srv := newApp(r)
@@ -208,14 +261,13 @@ func TestGearRouter(t *testing.T) {
 		assert := assert.New(t)
 
 		count := 0
-		r := NewRouter("/", false)
+		r := NewRouter()
 		r.Use(func(ctx *Context) error {
 			count++
 			return nil
 		})
 		r.Get("/api/::/:ID", func(ctx *Context) error {
-			ctx.HTML(200, ctx.Param("ID"))
-			return nil
+			return ctx.HTML(200, ctx.Param("ID"))
 		})
 
 		srv := newApp(r)
@@ -234,14 +286,13 @@ func TestGearRouter(t *testing.T) {
 		assert := assert.New(t)
 
 		count := 0
-		r := NewRouter("/", false)
+		r := NewRouter()
 		r.Use(func(ctx *Context) error {
 			count++
 			return nil
 		})
 		r.Get("/api/:type*", func(ctx *Context) error {
-			ctx.HTML(200, ctx.Param("type"))
-			return nil
+			return ctx.HTML(200, ctx.Param("type"))
 		})
 
 		srv := newApp(r)
@@ -260,14 +311,13 @@ func TestGearRouter(t *testing.T) {
 		assert := assert.New(t)
 
 		count := 0
-		r := NewRouter("/", false)
+		r := NewRouter()
 		r.Use(func(ctx *Context) error {
 			count++
 			return nil
 		})
 		r.Get("/api/:type/:ID(^\\d+$)", func(ctx *Context) error {
-			ctx.HTML(200, ctx.Param("type")+ctx.Param("ID"))
-			return nil
+			return ctx.HTML(200, ctx.Param("type")+ctx.Param("ID"))
 		})
 
 		srv := newApp(r)
@@ -292,18 +342,16 @@ func TestGearRouter(t *testing.T) {
 		assert := assert.New(t)
 
 		count := 0
-		r := NewRouter("/", false)
+		r := NewRouter()
 		r.Use(func(ctx *Context) error {
 			count++
 			return nil
 		})
 		r.Get("/api", func(ctx *Context) error {
-			ctx.HTML(200, "OK")
-			return nil
+			return ctx.HTML(200, "OK")
 		})
 		r.Otherwise(func(ctx *Context) error {
-			ctx.HTML(404, ctx.Method+" "+ctx.Path)
-			return nil
+			return ctx.HTML(404, ctx.Method+" "+ctx.Path)
 		})
 
 		srv := newApp(r)
@@ -330,5 +378,224 @@ func TestGearRouter(t *testing.T) {
 		assert.Equal(404, res.StatusCode)
 		assert.Equal("PUT /api", PickRes(res.Text()).(string))
 		res.Body.Close()
+	})
+
+	t.Run("router.Otherwise with one more middleware", func(t *testing.T) {
+		assert := assert.New(t)
+
+		called := 0
+		r := NewRouter()
+
+		assert.Panics(func() {
+			r.Otherwise()
+		})
+
+		r.Otherwise(func(ctx *Context) error {
+			called++
+			assert.Equal(1, called)
+			return nil
+		}, func(ctx *Context) error {
+			called++
+			assert.Equal(2, called)
+			return nil
+		}, func(ctx *Context) error {
+			called++
+			assert.Equal(3, called)
+			return ctx.HTML(200, "OK")
+		})
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(3, called)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("OK", PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
+
+	t.Run("router with IgnoreCase = true (defalut)", func(t *testing.T) {
+		assert := assert.New(t)
+
+		r := NewRouter()
+
+		r.Get("/Api/:type/:ID", func(ctx *Context) error {
+			return ctx.HTML(200, ctx.Param("type")+ctx.Param("ID"))
+		})
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := req.Get(host + "/api/user/123")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("user123", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Get(host + "/API/User/Abc")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("UserAbc", PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
+
+	t.Run("router with IgnoreCase = false", func(t *testing.T) {
+		assert := assert.New(t)
+
+		r := NewRouter(RouterOptions{})
+
+		r.Get("/Api/:type/:ID", func(ctx *Context) error {
+			return ctx.HTML(200, ctx.Param("type")+ctx.Param("ID"))
+		})
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := req.Get(host + "/api/user/123")
+		assert.Nil(err)
+		assert.Equal(501, res.StatusCode)
+		res.Body.Close()
+
+		res, err = req.Get(host + "/Api/User/Abc")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("UserAbc", PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
+
+	t.Run("router with TrailingSlashRedirect = true (defalut)", func(t *testing.T) {
+		assert := assert.New(t)
+		app := New()
+
+		r := NewRouter()
+
+		r.Get("/", func(ctx *Context) error {
+			return ctx.HTML(200, "/")
+		})
+
+		r.Get("/abc/efg", func(ctx *Context) error {
+			return ctx.HTML(200, "/abc/efg")
+		})
+
+		r.Put("/abc/xyz/", func(ctx *Context) error {
+			return ctx.HTML(200, "/abc/xyz/")
+		})
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Get(host + "/")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Get(host + "/abc/efg")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/abc/efg", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Get(host + "/abc/efg/")
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/abc/efg", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		ctx := CtxTest(app, "GET", "/abc/efg/", nil)
+		r.Serve(ctx)
+		rt := CtxResult(ctx)
+		assert.Equal(301, rt.StatusCode)
+		assert.Equal("/abc/efg", rt.Header.Get("Location"))
+
+		res, err = req.Put(host + "/abc/xyz/")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/abc/xyz/", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Put(host + "/abc/xyz")
+		assert.Equal(307, res.StatusCode)
+		assert.Equal("/abc/xyz/", res.Header.Get("Location"))
+		res.Body.Close()
+
+		ctx = CtxTest(app, "PUT", "/abc/xyz", nil)
+		r.Serve(ctx)
+		rt = CtxResult(ctx)
+		assert.Equal(307, rt.StatusCode)
+		assert.Equal("/abc/xyz/", rt.Header.Get("Location"))
+	})
+
+	t.Run("router with TrailingSlashRedirect = false", func(t *testing.T) {
+		assert := assert.New(t)
+		app := New()
+
+		r := NewRouter(RouterOptions{})
+
+		r.Get("/", func(ctx *Context) error {
+			return ctx.HTML(200, "/")
+		})
+
+		r.Get("/abc/efg", func(ctx *Context) error {
+			return ctx.HTML(200, "/abc/efg")
+		})
+
+		r.Put("/abc/xyz/", func(ctx *Context) error {
+			return ctx.HTML(200, "/abc/xyz/")
+		})
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Get(host + "/")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Get(host + "/abc/efg")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/abc/efg", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Get(host + "/abc/efg/")
+		assert.Equal(501, res.StatusCode)
+		res.Body.Close()
+
+		ctx := CtxTest(app, "GET", "/abc/efg/", nil)
+		err = r.Serve(ctx)
+		assert.Equal(501, err.(HTTPError).Status())
+
+		res, err = req.Put(host + "/abc/xyz/")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/abc/xyz/", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Put(host + "/abc/xyz")
+		assert.Equal(501, res.StatusCode)
+		res.Body.Close()
+
+		ctx = CtxTest(app, "PUT", "/abc/xyz", nil)
+		err = r.Serve(ctx)
+		assert.Equal(501, err.(HTTPError).Status())
 	})
 }

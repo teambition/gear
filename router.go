@@ -33,7 +33,7 @@ import (
 //  	// Add app middleware
 //  	app.Use(gear.NewDefaultLogger())
 //
-//  	router := gear.NewRouter("", true)
+//  	router := gear.NewRouter()
 //  	router.Use(SomeRouterMiddleware) // Add router middleware, optionally
 //  	router.Get("/", ViewHello)
 //
@@ -93,9 +93,27 @@ import (
 type Router struct {
 	root       string
 	trie       *trie
-	otherwise  Middleware
+	tsr        bool
+	otherwise  []Middleware
 	middleware []Middleware
 }
+
+// RouterOptions is options for Router
+type RouterOptions struct {
+	// Router's namespace. Gear supports multiple routers with different namespace.
+	// Root string should start with "/", default to "/"
+	Root string
+	// Ignore case when matching URL path.
+	IgnoreCase bool
+	// Enables automatic redirection if the current route can't be matched but a
+	// handler for the path with (without) the trailing slash exists.
+	// For example if /foo/ is requested but a route only exists for /foo, the
+	// client is redirected to /foo with http status code 301 for GET requests
+	// and 307 for all other request methods.
+	TrailingSlashRedirect bool
+}
+
+var defaultRouterOptions = RouterOptions{Root: "/", IgnoreCase: true, TrailingSlashRedirect: true}
 
 // NewRouter returns a new Router instance with root path and ignoreCase option.
 // Gear support multi-routers. For example:
@@ -104,12 +122,17 @@ type Router struct {
 //  app := gear.New()
 //
 //  // Create views router
-//  viewRouter := gear.NewRouter("", true)
+//  viewRouter := gear.NewRouter()
 //  viewRouter.Get("/", Ctl.IndexView)
 //  // add more ...
 //
-//  apiRouter := gear.NewRouter("/api", true)
-//  apiRouter.Get("/user/:id", API.User)
+//  apiRouter := gear.NewRouter(RouterOptions{
+//  	Root: "/api",
+//  	IgnoreCase: true,
+//  	TrailingSlashRedirect: true
+//  })
+//  // support one more middleware
+//  apiRouter.Get("/user/:id", API.Auth, API.User)
 //  // add more ..
 //
 //  app.UseHandler(apiRouter) // Must add apiRouter first.
@@ -117,14 +140,18 @@ type Router struct {
 //  // Start app at 3000
 //  app.Listen(":3000")
 //
-func NewRouter(root string, ignoreCase bool) *Router {
-	t := newTrie(ignoreCase)
-	if root == "" {
-		root = "/"
+func NewRouter(routerOptions ...RouterOptions) *Router {
+	opts := defaultRouterOptions
+	if len(routerOptions) > 0 {
+		opts = routerOptions[0]
 	}
+	if opts.Root == "" {
+		opts.Root = "/"
+	}
+
 	return &Router{
-		root:       root,
-		trie:       t,
+		root:       opts.Root,
+		trie:       newTrie(opts.IgnoreCase, opts.TrailingSlashRedirect),
 		middleware: make([]Middleware, 0),
 	}
 }
@@ -141,76 +168,94 @@ func (r *Router) Use(handle Middleware) {
 // This function is intended for bulk loading and to allow the usage of less
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
-func (r *Router) Handle(method, pattern string, handle Middleware) {
+func (r *Router) Handle(method, pattern string, handlers ...Middleware) {
 	if method == "" {
 		panic(NewAppError("invalid method"))
 	}
-	if handle == nil {
+	if len(handlers) == 0 {
 		panic(NewAppError("invalid middleware"))
 	}
-	r.trie.define(pattern).handle(strings.ToUpper(method), handle)
+	r.trie.define(pattern).handle(strings.ToUpper(method), handlers)
 }
 
 // Get registers a new GET route for a path with matching handler in the router.
-func (r *Router) Get(pattern string, handle Middleware) {
-	r.Handle(http.MethodGet, pattern, handle)
+func (r *Router) Get(pattern string, handlers ...Middleware) {
+	r.Handle(http.MethodGet, pattern, handlers...)
 }
 
 // Head registers a new HEAD route for a path with matching handler in the router.
-func (r *Router) Head(pattern string, handle Middleware) {
-	r.Handle(http.MethodHead, pattern, handle)
+func (r *Router) Head(pattern string, handlers ...Middleware) {
+	r.Handle(http.MethodHead, pattern, handlers...)
 }
 
 // Post registers a new POST route for a path with matching handler in the router.
-func (r *Router) Post(pattern string, handle Middleware) {
-	r.Handle(http.MethodPost, pattern, handle)
+func (r *Router) Post(pattern string, handlers ...Middleware) {
+	r.Handle(http.MethodPost, pattern, handlers...)
 }
 
 // Put registers a new PUT route for a path with matching handler in the router.
-func (r *Router) Put(pattern string, handle Middleware) {
-	r.Handle(http.MethodPut, pattern, handle)
+func (r *Router) Put(pattern string, handlers ...Middleware) {
+	r.Handle(http.MethodPut, pattern, handlers...)
 }
 
 // Patch registers a new PATCH route for a path with matching handler in the router.
-func (r *Router) Patch(pattern string, handle Middleware) {
-	r.Handle(http.MethodPatch, pattern, handle)
+func (r *Router) Patch(pattern string, handlers ...Middleware) {
+	r.Handle(http.MethodPatch, pattern, handlers...)
 }
 
 // Delete registers a new DELETE route for a path with matching handler in the router.
-func (r *Router) Delete(pattern string, handle Middleware) {
-	r.Handle(http.MethodDelete, pattern, handle)
+func (r *Router) Delete(pattern string, handlers ...Middleware) {
+	r.Handle(http.MethodDelete, pattern, handlers...)
 }
 
 // Options registers a new OPTIONS route for a path with matching handler in the router.
-func (r *Router) Options(pattern string, handle Middleware) {
-	r.Handle(http.MethodOptions, pattern, handle)
+func (r *Router) Options(pattern string, handlers ...Middleware) {
+	r.Handle(http.MethodOptions, pattern, handlers...)
 }
 
 // Otherwise registers a new Middleware handler in the router
 // that will run if there is no other handler matching.
-func (r *Router) Otherwise(handle Middleware) {
-	r.otherwise = handle
+func (r *Router) Otherwise(handlers ...Middleware) {
+	if len(handlers) == 0 {
+		panic(NewAppError("invalid middleware"))
+	}
+	r.otherwise = handlers
 }
 
 // Serve implemented gear.Handler interface
 func (r *Router) Serve(ctx *Context) error {
 	path := ctx.Path
 	method := ctx.Method
-	var handle Middleware
+	var handlers []Middleware
 
 	if !strings.HasPrefix(path, r.root) {
 		return nil
 	}
 
 	res := r.trie.match(strings.TrimPrefix(path, r.root))
+	// TrailingSlashRedirect
+	if res.tsr && len(ctx.Path) > 1 {
+		if ctx.Path[len(ctx.Path)-1] == '/' {
+			ctx.Req.URL.Path = ctx.Path[:len(ctx.Path)-1]
+		} else {
+			ctx.Req.URL.Path = ctx.Path + "/"
+		}
+
+		code := 301
+		if ctx.Method != "GET" {
+			code = 307
+		}
+		return ctx.Redirect(code, ctx.Req.URL.String())
+	}
+
 	if res.node == nil {
 		if r.otherwise == nil {
 			return &Error{Code: 501, Msg: fmt.Sprintf(`"%s" not implemented`, path)}
 		}
-		handle = r.otherwise
+		handlers = r.otherwise
 	} else {
-		handle = res.node.methods[method]
-		if handle == nil {
+		handlers = res.node.methods[method]
+		if len(handlers) == 0 {
 			// OPTIONS support
 			if method == http.MethodOptions {
 				ctx.Set(HeaderAllow, res.node.allowMethods)
@@ -222,19 +267,19 @@ func (r *Router) Serve(ctx *Context) error {
 				ctx.Set(HeaderAllow, res.node.allowMethods)
 				return &Error{Code: 405, Msg: fmt.Sprintf(`"%s" not allowed in "%s"`, method, path)}
 			}
-			handle = r.otherwise
+			handlers = r.otherwise
 		}
 	}
 
 	if res.params != nil {
 		ctx.SetAny(paramsKey, res.params)
 	}
-	err := r.run(ctx, handle)
+	err := r.run(ctx, handlers)
 	ctx.ended = true
 	return err
 }
 
-func (r *Router) run(ctx *Context, fn Middleware) (err error) {
+func (r *Router) run(ctx *Context, handlers []Middleware) (err error) {
 	for _, handle := range r.middleware {
 		if err = handle(ctx); !isNil(err) {
 			return
@@ -243,7 +288,16 @@ func (r *Router) run(ctx *Context, fn Middleware) (err error) {
 			return // middleware and fn should not run if true
 		}
 	}
-	return fn(ctx)
+
+	for _, handle := range handlers {
+		if err = handle(ctx); !isNil(err) {
+			return
+		}
+		if ctx.ended {
+			return // middleware and fn should not run if true
+		}
+	}
+	return
 }
 
 func normalizePath(path string) string {

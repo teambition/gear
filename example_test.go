@@ -39,7 +39,7 @@ func Example() {
 	})
 
 	// Create views router
-	ViewRouter := gear.NewRouter("", true)
+	ViewRouter := gear.NewRouter()
 	// "http://localhost:3000"
 	ViewRouter.Get("/", func(ctx *gear.Context) error {
 		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
@@ -64,7 +64,7 @@ func Example() {
 	})
 
 	// Create API router
-	APIRouter := gear.NewRouter("/api", true)
+	APIRouter := gear.NewRouter(gear.RouterOptions{Root: "/api", IgnoreCase: true})
 	// "http://localhost:3000/api/user/abc"
 	// "http://localhost:3000/abc/user/123"
 	APIRouter.Get("/user/:id", func(ctx *gear.Context) error {

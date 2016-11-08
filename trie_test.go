@@ -11,8 +11,8 @@ func TestGearTrie(t *testing.T) {
 		t.Run("root pattern", func(t *testing.T) {
 			assert := assert.New(t)
 
-			tr1 := newTrie(true)
-			tr2 := newTrie(true)
+			tr1 := newTrie()
+			tr2 := newTrie()
 			node := tr1.define("/")
 			assert.Equal(node.name, "")
 
@@ -27,13 +27,14 @@ func TestGearTrie(t *testing.T) {
 		t.Run("simple pattern", func(t *testing.T) {
 			assert := assert.New(t)
 
-			tr1 := newTrie(true)
+			tr1 := newTrie()
 			node := tr1.define("/a/b")
 			assert.Equal(node.name, "")
 
 			EqualPtr(t, node, tr1.define("/a/b"))
-			EqualPtr(t, node, tr1.define("a/b/"))
-			EqualPtr(t, node, tr1.define("/a/b/"))
+			NotEqualPtr(t, node, tr1.define("a/b/"))
+			NotEqualPtr(t, node, tr1.define("/a/b/"))
+			EqualPtr(t, tr1.define("/a/b/"), tr1.define("a/b/"))
 			assert.Equal(node.pattern, "/a/b")
 
 			parent := tr1.define("/a")
@@ -52,7 +53,7 @@ func TestGearTrie(t *testing.T) {
 		t.Run("double colon pattern", func(t *testing.T) {
 			assert := assert.New(t)
 
-			tr1 := newTrie(true)
+			tr1 := newTrie()
 			node := tr1.define("/a/::b")
 			assert.Equal(node.name, "")
 			NotEqualPtr(t, node, tr1.define("/a/::"))
@@ -73,7 +74,7 @@ func TestGearTrie(t *testing.T) {
 		t.Run("named pattern", func(t *testing.T) {
 			assert := assert.New(t)
 
-			tr1 := newTrie(true)
+			tr1 := newTrie()
 
 			assert.Panics(func() {
 				tr1.define("/a/:")
@@ -107,7 +108,7 @@ func TestGearTrie(t *testing.T) {
 		t.Run("wildcard pattern", func(t *testing.T) {
 			assert := assert.New(t)
 
-			tr1 := newTrie(true)
+			tr1 := newTrie()
 			assert.Panics(func() {
 				tr1.define("/a/*")
 			})
@@ -143,7 +144,7 @@ func TestGearTrie(t *testing.T) {
 		t.Run("regexp pattern", func(t *testing.T) {
 			assert := assert.New(t)
 
-			tr1 := newTrie(true)
+			tr1 := newTrie()
 			assert.Panics(func() {
 				tr1.define("/a/(")
 			})
@@ -194,13 +195,31 @@ func TestGearTrie(t *testing.T) {
 				tr1.define("/a/:x(x|y|z)/c")
 			})
 		})
+
+		t.Run("ignoreCase option", func(t *testing.T) {
+			tr := newTrie(true)
+			node := tr.define("/A/b")
+			EqualPtr(t, node, tr.define("/a/b"))
+			EqualPtr(t, node, tr.define("/a/B"))
+
+			node = tr.define("/::A/b")
+			EqualPtr(t, node, tr.define("/::a/b"))
+
+			tr = newTrie(false)
+			node = tr.define("/A/b")
+			NotEqualPtr(t, node, tr.define("/a/b"))
+			NotEqualPtr(t, node, tr.define("/a/B"))
+
+			node = tr.define("/::A/b")
+			NotEqualPtr(t, node, tr.define("/::a/b"))
+		})
 	})
 
 	t.Run("trie.match", func(t *testing.T) {
 		t.Run("root pattern", func(t *testing.T) {
 			assert := assert.New(t)
 
-			tr1 := newTrie(true)
+			tr1 := newTrie()
 			node := tr1.define("/")
 			res := tr1.match("/")
 			assert.Nil(res.params)
@@ -216,7 +235,7 @@ func TestGearTrie(t *testing.T) {
 		t.Run("simple pattern", func(t *testing.T) {
 			assert := assert.New(t)
 
-			tr1 := newTrie(true)
+			tr1 := newTrie()
 			node := tr1.define("/a/b")
 			res := tr1.match("/a/b")
 			assert.Nil(res.params)
@@ -225,12 +244,16 @@ func TestGearTrie(t *testing.T) {
 			assert.Nil(tr1.match("/a").node)
 			assert.Nil(tr1.match("/a/b/c").node)
 			assert.Nil(tr1.match("/a/x/c").node)
+
+			assert.Panics(func() {
+				tr1.match("/a//b")
+			})
 		})
 
 		t.Run("double colon pattern", func(t *testing.T) {
 			assert := assert.New(t)
 
-			tr1 := newTrie(true)
+			tr1 := newTrie()
 			node := tr1.define("/a/::b")
 			res := tr1.match("/a/:b")
 			assert.Nil(res.params)
@@ -254,7 +277,7 @@ func TestGearTrie(t *testing.T) {
 		t.Run("named pattern", func(t *testing.T) {
 			assert := assert.New(t)
 
-			tr1 := newTrie(true)
+			tr1 := newTrie()
 			node := tr1.define("/a/:b")
 			res := tr1.match("/a/xyz汉")
 			assert.Equal("xyz汉", res.params["b"])
@@ -278,7 +301,7 @@ func TestGearTrie(t *testing.T) {
 		t.Run("wildcard pattern", func(t *testing.T) {
 			assert := assert.New(t)
 
-			tr1 := newTrie(true)
+			tr1 := newTrie()
 			node := tr1.define("/a/:b*")
 			res := tr1.match("/a/xyz汉")
 			assert.Equal("xyz汉", res.params["b"])
@@ -302,7 +325,7 @@ func TestGearTrie(t *testing.T) {
 		t.Run("regexp pattern", func(t *testing.T) {
 			assert := assert.New(t)
 
-			tr1 := newTrie(true)
+			tr1 := newTrie()
 			node := tr1.define("/a/:b(^(x|y|z)$)")
 			res := tr1.match("/a/x")
 			assert.Equal("x", res.params["b"])
@@ -328,6 +351,87 @@ func TestGearTrie(t *testing.T) {
 			res = tr1.match("/a/z/c")
 			assert.Equal("z", res.params["b"])
 			EqualPtr(t, child, res.node)
+		})
+
+		t.Run("ignoreCase option", func(t *testing.T) {
+			assert := assert.New(t)
+
+			// ignoreCase = true
+			tr := newTrie(true)
+			node := tr.define("/A/:Name")
+
+			res := tr.match("/a/x")
+			EqualPtr(t, node, res.node)
+			assert.Equal("x", res.params["Name"])
+			assert.Equal("", res.params["name"])
+
+			res = tr.match("/A/X")
+			EqualPtr(t, node, res.node)
+			assert.Equal("X", res.params["Name"])
+			assert.Equal("", res.params["name"])
+
+			node = tr.define("/::A/:Name")
+
+			res = tr.match("/:a/x")
+			EqualPtr(t, node, res.node)
+			assert.Equal("x", res.params["Name"])
+			assert.Equal("", res.params["name"])
+
+			res = tr.match("/:A/X")
+			EqualPtr(t, node, res.node)
+			assert.Equal("X", res.params["Name"])
+			assert.Equal("", res.params["name"])
+
+			// ignoreCase = false
+			tr = newTrie(false)
+			node = tr.define("/A/:Name")
+
+			assert.Nil(tr.match("/a/x").node)
+			res = tr.match("/A/X")
+			EqualPtr(t, node, res.node)
+			assert.Equal("X", res.params["Name"])
+
+			node = tr.define("/::A/:Name")
+
+			assert.Nil(tr.match("/:a/x").node)
+			res = tr.match("/:A/X")
+			EqualPtr(t, node, res.node)
+			assert.Equal("X", res.params["Name"])
+			assert.Equal("", res.params["name"])
+		})
+
+		t.Run("trailingSlashRedirect option", func(t *testing.T) {
+			assert := assert.New(t)
+
+			// trailingSlashRedirect = false
+			tr := newTrie(true, false)
+			node1 := tr.define("/abc/efg")
+			node2 := tr.define("/abc/xyz/")
+
+			EqualPtr(t, node1, tr.match("/abc/efg").node)
+			assert.False(tr.match("/abc/efg").tsr)
+			assert.Nil(tr.match("/abc/efg/").node)
+			assert.False(tr.match("/abc/efg/").tsr)
+
+			EqualPtr(t, node2, tr.match("/abc/xyz/").node)
+			assert.False(tr.match("/abc/xyz/").tsr)
+			assert.Nil(tr.match("/abc/xyz").node)
+			assert.False(tr.match("/abc/xyz").tsr)
+
+			// trailingSlashRedirect = true
+			tr = newTrie(true, true)
+			node1 = tr.define("/abc/efg")
+			node2 = tr.define("/abc/xyz/")
+
+			EqualPtr(t, node1, tr.match("/abc/efg").node)
+			assert.False(tr.match("/abc/efg").tsr)
+			assert.Nil(tr.match("/abc/efg/").node)
+			assert.True(tr.match("/abc/efg/").tsr)
+
+			EqualPtr(t, node2, tr.match("/abc/xyz/").node)
+			assert.False(tr.match("/abc/xyz/").tsr)
+			assert.Nil(tr.match("/abc/xyz").node)
+			assert.True(tr.match("/abc/xyz").tsr)
 		})
 	})
 }

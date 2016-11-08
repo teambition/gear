@@ -9,26 +9,42 @@ import (
 var wordReg = regexp.MustCompile("^\\w+$")
 var doubleColonReg = regexp.MustCompile("^::\\w*$")
 
-func newTrie(ignoreCase bool) *trie {
+// newTrie(ignoreCase, trailingSlashRedirect)
+// newTrie(ignoreCase)
+// newTrie()
+func newTrie(args ...bool) *trie {
+	// Ignore case when matching URL path.
+	ignoreCase := true
+	// Check if the current route can't be matched but a handler
+	// for the path with (without) the trailing slash exists.
+	trailingSlashRedirect := false
+	if len(args) > 0 {
+		ignoreCase = args[0]
+	}
+	if len(args) > 1 {
+		trailingSlashRedirect = args[1]
+	}
 	return &trie{
 		ignoreCase: ignoreCase,
+		tsr:        trailingSlashRedirect,
 		root: &trieNode{
 			parentNode:      nil,
 			literalChildren: map[string]*trieNode{},
-			methods:         map[string]Middleware{},
+			methods:         map[string][]Middleware{},
 		},
 	}
 }
 
 type trie struct {
 	ignoreCase bool
+	tsr        bool
 	root       *trieNode
 }
 
 type trieNode struct {
 	pattern      string
 	allowMethods string
-	methods      map[string]Middleware
+	methods      map[string][]Middleware
 
 	name            string
 	endpoint        bool
@@ -39,11 +55,11 @@ type trieNode struct {
 	literalChildren map[string]*trieNode
 }
 
-func (n *trieNode) handle(method string, handle Middleware) {
+func (n *trieNode) handle(method string, handlers []Middleware) {
 	if n.methods[method] != nil {
 		panic(NewAppError(fmt.Sprintf("the route in %s already defined", n.pattern)))
 	}
-	n.methods[method] = handle
+	n.methods[method] = handlers
 	if n.allowMethods == "" {
 		n.allowMethods = method
 	} else {
@@ -54,6 +70,7 @@ func (n *trieNode) handle(method string, handle Middleware) {
 type trieMatched struct {
 	node   *trieNode
 	params map[string]string
+	tsr    bool
 }
 
 func (t *trie) define(pattern string) *trieNode {
@@ -61,7 +78,7 @@ func (t *trie) define(pattern string) *trieNode {
 		panic(NewAppError(fmt.Sprintf("multi-slash exist: %s", pattern)))
 	}
 
-	_pattern := strings.Trim(pattern, "/")
+	_pattern := strings.TrimPrefix(pattern, "/")
 	node := defineNode(t.root, strings.Split(_pattern, "/"), t.ignoreCase)
 
 	if node.pattern == "" {
@@ -71,20 +88,28 @@ func (t *trie) define(pattern string) *trieNode {
 }
 
 func (t *trie) match(path string) *trieMatched {
-	node := t.root
-	frags := strings.Split(strings.Trim(path, "/"), "/")
+	if strings.Contains(path, "//") {
+		panic(NewAppError(fmt.Sprintf("multi-slash exist: %s", path)))
+	}
+
+	parent := t.root
+	frags := strings.Split(strings.TrimPrefix(path, "/"), "/")
 
 	res := &trieMatched{}
 	for i, frag := range frags {
 		_frag := frag
-		if t.ignoreCase && _frag != "" {
+		if t.ignoreCase {
 			_frag = strings.ToLower(frag)
 		}
-		named := false
-		node, named = matchNode(node, _frag)
+		node, named := matchNode(parent, _frag)
 		if node == nil {
+			// TrailingSlashRedirect: /acb/efg/ -> /acb/efg
+			if t.tsr && frag == "" && len(frags) == (i+1) && parent.endpoint {
+				res.tsr = true
+			}
 			return res
 		}
+		parent = node
 		if named {
 			if res.params == nil {
 				res.params = map[string]string{}
@@ -98,8 +123,11 @@ func (t *trie) match(path string) *trieMatched {
 		}
 	}
 
-	if node.endpoint {
-		res.node = node
+	if parent.endpoint {
+		res.node = parent
+	} else if t.tsr && parent.literalChildren[""] != nil {
+		// TrailingSlashRedirect: /acb/efg -> /acb/efg/
+		res.tsr = true
 	}
 	return res
 }
@@ -140,6 +168,9 @@ func parseNode(parent *trieNode, frag string, ignoreCase bool) *trieNode {
 	if doubleColonReg.MatchString(frag) {
 		_frag = frag[1:]
 	}
+	if ignoreCase {
+		_frag = strings.ToLower(_frag)
+	}
 
 	if literalChildren[_frag] != nil {
 		return literalChildren[_frag]
@@ -148,7 +179,7 @@ func parseNode(parent *trieNode, frag string, ignoreCase bool) *trieNode {
 	node := &trieNode{
 		parentNode:      parent,
 		literalChildren: map[string]*trieNode{},
-		methods:         map[string]Middleware{},
+		methods:         map[string][]Middleware{},
 	}
 
 	if frag == "" {
@@ -195,7 +226,7 @@ func parseNode(parent *trieNode, frag string, ignoreCase bool) *trieNode {
 	} else if frag[0] == '*' || frag[0] == '(' || frag[0] == ')' {
 		panic(NewAppError(fmt.Sprintf("invalid pattern: %s", frag)))
 	} else {
-		literalChildren[frag] = node
+		literalChildren[_frag] = node
 	}
 
 	return node

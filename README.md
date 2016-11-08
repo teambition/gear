@@ -37,7 +37,7 @@ func main() {
 	logger := &middleware.DefaultLogger{W: os.Stdout}
 	app.Use(middleware.NewLogger(logger))
 
-	router := gear.NewRouter("", true)
+	router := gear.NewRouter()
 	// Add router middleware
 	router.Use(SomeRouterMiddleware)
 	router.Get("/", ViewHello)
@@ -65,7 +65,11 @@ Features:
 1. Support regexp
 2. Support multi-router
 3. Support router layer middleware
-4. Best Performance
+4. Support trailing slash automatic redirection
+5. "405 Method Not Allowed" automatic handle
+6. "501 Not Implemented" automatic handle
+7. "OPTIONS" method automatic handle
+8. Best Performance
 
 The registered path, against which the router matches incoming requests, can contain three types of parameters:
 ```

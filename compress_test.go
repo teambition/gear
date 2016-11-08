@@ -55,7 +55,7 @@ func TestGearResponseCompress(t *testing.T) {
 		app := New()
 		app.Set("AppCompress", &DefaultCompress{})
 
-		r := NewRouter("", false)
+		r := NewRouter()
 		r.Get("/full", func(ctx *Context) error {
 			ctx.Type(MIMETextPlainCharsetUTF8)
 			return ctx.End(http.StatusOK, body)
@@ -80,16 +80,15 @@ func TestGearResponseCompress(t *testing.T) {
 			res, err := req.Get(host + "/full")
 			assert.Nil(err)
 			assert.True(res.OK())
-			content := PickRes(res.Content()).([]byte)
+			content := PickRes(ioutil.ReadAll(res.Body)).([]byte)
 
 			buf := gzipCompress(body)
 			assert.True(len(buf) < len(body))
+			assert.True(len(buf) == len(content))
 			assert.Equal("gzip", res.Header.Get(HeaderContentEncoding))
 			assert.Equal(HeaderAcceptEncoding, res.Header.Get(HeaderVary))
 			assert.Equal(strconv.FormatInt(int64(len(buf)), 10), res.Header.Get(HeaderContentLength))
-			if len(content) == len(buf) {
-				content = gzipUnCompress(content)
-			}
+			content = gzipUnCompress(content)
 			assert.Equal(body, content)
 		})
 
@@ -102,16 +101,15 @@ func TestGearResponseCompress(t *testing.T) {
 			res, err := req.Get(host + "/full")
 			assert.Nil(err)
 			assert.True(res.OK())
-			content := PickRes(res.Content()).([]byte)
+			content := PickRes(ioutil.ReadAll(res.Body)).([]byte)
 
 			buf := flateCompress(body)
 			assert.True(len(buf) < len(body))
+			assert.True(len(buf) == len(content))
 			assert.Equal("deflate", res.Header.Get(HeaderContentEncoding))
 			assert.Equal(HeaderAcceptEncoding, res.Header.Get(HeaderVary))
 			assert.Equal(strconv.FormatInt(int64(len(buf)), 10), res.Header.Get(HeaderContentLength))
-			if len(content) == len(buf) {
-				content = flateUnCompress(content)
-			}
+			content = flateUnCompress(content)
 			assert.Equal(body, content)
 		})
 
