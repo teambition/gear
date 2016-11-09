@@ -1,4 +1,4 @@
-// Package gear implements a web framework with context.Context for Go. It focuses on performance and composition.
+// Package gear implements a expressive web framework with context.Context for Go. It focuses on performance and composition.
 
 /*
 Example:

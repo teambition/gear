@@ -2,16 +2,11 @@ sudo: false
 language: go
 go:
   - 1.7
-  - tip
-matrix:
-  allow_failures:
-    - go: tip
 before_install:
   - go get github.com/modocache/gover
   - go get github.com/mattn/goveralls
-  - go get golang.org/x/tools/cmd/cover
 script:
   - go test -coverprofile=gear.coverprofile
   - go test -coverprofile=middleware.coverprofile ./middleware
-  - $HOME/gopath/bin/gover
-  - $HOME/gopath/bin/goveralls -coverprofile=gover.coverprofile -service=travis-ci
+  - gover
+  - goveralls -coverprofile=gover.coverprofile -service=travis-ci

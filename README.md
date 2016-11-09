@@ -5,7 +5,7 @@
 [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/teambition/gear)
 
 -----
-Gear implements a web framework with context.Context for Go. It focuses on performance and composition.
+Expressive web framework with context.Context for Go, focuses on performance and composition.
 
 ## Demo
 ```go
@@ -19,29 +19,23 @@ import (
 	"github.com/teambition/gear/middleware"
 )
 
-// SomeRouterMiddleware as example.
-func SomeRouterMiddleware(ctx *gear.Context) error {
-	// do some thing.
-	fmt.Println("Router middleware...", ctx.Path)
-	return nil
-}
-
-// ViewHello as example.
-func ViewHello(ctx *gear.Context) error {
-	return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-}
-
 func main() {
 	app := gear.New()
+
 	// Add app middleware
 	logger := &middleware.DefaultLogger{W: os.Stdout}
 	app.Use(middleware.NewLogger(logger))
 
-	router := gear.NewRouter()
 	// Add router middleware
-	router.Use(SomeRouterMiddleware)
-	router.Get("/", ViewHello)
-
+	router := gear.NewRouter()
+	router.Use(func(ctx *gear.Context) error {
+		// do some thing.
+		fmt.Println("Router middleware...", ctx.Path)
+		return nil
+	})
+	router.Get("/", func(ctx *gear.Context) error {
+		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+	})
 	app.UseHandler(router)
 	app.Error(app.Listen(":3000"))
 }
@@ -64,56 +58,54 @@ Features:
 
 1. Support regexp
 2. Support multi-router
-3. Support router layer middleware
+3. Support router layer middlewares
 4. Support trailing slash automatic redirection
-5. "405 Method Not Allowed" automatic handle
-6. "501 Not Implemented" automatic handle
-7. "OPTIONS" method automatic handle
+5. Automatic handle `405 Method Not Allowed`
+6. Automatic handle `501 Not Implemented`
+7. Automatic handle `OPTIONS` method
 8. Best Performance
 
 The registered path, against which the router matches incoming requests, can contain three types of parameters:
-```
- Syntax         Type
- :name          named parameter
- :name*         named with catch-all parameter
- :name(regexp)  named with regexp parameter
-```
+
+| Syntax | Description |
+|--------|------|
+| `:name` | named parameter |
+| `:name*` | named with catch-all parameter |
+| `:name(regexp)` | named with regexp parameter |
+
 
 Named parameters are dynamic path segments. They match anything until the next '/' or the path end:
-```
- Path: /api/:type/:ID
 
- Requests:
-  /api/user/123             match: type="user", ID="123"
-  /api/user                 no match
-  /api/user/123/comments    no match
+Define: `/api/:type/:ID`
+```
+/api/user/123             match: type="user", ID="123"
+/api/user                 no match
+/api/user/123/comments    no match
 ```
 
 Named with catch-all parameters match anything until the path end, including the directory index (the '/' before the catch-all). Since they match anything until the end, catch-all parameters must always be the final path element.
-```
- Path: /files/:filepath*
 
- Requests:
-  /files                              no match
-  /files/LICENSE                      match: filepath="LICENSE"
-  /files/templates/article.html       match: filepath="templates/article.html"
+Define: `/files/:filepath*`
+```
+/files                           no match
+/files/LICENSE                   match: filepath="LICENSE"
+/files/templates/article.html    match: filepath="templates/article.html"
 ```
 
 Named with regexp parameters match anything using regexp until the next '/' or the path end:
-```
- Path: /api/:type/:ID(^\\d+$)
 
- Requests:
-  /api/user/123             match: type="user", ID="123"
-  /api/user                 no match
-  /api/user/abc             no match
-  /api/user/123/comments    no match
+Define: `/api/:type/:ID(^\\d+$)`
+```
+/api/user/123             match: type="user", ID="123"
+/api/user                 no match
+/api/user/abc             no match
+/api/user/123/comments    no match
 ```
 
 The value of parameters is saved on the gear.Context. Retrieve the value of a parameter by name:
 ```
- type := ctx.Param("type")
- id   := ctx.Param("ID")
+type := ctx.Param("type")
+id   := ctx.Param("ID")
 ```
 
 ## About Middleware
@@ -141,7 +133,6 @@ All this middlewares can be use in app layer, router layer or middleware layer.
 
 ## About Hook
 ```go
-// Hook defines a function to process as hook.
 type Hook func(*Context)
 ```
 `Hook` can be used to some teardowm job dynamically. For example, Logger middleware use `ctx.OnEnd` to write logs to underlayer. Hooks are executed in LIFO order, just like go `defer`. `Hook` can only be add in middleware. You can't add another hook in a hook.
@@ -172,9 +163,6 @@ func NewLogger(logger Logger) gear.Middleware {
 	}
 }
 ```
-
-## Bench
-https://godoc.org/github.com/teambition/gear/blob/master/bench
 
 ### Gear with "net/http": 50030
 ```sh

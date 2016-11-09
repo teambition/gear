@@ -2,6 +2,8 @@
 *.o
 *.a
 *.so
+*.out
+*.coverprofile
 
 # Folders
 _obj
