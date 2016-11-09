@@ -43,6 +43,9 @@ func TestGearMiddlewareFavicon(t *testing.T) {
 
 	app := gear.New()
 	app.Use(NewFavicon("../testdata/favicon.ico"))
+	app.Use(func(ctx *gear.Context) error {
+		return ctx.HTML(200, "OK")
+	})
 	srv := app.Start()
 	defer srv.Close()
 
@@ -87,6 +90,15 @@ func TestGearMiddlewareFavicon(t *testing.T) {
 		assert.Equal(405, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		assert.Equal("GET, HEAD, OPTIONS", res.Header.Get(gear.HeaderAllow))
+		res.Body.Close()
+	})
+
+	t.Run("Other path", func(t *testing.T) {
+		assert := assert.New(t)
+
+		res, err := req.Patch("http://" + srv.Addr().String() + "/abc")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
 		res.Body.Close()
 	})
 }

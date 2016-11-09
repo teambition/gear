@@ -92,6 +92,32 @@ func TestGearLogger(t *testing.T) {
 		res.Body.Close()
 	})
 
+	t.Run("Default log", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := gear.New()
+		logger := &DefaultLogger{&buf}
+		app.Use(NewLogger(logger))
+		app.Use(func(ctx *gear.Context) error {
+			log := logger.FromCtx(ctx)
+			log["Data"] = []int{1, 2, 3}
+			return ctx.HTML(200, "OK")
+		})
+		srv := app.Start()
+		defer srv.Close()
+
+		req := NewRequst()
+		res, err := req.Get("http://" + srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		log := buf.String()
+		assert.Contains(log, "\x1b[34;1mGET\x1b[39;22m")
+		assert.Contains(log, "\x1b[32;1m200\x1b[39;22m")
+		res.Body.Close()
+	})
+
 	t.Run("Work with panic", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -125,5 +151,23 @@ func TestGearLogger(t *testing.T) {
 		assert.Contains(log, `"UserAgent":`)
 		assert.Contains(errbuf.String(), "Some error")
 		res.Body.Close()
+	})
+
+	t.Run("Color", func(t *testing.T) {
+		assert := assert.New(t)
+
+		assert.Equal("\x1b[32;1m200\x1b[39;22m", ColorStatus(200))
+		assert.Equal("\x1b[32;1m204\x1b[39;22m", ColorStatus(204))
+		assert.Equal("\x1b[37;1m304\x1b[39;22m", ColorStatus(304))
+		assert.Equal("\x1b[33;1m404\x1b[39;22m", ColorStatus(404))
+		assert.Equal("\x1b[31;1m504\x1b[39;22m", ColorStatus(504))
+
+		assert.Equal("\x1b[34;1mGET\x1b[39;22m", ColorMethod("GET"))
+		assert.Equal("\x1b[35;1mHEAD\x1b[39;22m", ColorMethod("HEAD"))
+		assert.Equal("\x1b[36;1mPOST\x1b[39;22m", ColorMethod("POST"))
+		assert.Equal("\x1b[33;1mPUT\x1b[39;22m", ColorMethod("PUT"))
+		assert.Equal("\x1b[31;1mDELETE\x1b[39;22m", ColorMethod("DELETE"))
+		assert.Equal("\x1b[37;1mOPTIONS\x1b[39;22m", ColorMethod("OPTIONS"))
+		assert.Equal("PATCH", ColorMethod("PATCH"))
 	})
 }

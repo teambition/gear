@@ -35,12 +35,12 @@ func NewTimeout(du time.Duration, hook gear.Hook) gear.Middleware {
 		c, _ := ctx.WithTimeout(du)
 		go func() {
 			select {
+			case <-ctx.Done():
 			case <-c.Done():
 				if err := c.Err(); err == context.DeadlineExceeded {
 					ctx.Cancel()
 					hook(ctx)
 				}
-			case <-ctx.Done():
 			}
 		}()
 		return nil

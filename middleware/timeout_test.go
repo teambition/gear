@@ -44,7 +44,7 @@ func TestGearMiddlewareTimeout(t *testing.T) {
 		res.Body.Close()
 	})
 
-	t.Run("hook should not run when timeout", func(t *testing.T) {
+	t.Run("hook should not run when no timeout", func(t *testing.T) {
 		assert := assert.New(t)
 
 		count := 0

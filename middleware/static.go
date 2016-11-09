@@ -28,7 +28,6 @@ type StaticOptions struct {
 //
 //  func main() {
 //  	app := gear.New()
-//  	app.Use(middleware.NewDefaultLogger())
 //  	app.Use(middleware.NewFavicon("./testdata/favicon.ico"))
 //  	app.Use(middleware.NewStatic(middleware.StaticOptions{
 //  		Root:        "./testdata",

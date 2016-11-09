@@ -15,8 +15,22 @@ func TestGearMiddlewareStatic(t *testing.T) {
 			StripPrefix: false,
 		})
 	})
+	assert.NotPanics(t, func() {
+		NewStatic(StaticOptions{
+			Root:        "",
+			Prefix:      "",
+			StripPrefix: true,
+		})
+	})
 
 	app := gear.New()
+	app.Set("AppCompress", &gear.DefaultCompress{})
+
+	app.Use(NewStatic(StaticOptions{
+		Root:        "../testdata",
+		Prefix:      "/static",
+		StripPrefix: true,
+	}))
 	app.Use(NewStatic(StaticOptions{
 		Root:        "../testdata",
 		Prefix:      "/",
@@ -31,6 +45,16 @@ func TestGearMiddlewareStatic(t *testing.T) {
 		assert := assert.New(t)
 
 		res, err := req.Get("http://" + srv.Addr().String() + "/hello.html")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		res.Body.Close()
+	})
+
+	t.Run("GET with StripPrefix", func(t *testing.T) {
+		assert := assert.New(t)
+
+		res, err := req.Get("http://" + srv.Addr().String() + "/static/hello.html")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
@@ -76,6 +100,17 @@ func TestGearMiddlewareStatic(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("image/x-icon", res.Header.Get(gear.HeaderContentType))
+		res.Body.Close()
+	})
+
+	t.Run("Should compress", func(t *testing.T) {
+		assert := assert.New(t)
+
+		res, err := req.Get("http://" + srv.Addr().String() + "/readme.md")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		assert.Equal("gzip", res.Header.Get(gear.HeaderContentEncoding))
 		res.Body.Close()
 	})
 

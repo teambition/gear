@@ -115,7 +115,6 @@ func ParseError(e error, code ...int) *Error {
 //
 //  func main() {
 //  	app := gear.New() // Create app
-//  	app.Use(gear.NewDefaultLogger())
 //  	app.Use(func(ctx *gear.Context) error {
 //  		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
 //  	})
