@@ -87,11 +87,8 @@ func (t *trie) define(pattern string) *trieNode {
 	return node
 }
 
+// path should not contains multi-slash
 func (t *trie) match(path string) *trieMatched {
-	if strings.Contains(path, "//") {
-		panic(NewAppError(fmt.Sprintf("multi-slash exist: %s", path)))
-	}
-
 	parent := t.root
 	frags := strings.Split(strings.TrimPrefix(path, "/"), "/")
 
@@ -101,6 +98,7 @@ func (t *trie) match(path string) *trieMatched {
 		if t.ignoreCase {
 			_frag = strings.ToLower(frag)
 		}
+
 		node, named := matchNode(parent, _frag)
 		if node == nil {
 			// TrailingSlashRedirect: /acb/efg/ -> /acb/efg
@@ -110,6 +108,7 @@ func (t *trie) match(path string) *trieMatched {
 			return res
 		}
 		parent = node
+
 		if named {
 			if res.params == nil {
 				res.params = map[string]string{}

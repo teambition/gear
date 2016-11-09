@@ -244,10 +244,6 @@ func TestGearTrie(t *testing.T) {
 			assert.Nil(tr1.match("/a").node)
 			assert.Nil(tr1.match("/a/b/c").node)
 			assert.Nil(tr1.match("/a/x/c").node)
-
-			assert.Panics(func() {
-				tr1.match("/a//b")
-			})
 		})
 
 		t.Run("double colon pattern", func(t *testing.T) {

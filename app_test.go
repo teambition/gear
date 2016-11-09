@@ -65,7 +65,7 @@ type testOnError struct{}
 // OnError implemented OnError interface.
 func (o *testOnError) OnError(ctx *Context, err error) *Error {
 	ctx.Type(MIMETextHTMLCharsetUTF8)
-	return ParseError(err, 501)
+	return ParseError(err, 503)
 }
 
 func TestGearError(t *testing.T) {
@@ -86,10 +86,10 @@ func TestGearError(t *testing.T) {
 		req := NewRequst()
 		res, err := req.Get("http://" + srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(501, res.StatusCode)
+		assert.Equal(503, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(HeaderContentType))
 		assert.Equal("Some error", PickRes(res.Text()).(string))
-		assert.Equal("TEST: Some error\n", buf.String())
+		assert.Equal("TEST: {Code: 503, Msg: Some error, Meta: Some error}\n", buf.String())
 		res.Body.Close()
 	})
 
@@ -136,12 +136,12 @@ func TestGearError(t *testing.T) {
 		res, err := req.Get("http://" + srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal("Internal Server Error", PickRes(res.Text()).(string))
+		assert.Equal("panic recovered: Some error", PickRes(res.Text()).(string))
 
 		log := buf.String()
-		assert.True(strings.Contains(log, "TEST: panic recovered")) // recovered title
-		assert.True(strings.Contains(log, "GET /"))                 // http request content
-		assert.True(strings.Contains(log, "Some error"))            // panic content
+		assert.True(strings.Contains(log, "panic recovered")) // recovered title
+		assert.True(strings.Contains(log, "GET /"))           // http request content
+		assert.True(strings.Contains(log, "Some error"))      // panic content
 		res.Body.Close()
 	})
 }

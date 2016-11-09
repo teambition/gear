@@ -51,7 +51,7 @@ func NewContext(app *App, w http.ResponseWriter, req *http.Request) *Context {
 
 	ctx.Host = req.Host
 	ctx.Method = req.Method
-	ctx.Path = normalizePath(req.URL.Path) // fix "/abc//ef" to "/abc/ef"
+	ctx.Path = req.URL.Path
 	ctx.kv = make(map[interface{}]interface{})
 	ctx.ctx, ctx.cancelCtx = context.WithCancel(req.Context())
 	return ctx

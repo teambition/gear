@@ -66,6 +66,11 @@ func (err *Error) Error() string {
 	return err.Msg
 }
 
+// String implemented fmt.Stringer interface.
+func (err *Error) String() string {
+	return fmt.Sprintf("{Code: %3d, Msg: %s, Meta: %s}", err.Code, err.Msg, err.Meta)
+}
+
 // Hook defines a function to process as hook.
 type Hook func(*Context)
 
@@ -247,8 +252,8 @@ func (app *App) Start(addr ...string) *ServerListener {
 
 // Error writes error to underlayer logging system (ErrorLog).
 func (app *App) Error(err error) {
-	if !isNil(err) {
-		app.logger.Println(err)
+	if err := ParseError(err); err != nil {
+		app.logger.Println(err.String())
 	}
 }
 
@@ -269,9 +274,13 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if err := recover(); err != nil {
 			httprequest, _ := httputil.DumpRequest(ctx.Req, false)
-			ctx.Error(&Error{Code: 500, Msg: http.StatusText(500)})
-			h.app.Error(fmt.Errorf("panic recovered: %s; %s",
-				err, strings.Replace(string(httprequest), "\n", "\\n", -1)))
+			err := &Error{
+				Code: 500,
+				Msg:  fmt.Sprintf("panic recovered: %v", err),
+				Meta: httprequest,
+			}
+			ctx.Error(err)
+			h.app.Error(err)
 		}
 	}()
 
@@ -280,6 +289,12 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// cancel middleware process if request context canceled
 		ctx.ended = true
 	}()
+
+	// handle "/abc//efg"
+	if strings.Contains(ctx.Path, "//") {
+		http.NotFound(ctx.Res, ctx.Req)
+		return
+	}
 
 	// process app middleware
 	for _, handle := range h.middleware {
@@ -297,13 +312,13 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx.Type(MIMETextHTMLCharsetUTF8) // reset Content-Type, but you can set it in OnError again.
 		ctx.afterHooks = nil              // clear afterHooks when error
 		// process middleware error with OnError
-		if ctxErr := h.app.onerror.OnError(ctx, err); ctxErr != nil {
-			ctx.Status(ctxErr.Status())
+		if e := h.app.onerror.OnError(ctx, err); e != nil {
+			ctx.Status(e.Status())
 			// 5xx Server Error will send to app.Error
-			if ctx.Res.Status >= 500 {
-				h.app.Error(ctxErr)
+			if e.Code == 500 || e.Code > 501 || e.Code < 400 {
+				h.app.Error(e)
 			}
-			ctx.String(ctxErr.Error())
+			ctx.String(e.Error())
 		}
 	}
 

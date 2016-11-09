@@ -299,10 +299,3 @@ func (r *Router) run(ctx *Context, handlers []Middleware) (err error) {
 	}
 	return
 }
-
-func normalizePath(path string) string {
-	if !strings.Contains(path, "//") {
-		return path
-	}
-	return normalizePath(strings.Replace(path, "//", "/", -1))
-}
