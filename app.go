@@ -6,10 +6,10 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/textproto"
 	"os"
 	"reflect"
+	"runtime"
 	"strings"
 )
 
@@ -272,14 +272,16 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// recover panic error
 	defer func() {
 		if err := recover(); err != nil {
-			httprequest, _ := httputil.DumpRequest(ctx.Req, false)
+			const size = 64 << 10
+			buf := make([]byte, size)
+			buf = buf[:runtime.Stack(buf, false)]
 			err := &Error{
 				Code: 500,
 				Msg:  fmt.Sprintf("panic recovered: %v", err),
-				Meta: httprequest,
+				Meta: buf,
 			}
-			ctx.Error(err)
 			h.app.Error(err)
+			ctx.Error(err)
 		}
 	}()
 
@@ -308,16 +310,15 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// ensure that ended is true after middleware process finished.
 	ctx.ended = true
 	if !isNil(err) {
-		ctx.Type(MIMETextHTMLCharsetUTF8) // reset Content-Type, but you can set it in OnError again.
-		ctx.afterHooks = nil              // clear afterHooks when error
+		ctx.afterHooks = nil // clear afterHooks when error
 		// process middleware error with OnError
-		if e := h.app.onerror.OnError(ctx, err); e != nil {
-			ctx.Status(e.Status())
+		if err := h.app.onerror.OnError(ctx, err); err != nil {
+			ctx.Status(err.Status())
 			// 5xx Server Error will send to app.Error
-			if e.Code == 500 || e.Code > 501 || e.Code < 400 {
-				h.app.Error(e)
+			if err.Code == 500 || err.Code > 501 || err.Code < 400 {
+				h.app.Error(err)
 			}
-			ctx.String(e.Error())
+			ctx.String(err.Status(), err.Error())
 		}
 	}
 

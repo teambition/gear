@@ -5,11 +5,15 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"time"
+
+	"strings"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -317,9 +321,9 @@ func TestGearContextQuery(t *testing.T) {
 		return ctx.End(http.StatusNoContent)
 	})
 	r.Get("/view", func(ctx *Context) error {
+		assert.Nil(ctx.QueryValues("other"))
 		assert.Equal("123", ctx.Query("id"))
 		assert.Equal([]string{"123", "abc"}, ctx.QueryValues("id"))
-		assert.Nil(ctx.QueryValues("other"))
 		return ctx.End(http.StatusNoContent)
 	})
 	app.UseHandler(r)
@@ -337,4 +341,288 @@ func TestGearContextQuery(t *testing.T) {
 	res, err = req.Get(host + "/view?id=123&id=abc")
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
+}
+
+func TestGearContextCookie(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	r := NewRouter()
+	r.Get("/", func(ctx *Context) error {
+		c1, _ := ctx.Cookie("Gear")
+		c2, _ := ctx.Cookie("Gear.sig")
+
+		assert.Equal("test", c1.Value)
+		assert.Equal("abc123", c2.Value)
+		assert.Equal(2, len(ctx.Cookies()))
+
+		c1.Value = "Hello"
+		c1.Path = "/test"
+		ctx.SetCookie(c1)
+		return ctx.End(http.StatusNoContent)
+	})
+	app.UseHandler(r)
+
+	srv := app.Start()
+	defer srv.Close()
+
+	host := "http://" + srv.Addr().String()
+	req := NewRequst()
+	req.Cookies = map[string]string{"Gear": "test", "Gear.sig": "abc123"}
+	res, err := req.Get(host)
+	assert.Nil(err)
+	assert.Equal(204, res.StatusCode)
+	c := res.Cookies()[0]
+	assert.Equal("Gear", c.Name)
+	assert.Equal("Hello", c.Value)
+	assert.Equal("/test", c.Path)
+}
+
+func TestGearContextGetSet(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+
+	assert.Equal("", ctx.Get(HeaderAccept))
+	ctx.Set(HeaderWarning, "Some error")
+	res := CtxResult(ctx)
+	assert.Equal("Some error", res.Header.Get(HeaderWarning))
+}
+
+func TestGearContextStatus(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+	assert.Equal(ctx.Res.Status, 0)
+
+	ctx.Status(401)
+	assert.Equal(ctx.Res.Status, 401)
+	ctx.Status(0)
+	assert.Equal(ctx.Res.Status, 500)
+}
+
+func TestGearContextType(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+	ctx.Type(MIMEApplicationJSONCharsetUTF8)
+	assert.Equal(MIMEApplicationJSONCharsetUTF8, ctx.Res.header.Get(HeaderContentType))
+	ctx.Type("")
+	assert.Equal("", ctx.Res.header.Get(HeaderContentType))
+}
+
+func TestGearContextString(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+	ctx.String(400, "Some error")
+	assert.Equal(400, ctx.Res.Status)
+	assert.Equal(MIMETextPlainCharsetUTF8, ctx.Res.header.Get(HeaderContentType))
+	assert.Equal("Some error", string(ctx.Res.Body))
+	assert.False(ctx.ended)
+}
+
+func TestGearContextHTML(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	count := 0
+	app.Use(func(ctx *Context) error {
+		ctx.OnEnd(func(_ *Context) {
+			count++
+			assert.Equal(2, count)
+		})
+		ctx.After(func(_ *Context) {
+			count++
+			assert.Equal(1, count)
+		})
+		return ctx.HTML(http.StatusOK, "Hello")
+	})
+	app.Use(func(ctx *Context) error {
+		panic("this middleware unreachable")
+	})
+
+	srv := app.Start()
+	defer srv.Close()
+
+	host := "http://" + srv.Addr().String()
+	req := NewRequst()
+	res, err := req.Get(host)
+	assert.Nil(err)
+	assert.Equal(200, res.StatusCode)
+	assert.Equal("Hello", PickRes(res.Text()).(string))
+	assert.Equal(2, count)
+}
+
+func TestGearContextJSON(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	count := 0
+	app.Use(func(ctx *Context) error {
+		if ctx.Path == "/error" {
+			ctx.OnEnd(func(_ *Context) {
+				count++
+				assert.Equal(3, count)
+			})
+			ctx.After(func(_ *Context) {
+				panic("this hook unreachable")
+			})
+			return ctx.JSON(http.StatusOK, math.NaN())
+		}
+
+		ctx.OnEnd(func(_ *Context) {
+			count++
+			assert.Equal(2, count)
+		})
+		ctx.After(func(_ *Context) {
+			count++
+			assert.Equal(1, count)
+		})
+		return ctx.JSON(http.StatusOK, []string{"Hello"})
+	})
+	app.Use(func(ctx *Context) error {
+		panic("this middleware unreachable")
+	})
+
+	srv := app.Start()
+	defer srv.Close()
+
+	host := "http://" + srv.Addr().String()
+	req := NewRequst()
+	res, err := req.Get(host)
+	assert.Nil(err)
+	assert.Equal(200, res.StatusCode)
+	assert.Equal(`["Hello"]`, PickRes(res.Text()).(string))
+	assert.Equal(2, count)
+	assert.Equal(MIMEApplicationJSONCharsetUTF8, res.Header.Get(HeaderContentType))
+
+	res, err = req.Get(host + "/error")
+	assert.Nil(err)
+	assert.Equal(500, res.StatusCode)
+	assert.True(strings.Contains(PickRes(res.Text()).(string), "json: unsupported value"))
+	assert.Equal(3, count)
+	assert.Equal(MIMETextPlainCharsetUTF8, res.Header.Get(HeaderContentType))
+}
+
+func TestGearContextJSONP(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	count := 0
+	app.Use(func(ctx *Context) error {
+		if ctx.Path == "/error" {
+			ctx.OnEnd(func(_ *Context) {
+				count++
+				assert.Equal(3, count)
+			})
+			ctx.After(func(_ *Context) {
+				panic("this hook unreachable")
+			})
+			return ctx.JSONP(http.StatusOK, "cb123", math.NaN())
+		}
+
+		ctx.OnEnd(func(_ *Context) {
+			count++
+			assert.Equal(2, count)
+		})
+		ctx.After(func(_ *Context) {
+			count++
+			assert.Equal(1, count)
+		})
+		return ctx.JSONP(http.StatusOK, "cb123", []string{"Hello"})
+	})
+	app.Use(func(ctx *Context) error {
+		panic("this middleware unreachable")
+	})
+
+	srv := app.Start()
+	defer srv.Close()
+
+	host := "http://" + srv.Addr().String()
+	req := NewRequst()
+	res, err := req.Get(host)
+	assert.Nil(err)
+	assert.Equal(200, res.StatusCode)
+	assert.Equal(`/**/ typeof cb123 === "function" && cb123(["Hello"]);`, PickRes(res.Text()).(string))
+	assert.Equal(2, count)
+	assert.Equal("nosniff", res.Header.Get(HeaderXContentTypeOptions))
+	assert.Equal(MIMEApplicationJavaScriptCharsetUTF8, res.Header.Get(HeaderContentType))
+
+	res, err = req.Get(host + "/error")
+	assert.Nil(err)
+	assert.Equal(500, res.StatusCode)
+	assert.True(strings.Contains(PickRes(res.Text()).(string), "json: unsupported value"))
+	assert.Equal(3, count)
+	assert.Equal(MIMETextPlainCharsetUTF8, res.Header.Get(HeaderContentType))
+}
+
+type XMLData struct {
+	Type    string `xml:"type,attr,omitempty"`
+	Comment string `xml:",comment"`
+	Number  string `xml:",chardata"`
+}
+
+func TestGearContextXML(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	count := 0
+	app.Use(func(ctx *Context) error {
+		if ctx.Path == "/error" {
+			ctx.OnEnd(func(_ *Context) {
+				count++
+				assert.Equal(3, count)
+			})
+			ctx.After(func(_ *Context) {
+				panic("this hook unreachable")
+			})
+
+			return ctx.XML(http.StatusOK, struct {
+				Value interface{}
+				Err   string
+				Kind  reflect.Kind
+			}{
+				Value: make(chan bool),
+				Err:   "xml: unsupported type: chan bool",
+				Kind:  reflect.Chan,
+			})
+		}
+
+		ctx.OnEnd(func(_ *Context) {
+			count++
+			assert.Equal(2, count)
+		})
+		ctx.After(func(_ *Context) {
+			count++
+			assert.Equal(1, count)
+		})
+		return ctx.XML(http.StatusOK, XMLData{"test", "golang", "123"})
+	})
+	app.Use(func(ctx *Context) error {
+		panic("this middleware unreachable")
+	})
+
+	srv := app.Start()
+	defer srv.Close()
+
+	host := "http://" + srv.Addr().String()
+	req := NewRequst()
+	res, err := req.Get(host)
+	assert.Nil(err)
+	assert.Equal(200, res.StatusCode)
+	assert.Equal(`<XMLData type="test"><!--golang-->123</XMLData>`, PickRes(res.Text()).(string))
+	assert.Equal(2, count)
+	assert.Equal(MIMEApplicationXMLCharsetUTF8, res.Header.Get(HeaderContentType))
+
+	res, err = req.Get(host + "/error")
+	assert.Nil(err)
+	assert.Equal(500, res.StatusCode)
+	assert.True(strings.Contains(PickRes(res.Text()).(string), "xml: unsupported type"))
+	assert.Equal(3, count)
+	assert.Equal(MIMETextPlainCharsetUTF8, res.Header.Get(HeaderContentType))
 }

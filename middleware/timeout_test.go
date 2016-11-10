@@ -17,8 +17,7 @@ func TestGearMiddlewareTimeout(t *testing.T) {
 		req := NewRequst()
 		app.Use(NewTimeout(time.Millisecond*100, func(ctx *gear.Context) {
 			count++
-			ctx.Status(504)
-			ctx.String("Service timeout")
+			ctx.String(504, "Service timeout")
 		}))
 		app.Use(func(ctx *gear.Context) error {
 			ts := time.Now()
@@ -52,8 +51,7 @@ func TestGearMiddlewareTimeout(t *testing.T) {
 		req := NewRequst()
 		app.Use(NewTimeout(time.Millisecond*100, func(ctx *gear.Context) {
 			count++
-			ctx.Status(504)
-			ctx.String("Service timeout")
+			ctx.String(504, "Service timeout")
 		}))
 		app.Use(func(ctx *gear.Context) error {
 			return ctx.HTML(200, "Hello")

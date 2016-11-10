@@ -262,8 +262,10 @@ func (ctx *Context) Type(str string) {
 	}
 }
 
-// String set a string to response.
-func (ctx *Context) String(str string) {
+// String set an text body with status code to response.
+func (ctx *Context) String(code int, str string) {
+	ctx.Status(code)
+	ctx.Type(MIMETextPlainCharsetUTF8)
 	ctx.Res.Body = []byte(str)
 }
 
@@ -316,7 +318,12 @@ func (ctx *Context) JSONP(code int, callback string, val interface{}) error {
 // Note that this will not stop the current handler.
 func (ctx *Context) JSONPBlob(code int, callback string, buf []byte) error {
 	ctx.Type(MIMEApplicationJavaScriptCharsetUTF8)
-	buf = bytes.Join([][]byte{[]byte(callback + "("), buf, []byte(");")}, []byte{})
+	ctx.Set(HeaderXContentTypeOptions, "nosniff")
+	// the /**/ is a specific security mitigation for "Rosetta Flash JSONP abuse"
+	// @see http://miki.it/blog/2014/7/8/abusing-jsonp-with-rosetta-flash/
+	// the typeof check is just to reduce client error noise
+	buf = bytes.Join([][]byte{[]byte(`/**/ typeof ` + callback + ` === "function" && ` + callback + "("),
+		buf, []byte(");")}, []byte{})
 	return ctx.End(code, buf)
 }
 

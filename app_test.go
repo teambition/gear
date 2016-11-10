@@ -87,7 +87,7 @@ func TestGearError(t *testing.T) {
 		res, err := req.Get("http://" + srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(503, res.StatusCode)
-		assert.Equal("text/html; charset=utf-8", res.Header.Get(HeaderContentType))
+		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
 		assert.Equal("Some error", PickRes(res.Text()).(string))
 		assert.Equal("TEST: {Code: 503, Msg: Some error, Meta: Some error}\n", buf.String())
 		res.Body.Close()
@@ -139,9 +139,8 @@ func TestGearError(t *testing.T) {
 		assert.Equal("panic recovered: Some error", PickRes(res.Text()).(string))
 
 		log := buf.String()
-		assert.True(strings.Contains(log, "panic recovered")) // recovered title
-		assert.True(strings.Contains(log, "GET /"))           // http request content
-		assert.True(strings.Contains(log, "Some error"))      // panic content
+		assert.True(strings.Contains(log, "panic recovered"))
+		assert.True(strings.Contains(log, "github.com/teambition/gear"))
 		res.Body.Close()
 	})
 }

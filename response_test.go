@@ -85,11 +85,11 @@ func TestGearResponse(t *testing.T) {
 
 		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
 
-		ctx.String("Hello")
+		ctx.Res.Status = 200
+		ctx.Res.Body = []byte("Hello")
 		ctx.Res.respond()
 
 		assert.Equal(true, ctx.Res.HeaderWrote())
-		assert.Equal(200, ctx.Res.Status)
 		assert.Equal(200, CtxResult(ctx).StatusCode)
 		assert.Equal("Hello", CtxBody(ctx))
 	})

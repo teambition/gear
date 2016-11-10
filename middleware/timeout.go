@@ -38,8 +38,8 @@ func NewTimeout(du time.Duration, hook gear.Hook) gear.Middleware {
 			case <-ctx.Done():
 			case <-c.Done():
 				if err := c.Err(); err == context.DeadlineExceeded {
-					ctx.Cancel()
 					hook(ctx)
+					ctx.Cancel()
 				}
 			}
 		}()
