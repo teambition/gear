@@ -57,6 +57,8 @@ func TestGearResponseCompress(t *testing.T) {
 
 		r := NewRouter()
 		r.Get("/full", func(ctx *Context) error {
+			EqualPtr(t, ctx.Res.Header(), ctx.Res.res.Header())
+
 			ctx.Type(MIMETextPlainCharsetUTF8)
 			return ctx.End(http.StatusOK, body)
 		})
@@ -145,6 +147,79 @@ func TestGearResponseCompress(t *testing.T) {
 			assert.Equal("", res.Header.Get(HeaderVary))
 			assert.Equal(strconv.FormatInt(int64(len(short)), 10), res.Header.Get(HeaderContentLength))
 			assert.Equal(short, content)
+		})
+
+		t.Run("when Content Type not set", func(t *testing.T) {
+			assert := assert.New(t)
+
+			body := []byte(strings.Repeat("你好，Gear", 500))
+
+			app := New()
+			app.Set("AppCompress", &DefaultCompress{})
+
+			r := NewRouter()
+			r.Get("/full", func(ctx *Context) error {
+				return ctx.End(http.StatusOK, body)
+			})
+			app.UseHandler(r)
+
+			srv := app.Start()
+			defer srv.Close()
+
+			host := "http://" + srv.Addr().String()
+
+			req := NewRequst()
+
+			res, err := req.Get(host + "/full")
+			assert.Nil(err)
+			assert.True(res.OK())
+			content := PickRes(res.Content()).([]byte)
+
+			assert.Equal("", res.Header.Get(HeaderContentEncoding))
+			assert.Equal("", res.Header.Get(HeaderVary))
+			assert.Equal(strconv.FormatInt(int64(len(body)), 10), res.Header.Get(HeaderContentLength))
+			assert.Equal(body, content)
+		})
+
+		t.Run("when status code should not compress", func(t *testing.T) {
+			assert := assert.New(t)
+
+			app := New()
+			app.Set("AppCompress", &DefaultCompress{})
+
+			r := NewRouter()
+			r.Get("/204", func(ctx *Context) error {
+				ctx.Type(MIMETextPlainCharsetUTF8)
+				return ctx.End(204)
+			})
+			r.Get("/205", func(ctx *Context) error {
+				ctx.Type(MIMETextPlainCharsetUTF8)
+				return ctx.End(205)
+			})
+			r.Get("/304", func(ctx *Context) error {
+				ctx.Type(MIMETextPlainCharsetUTF8)
+				return ctx.End(304)
+			})
+			app.UseHandler(r)
+
+			srv := app.Start()
+			defer srv.Close()
+
+			host := "http://" + srv.Addr().String()
+
+			req := NewRequst()
+
+			res, _ := req.Get(host + "/204")
+			assert.Equal(204, res.StatusCode)
+			assert.Equal("", res.Header.Get(HeaderContentEncoding))
+
+			res, _ = req.Get(host + "/205")
+			assert.Equal(205, res.StatusCode)
+			assert.Equal("", res.Header.Get(HeaderContentEncoding))
+
+			res, _ = req.Get(host + "/304")
+			assert.Equal(304, res.StatusCode)
+			assert.Equal("", res.Header.Get(HeaderContentEncoding))
 		})
 	})
 }

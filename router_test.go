@@ -66,6 +66,12 @@ func TestGearRouter(t *testing.T) {
 			r.Handle("GET", "/")
 		})
 
+		assert.Panics(func() {
+			r.Handle("", "/", func(_ *Context) error {
+				return nil
+			})
+		})
+
 		r.Handle("GET", "/", func(ctx *Context) error {
 			called++
 			assert.Equal(1, called)
@@ -155,6 +161,29 @@ func TestGearRouter(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("OPTIONS", PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
+
+	t.Run("automatic handle `OPTIONS` method", func(t *testing.T) {
+		assert := assert.New(t)
+
+		middleware := func(ctx *Context) error {
+			return ctx.HTML(200, ctx.Method)
+		}
+		r := NewRouter()
+		r.Get("/", middleware)
+		r.Head("/", middleware)
+		r.Post("/", middleware)
+		r.Put("/", middleware)
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := req.Options(host)
+		assert.Nil(err)
+		assert.Equal(204, res.StatusCode)
+		assert.Equal("GET, HEAD, POST, PUT", res.Header.Get(HeaderAllow))
 		res.Body.Close()
 	})
 

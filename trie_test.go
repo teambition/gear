@@ -164,6 +164,9 @@ func TestGearTrie(t *testing.T) {
 				tr1.define("/a/:bc)")
 			})
 			assert.Panics(func() {
+				tr1.define("/a/:bc()")
+			})
+			assert.Panics(func() {
 				tr1.define("/a/:(bc)")
 			})
 			assert.Panics(func() {
@@ -179,6 +182,9 @@ func TestGearTrie(t *testing.T) {
 			assert.False(node.wildcard)
 			assert.Nil(node.varyChild)
 			assert.Equal(node, tr1.define("/a/:b(x|y|z)"))
+			assert.Panics(func() {
+				tr1.define("/a/:b(xyz)")
+			})
 			assert.Panics(func() {
 				tr1.define("/a/:x(x|y|z)")
 			})
