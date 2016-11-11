@@ -3,6 +3,7 @@ package gear
 import (
 	"bytes"
 	"errors"
+	"html/template"
 	"io"
 	"io/ioutil"
 	"math"
@@ -625,4 +626,80 @@ func TestGearContextXML(t *testing.T) {
 	assert.True(strings.Contains(PickRes(res.Text()).(string), "xml: unsupported type"))
 	assert.Equal(3, count)
 	assert.Equal(MIMETextPlainCharsetUTF8, res.Header.Get(HeaderContentType))
+}
+
+type RenderTest struct {
+	tpl *template.Template
+}
+
+func (t *RenderTest) Render(ctx *Context, w io.Writer, name string, data interface{}) (err error) {
+	if err = t.tpl.ExecuteTemplate(w, name, data); err != nil {
+		err = &Error{404, err.Error(), err}
+	}
+	return
+}
+
+func TestGearContextRender(t *testing.T) {
+	t.Run("should panic when renderer not registered", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			return ctx.Render(http.StatusOK, "index", []string{})
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.True(strings.Contains(PickRes(res.Text()).(string), "[App] renderer not registered"))
+	})
+
+	t.Run("should work", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Set("AppRenderer", &RenderTest{
+			tpl: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
+		})
+		app.Use(func(ctx *Context) error {
+			return ctx.Render(http.StatusOK, "hello", "Gear")
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("Hello, Gear!", PickRes(res.Text()).(string))
+	})
+
+	t.Run("when return error", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Set("AppRenderer", &RenderTest{
+			tpl: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
+		})
+		app.Use(func(ctx *Context) error {
+			return ctx.Render(http.StatusOK, "helloA", "Gear")
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(404, res.StatusCode)
+		assert.Equal(`html/template: "helloA" is undefined`, PickRes(res.Text()).(string))
+	})
 }
