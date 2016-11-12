@@ -53,6 +53,9 @@ func TestGearResponseCompress(t *testing.T) {
 		short := []byte(strings.Repeat("你好，Gear", 50))
 
 		app := New()
+		assert.Panics(t, func() {
+			app.Set("AppCompress", struct{}{})
+		})
 		app.Set("AppCompress", &DefaultCompress{})
 
 		r := NewRouter()

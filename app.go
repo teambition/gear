@@ -69,7 +69,12 @@ func (err *Error) Error() string {
 
 // String implemented fmt.Stringer interface.
 func (err *Error) String() string {
-	return fmt.Sprintf("{Code: %3d, Msg: %s, Meta: %s}", err.Code, err.Msg, err.Meta)
+	meta := err.Meta
+	switch meta.(type) {
+	case []byte:
+		meta = string(meta.([]byte))
+	}
+	return fmt.Sprintf("{Code: %3d, Msg: %s, Meta: %v}", err.Code, err.Msg, meta)
 }
 
 // Middleware defines a function to process as middleware.

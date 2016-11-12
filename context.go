@@ -436,7 +436,7 @@ func (ctx *Context) Error(e error) (err error) {
 	if e := ParseError(e); e != nil {
 		return ctx.End(e.Status(), []byte(e.Error()))
 	}
-	return &Error{Code: 500, Msg: NewAppError("nil-error").Error(), Meta: e}
+	return &Error{Code: 500, Msg: NewAppError("nil-error").Error()}
 }
 
 // End end the ctx with bytes and status code optionally.

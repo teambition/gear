@@ -239,6 +239,9 @@ func (t *ctxAnyType) New(ctx *Context) (interface{}, error) {
 
 func TestGearContextAny(t *testing.T) {
 	app := New()
+	assert.Panics(t, func() {
+		app.Set("AppEnv", 123)
+	})
 
 	t.Run("type Any", func(t *testing.T) {
 		t.Run("should get the same value with the same ctx", func(t *testing.T) {
@@ -750,6 +753,9 @@ func TestGearContextRender(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
+		assert.Panics(func() {
+			app.Set("AppRenderer", struct{}{})
+		})
 		app.Set("AppRenderer", &RenderTest{
 			tpl: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
 		})
@@ -990,7 +996,7 @@ func TestGearContextRedirect(t *testing.T) {
 }
 
 func TestGearContextError(t *testing.T) {
-	t.Run("should work", func(t *testing.T) {
+	t.Run("should work with *Error", func(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
@@ -1013,5 +1019,289 @@ func TestGearContextError(t *testing.T) {
 		assert.Equal(0, count)
 		assert.Equal(401, res.StatusCode)
 		assert.Equal("some error", PickRes(res.Text()).(string))
+	})
+
+	t.Run("should work with error", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		count := 0
+		app.Use(func(ctx *Context) error {
+			ctx.After(func() {
+				count++
+			})
+			return ctx.Error(errors.New("some error"))
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(0, count)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal("some error", PickRes(res.Text()).(string))
+	})
+
+	t.Run("with nil error", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		count := 0
+		app.Use(func(ctx *Context) error {
+			var err error
+			ctx.After(func() {
+				count++
+			})
+			return ctx.Error(err)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(0, count)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal("[App] nil-error", PickRes(res.Text()).(string))
+	})
+}
+
+func TestGearContextEnd(t *testing.T) {
+	t.Run("should work with code 0", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			ctx.Status(204)
+			return ctx.End(0)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(204, res.StatusCode)
+	})
+
+	t.Run("should work with code", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			ctx.Status(500)
+			ctx.Res.Body = []byte("OK")
+			return ctx.End(200)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("OK", PickRes(res.Text()).(string))
+	})
+
+	t.Run("should work with two args", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			ctx.String(400, "some error")
+			return ctx.End(200, []byte("OK"))
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("OK", PickRes(res.Text()).(string))
+	})
+
+	t.Run("should error if ctx ended", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			ctx.setEnd()
+			return ctx.End(200, []byte("OK"))
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal("[App] context is ended", PickRes(res.Text()).(string))
+	})
+}
+
+func TestGearContextAfter(t *testing.T) {
+	t.Run("should work in LIFO order", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		count := 0
+		app.Use(func(ctx *Context) error {
+			ctx.After(func() {
+				count++
+				assert.Equal(4, count)
+				ctx.Status(204)
+			})
+			ctx.After(func() {
+				count++
+				assert.Equal(3, count)
+			})
+			ctx.After(func() {
+				count++
+				assert.Equal(2, count)
+			})
+			count++
+			assert.Equal(1, count)
+			return ctx.End(400)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(4, count)
+		assert.Equal(204, res.StatusCode)
+	})
+
+	t.Run("can't add hook if ctx ended", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		count := 0
+		app.Use(func(ctx *Context) error {
+			ctx.After(func() {
+				assert.Panics(func() {
+					ctx.After(func() {})
+				})
+				count++
+				assert.Equal(2, count)
+			})
+
+			count++
+			assert.Equal(1, count)
+			ctx.Status(204)
+			ctx.setEnd()
+			assert.Panics(func() {
+				ctx.After(func() {})
+			})
+			return nil
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(2, count)
+		assert.Equal(204, res.StatusCode)
+	})
+}
+
+func TestGearContextOnEnd(t *testing.T) {
+	t.Run("should work in LIFO order", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		count := 0
+		app.Use(func(ctx *Context) error {
+			ctx.OnEnd(func() {
+				count++
+				assert.Equal(4, count)
+				ctx.Status(500)
+			})
+			ctx.After(func() {
+				count++
+				assert.Equal(2, count)
+				ctx.Status(204)
+			})
+			ctx.OnEnd(func() {
+				count++
+				assert.Equal(3, count)
+			})
+			count++
+			assert.Equal(1, count)
+			return ctx.End(400)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(4, count)
+		assert.Equal(204, res.StatusCode)
+	})
+
+	t.Run("can't add hook if ctx ended", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		count := 0
+		app.Use(func(ctx *Context) error {
+			ctx.After(func() {
+				assert.Panics(func() {
+					ctx.OnEnd(func() {})
+				})
+				count++
+				assert.Equal(2, count)
+			})
+
+			ctx.OnEnd(func() {
+				assert.Panics(func() {
+					ctx.OnEnd(func() {})
+				})
+				count++
+				assert.Equal(3, count)
+			})
+
+			count++
+			assert.Equal(1, count)
+			ctx.Status(204)
+			ctx.setEnd()
+			assert.Panics(func() {
+				ctx.OnEnd(func() {})
+			})
+			return nil
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(3, count)
+		assert.Equal(204, res.StatusCode)
 	})
 }

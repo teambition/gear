@@ -1,6 +1,7 @@
 package gear
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -83,7 +84,8 @@ func TestGearRouter(t *testing.T) {
 		}, func(ctx *Context) error {
 			called++
 			assert.Equal(3, called)
-			return ctx.HTML(200, "OK")
+			ctx.String(200, "OK")
+			return nil
 		})
 
 		srv := newApp(r)
@@ -626,5 +628,91 @@ func TestGearRouter(t *testing.T) {
 		ctx = CtxTest(app, "PUT", "/abc/xyz", nil)
 		err = r.Serve(ctx)
 		assert.Equal(501, err.(HTTPError).Status())
+	})
+
+	t.Run("when router middleware ended early", func(t *testing.T) {
+		assert := assert.New(t)
+
+		r := NewRouter()
+		r.Use(func(ctx *Context) error {
+			return ctx.HTML(200, "OK")
+		})
+		r.Get("/", func(ctx *Context) error {
+			panic("this middleware unreachable")
+		})
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("OK", PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
+
+	t.Run("when router middleware error", func(t *testing.T) {
+		assert := assert.New(t)
+
+		r := NewRouter()
+		r.Use(func(ctx *Context) error {
+			return errors.New("some error")
+		})
+		r.Get("/", func(ctx *Context) error {
+			panic("this middleware unreachable")
+		})
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal("some error", PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
+
+	t.Run("when handler middleware ended early", func(t *testing.T) {
+		assert := assert.New(t)
+
+		r := NewRouter()
+		r.Get("/", func(ctx *Context) error {
+			return ctx.HTML(200, "OK")
+		}, func(ctx *Context) error {
+			panic("this middleware unreachable")
+		})
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("OK", PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
+
+	t.Run("when handler middleware error", func(t *testing.T) {
+		assert := assert.New(t)
+
+		r := NewRouter()
+		r.Get("/", func(ctx *Context) error {
+			return errors.New("some error")
+		}, func(ctx *Context) error {
+			panic("this middleware unreachable")
+		})
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal("some error", PickRes(res.Text()).(string))
+		res.Body.Close()
 	})
 }

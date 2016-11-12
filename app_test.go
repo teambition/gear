@@ -41,24 +41,106 @@ func NewRequst() *request.Request {
 	return request.NewRequest(c)
 }
 
-// ----- Test App -----
+func TestGearServer(t *testing.T) {
+	t.Run("start with addr", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			return ctx.End(204)
+		})
+		srv := app.Start(":54444")
+		defer srv.Close()
+
+		req := NewRequst()
+		res, err := req.Get("http://" + srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(204, res.StatusCode)
+		res.Body.Close()
+	})
+
+	t.Run("failed to listen", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			return ctx.End(204)
+		})
+		srv := app.Start(":54444")
+		defer srv.Close()
+
+		app2 := New()
+		app2.Use(func(ctx *Context) error {
+			return ctx.End(204)
+		})
+		assert.Panics(func() {
+			app2.Start(":54444")
+		})
+
+		app3 := New()
+		app3.Use(func(ctx *Context) error {
+			return ctx.End(204)
+		})
+		err := app3.Listen(":54444")
+		assert.NotNil(err)
+		go func() {
+			time.Sleep(time.Second)
+			srv.Close()
+		}()
+
+		err = srv.Wait()
+		assert.NotNil(err)
+	})
+}
 
 func TestGearAppHello(t *testing.T) {
-	assert := assert.New(t)
-	app := New()
-	app.Use(func(ctx *Context) error {
-		ctx.End(200, []byte("<h1>Hello!</h1>"))
-		return nil
-	})
-	srv := app.Start()
-	defer srv.Close()
+	t.Run("should work", func(t *testing.T) {
+		assert := assert.New(t)
 
-	req := NewRequst()
-	res, err := req.Get("http://" + srv.Addr().String())
-	assert.Nil(err)
-	assert.Equal(200, res.StatusCode)
-	assert.Equal("<h1>Hello!</h1>", PickRes(res.Text()).(string))
-	res.Body.Close()
+		app := New()
+		assert.Panics(func() {
+			app.toServeHandler()
+		})
+
+		app.Use(func(ctx *Context) error {
+			return ctx.End(200, []byte("<h1>Hello!</h1>"))
+		})
+		srv := app.Start()
+		defer srv.Close()
+
+		req := NewRequst()
+		res, err := req.Get("http://" + srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("<h1>Hello!</h1>", PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
+
+	t.Run("should 404 when multi-slash", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+
+		app.Use(func(ctx *Context) error {
+			return ctx.End(200, []byte("<h1>Hello!</h1>"))
+		})
+		srv := app.Start()
+		defer srv.Close()
+
+		req := NewRequst()
+		host := "http://" + srv.Addr().String()
+		res, err := req.Get(host + "/a/b/c")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("<h1>Hello!</h1>", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Get(host + "/a//b/c")
+		assert.Nil(err)
+		assert.Equal(404, res.StatusCode)
+		assert.Equal("404 page not found\n", PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
 }
 
 type testOnError struct{}
@@ -75,6 +157,12 @@ func TestGearError(t *testing.T) {
 
 		var buf bytes.Buffer
 		app := New()
+		assert.Panics(func() {
+			app.Set("AppLogger", struct{}{})
+		})
+		assert.Panics(func() {
+			app.Set("AppOnError", struct{}{})
+		})
 		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
 		app.Set("AppOnError", &testOnError{})
 
@@ -301,7 +389,9 @@ func TestGearAppTimeout(t *testing.T) {
 
 		app := New()
 		req := NewRequst()
-
+		assert.Panics(func() {
+			app.Set("AppTimeout", struct{}{})
+		})
 		app.Set("AppTimeout", time.Millisecond*100)
 
 		app.Use(func(ctx *Context) error {
@@ -374,4 +464,79 @@ func TestGearAppTimeout(t *testing.T) {
 
 		time.Sleep(time.Millisecond * 500)
 	})
+}
+
+func TestGearWrapHandler(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	count := 0
+	app.Use(func(ctx *Context) error {
+		ctx.After(func() {
+			count++
+			assert.Equal(2, count)
+		})
+		ctx.OnEnd(func() {
+			count++
+			assert.Equal(3, count)
+		})
+		count++
+		assert.Equal(1, count)
+		ctx.String(400, "some error")
+		return nil
+	})
+
+	app.Use(WrapHandler(http.NotFoundHandler()))
+	app.Use(func(ctx *Context) error {
+		panic("this middleware unreachable")
+	})
+
+	srv := app.Start()
+	defer srv.Close()
+
+	req := NewRequst()
+	res, err := req.Get("http://" + srv.Addr().String())
+	assert.Nil(err)
+	assert.Equal(3, count)
+	assert.Equal(404, res.StatusCode)
+	res.Body.Close()
+}
+
+func TestGearWrapHandlerFunc(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	count := 0
+	app.Use(func(ctx *Context) error {
+		ctx.After(func() {
+			count++
+			assert.Equal(2, count)
+		})
+		ctx.OnEnd(func() {
+			count++
+			assert.Equal(3, count)
+		})
+		count++
+		assert.Equal(1, count)
+		ctx.String(400, "some error")
+		return nil
+	})
+
+	app.Use(WrapHandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(404)
+		w.Write([]byte(req.URL.Path))
+	}))
+	app.Use(func(ctx *Context) error {
+		panic("this middleware unreachable")
+	})
+
+	srv := app.Start()
+	defer srv.Close()
+
+	req := NewRequst()
+	res, err := req.Get("http://" + srv.Addr().String())
+	assert.Nil(err)
+	assert.Equal(3, count)
+	assert.Equal(404, res.StatusCode)
+	res.Body.Close()
 }
