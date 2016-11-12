@@ -2,6 +2,7 @@ package gear
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"html/template"
 	"io"
@@ -135,6 +136,89 @@ func TestGearContextWithContext(t *testing.T) {
 	assert.True(cancelDone)
 	assert.True(deadlineDone)
 	assert.True(timeoutDone)
+}
+
+func TestGearContextTiming(t *testing.T) {
+	data := []string{"hello"}
+
+	t.Run("should work", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			res, err := ctx.Timing(time.Millisecond*15, func() interface{} {
+				time.Sleep(time.Millisecond * 10)
+				return data
+			})
+			assert.True(err == nil)
+			assert.Equal(data, res.([]string))
+			return ctx.JSON(200, res.([]string))
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal(`["hello"]`, PickRes(res.Text()).(string))
+	})
+
+	t.Run("when timeout", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			res, err := ctx.Timing(time.Millisecond*10, func() interface{} {
+				time.Sleep(time.Millisecond * 15)
+				return data
+			})
+			assert.True(res == nil)
+			assert.Equal(context.DeadlineExceeded, err)
+			return ctx.Error(err)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal("context deadline exceeded", PickRes(res.Text()).(string))
+	})
+
+	t.Run("when context timeout", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+
+		app.Set("AppTimeout", time.Millisecond*10)
+		app.Use(func(ctx *Context) error {
+			res, err := ctx.Timing(time.Millisecond*20, func() interface{} {
+				time.Sleep(time.Millisecond * 15)
+				return data
+			})
+			assert.True(res == nil)
+			assert.Equal(context.DeadlineExceeded, err)
+			time.Sleep(time.Millisecond * 10)
+			return nil
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(503, res.StatusCode)
+		assert.Equal("context deadline exceeded", PickRes(res.Text()).(string))
+		time.Sleep(time.Second)
+	})
 }
 
 // ----- Test Context.Any -----

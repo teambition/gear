@@ -117,7 +117,7 @@ type Middleware func(*gear.Context) error
 `Middleware` can be used in app layer or router layer or middleware inside. It be good at composition.
 We should write any module as a middleware. We should use middleware to compose all our business.
 
-There are four build-in middlewares currently: https://godoc.org/github.com/teambition/gear/middleware
+There are three build-in middlewares currently: https://godoc.org/github.com/teambition/gear/middleware
 
 ```go
 // package middleware
@@ -127,7 +127,6 @@ import "github.com/teambition/gear/middleware"
 1. [Favicon middleware](https://godoc.org/github.com/teambition/gear/middleware#NewFavicon) Use to serve favicon.ico.
 2. [Logger middleware](https://godoc.org/github.com/teambition/gear/middleware#NewFavicon) Use to logging.
 3. [Static server middleware](https://godoc.org/github.com/teambition/gear/middleware#NewStatic) Use to serve static files.
-4. [Timeout middleware](https://godoc.org/github.com/teambition/gear/middleware#NewTimeout) Use to set timeout for request.
 
 All this middlewares can be use in app layer, router layer or middleware layer.
 

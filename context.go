@@ -53,7 +53,11 @@ func NewContext(app *App, w http.ResponseWriter, req *http.Request) *Context {
 	ctx.Method = req.Method
 	ctx.Path = req.URL.Path
 	ctx.kv = make(map[interface{}]interface{})
-	ctx.ctx, ctx.cancelCtx = context.WithCancel(req.Context())
+	if app.timeout == 0 {
+		ctx.ctx, ctx.cancelCtx = context.WithCancel(req.Context())
+	} else {
+		ctx.ctx, ctx.cancelCtx = context.WithTimeout(req.Context(), app.timeout)
+	}
 	return ctx
 }
 
@@ -110,6 +114,22 @@ func (ctx *Context) WithTimeout(timeout time.Duration) (context.Context, context
 // WithValue returns a copy of the ctx in which the value associated with key is val.
 func (ctx *Context) WithValue(key, val interface{}) context.Context {
 	return context.WithValue(ctx.ctx, key, val)
+}
+
+// Timing runs fn with the given time limit. If a call runs for longer than its time limit,
+// it will return context.DeadlineExceeded as error, otherwise return fn's result.
+func (ctx *Context) Timing(dt time.Duration, fn func() interface{}) (interface{}, error) {
+	ct, cancel := ctx.WithTimeout(dt)
+	defer cancel()
+
+	ch := make(chan interface{}, 1)
+	go func() { ch <- fn() }()
+	select {
+	case <-ct.Done():
+		return nil, ct.Err()
+	case res := <-ch:
+		return res, nil
+	}
 }
 
 // Any returns the value on this ctx by key. If key is instance of Any and

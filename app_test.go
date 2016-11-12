@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mozillazg/request"
 	"github.com/stretchr/testify/assert"
@@ -291,5 +292,86 @@ func TestGearParseError(t *testing.T) {
 		err = ParseError(err3, 400)
 		EqualPtr(t, err3, err.Meta)
 		assert.Equal(err.Code, 400)
+	})
+}
+
+func TestGearAppTimeout(t *testing.T) {
+	t.Run("respond 503 when timeout", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		req := NewRequst()
+
+		app.Set("AppTimeout", time.Millisecond*100)
+
+		app.Use(func(ctx *Context) error {
+			time.Sleep(time.Millisecond * 300)
+			return ctx.HTML(200, "OK")
+		})
+		app.Use(func(ctx *Context) error {
+			panic("this middleware unreachable")
+		})
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := req.Get("http://" + srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(503, res.StatusCode)
+		assert.Equal("context deadline exceeded", PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
+
+	t.Run("respond 503 when cancel", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		req := NewRequst()
+
+		app.Set("AppTimeout", time.Millisecond*100)
+
+		app.Use(func(ctx *Context) error {
+			ctx.Cancel()
+			time.Sleep(time.Millisecond)
+			ctx.String(500, "some data")
+			return nil
+		})
+		app.Use(func(ctx *Context) error {
+			panic("this middleware unreachable")
+		})
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := req.Get("http://" + srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(503, res.StatusCode)
+		assert.Equal("context canceled", PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
+
+	t.Run("respond 200", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		req := NewRequst()
+
+		app.Set("AppTimeout", time.Millisecond*100)
+
+		app.Use(func(ctx *Context) error {
+			time.Sleep(time.Millisecond * 10)
+			return ctx.End(200, []byte("OK"))
+		})
+		app.Use(func(ctx *Context) error {
+			panic("this middleware unreachable")
+		})
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := req.Get("http://" + srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("OK", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		time.Sleep(time.Millisecond * 500)
 	})
 }

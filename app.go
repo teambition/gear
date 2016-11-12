@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // Handler interface is used by app.UseHandler as a middleware.
@@ -71,9 +72,6 @@ func (err *Error) String() string {
 	return fmt.Sprintf("{Code: %3d, Msg: %s, Meta: %s}", err.Code, err.Msg, err.Meta)
 }
 
-// Hook defines a function to process as hook.
-type Hook func(*Context)
-
 // Middleware defines a function to process as middleware.
 type Middleware func(*Context) error
 
@@ -129,6 +127,8 @@ type App struct {
 	renderer Renderer
 	// Default to nil, do not compress response content.
 	compress Compress
+	// Default to 0
+	timeout time.Duration
 
 	// ErrorLog specifies an optional logger for app's errors. Default to nil.
 	logger *log.Logger
@@ -170,11 +170,12 @@ func (app *App) UseHandler(h Handler) {
 // Set add app settings. The settings can be retrieved by ctx.Setting.
 // There are 4 build-in app settings:
 //
-//  app.Set("AppOnError", val gear.OnError)     // Default to gear.DefaultOnError
-//  app.Set("AppRenderer", val gear.Renderer)   // No default
-//  app.Set("AppLogger", val *log.Logger)       // No default
-//  app.Set("AppCompress", val gear.Compress)   // Enable to compress response content.
-//  app.Set("AppEnv", val string)               // Default to "development"
+//  app.Set("AppOnError", val gear.OnError)      // Default to gear.DefaultOnError
+//  app.Set("AppRenderer", val gear.Renderer)    // No default
+//  app.Set("AppLogger", val *log.Logger)        // No default
+//  app.Set("AppTimeout", val time.Duration)     // Default to 0, no timeout
+//  app.Set("AppCompress", val gear.Compress)    // Enable to compress response content.
+//  app.Set("AppEnv", val string)                // Default to "development"
 //
 func (app *App) Set(setting string, val interface{}) {
 	switch setting {
@@ -201,6 +202,12 @@ func (app *App) Set(setting string, val interface{}) {
 			panic("AppCompress setting must implemented gear.Compress interface")
 		} else {
 			app.compress = compress
+		}
+	case "AppTimeout":
+		if timeout, ok := val.(time.Duration); !ok {
+			panic("AppTimeout setting must be time.Duration instance")
+		} else {
+			app.timeout = timeout
 		}
 	case "AppEnv":
 		if _, ok := val.(string); !ok {
@@ -287,7 +294,20 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		<-ctx.Done()
-		// cancel middleware process if request context canceled
+		// if context canceled abnormally...
+		if err := ctx.Err(); err != nil && !ctx.Res.HeaderWrote() {
+			ctx.Status(503)
+			ctx.afterHooks = nil // clear afterHooks
+			if err := h.app.onerror.OnError(ctx, err); err != nil {
+				// 5xx Server Error will send to app.Error
+				if err.Code == 500 || err.Code > 501 || err.Code < 400 {
+					h.app.Error(err)
+				}
+				ctx.String(err.Status(), err.Error())
+				ctx.Res.respond()
+			}
+		}
+		// ensure middleware process ended
 		ctx.ended = true
 	}()
 
@@ -313,7 +333,6 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx.afterHooks = nil // clear afterHooks when error
 		// process middleware error with OnError
 		if err := h.app.onerror.OnError(ctx, err); err != nil {
-			ctx.Status(err.Status())
 			// 5xx Server Error will send to app.Error
 			if err.Code == 500 || err.Code > 501 || err.Code < 400 {
 				h.app.Error(err)
