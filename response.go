@@ -72,7 +72,7 @@ func (r *Response) WriteHeader(code int) {
 	r.ctx.ended = true
 	// execute "after hooks" in LIFO order before Response.WriteHeader
 	for i := len(r.ctx.afterHooks) - 1; i >= 0; i-- {
-		r.ctx.afterHooks[i](r.ctx)
+		r.ctx.afterHooks[i]()
 	}
 	// r.Status maybe changed in hooks
 	// check Status
@@ -90,7 +90,7 @@ func (r *Response) WriteHeader(code int) {
 	r.res.WriteHeader(r.Status)
 	// execute "end hooks" in LIFO order after Response.WriteHeader
 	for i := len(r.ctx.endHooks) - 1; i >= 0; i-- {
-		r.ctx.endHooks[i](r.ctx)
+		r.ctx.endHooks[i]()
 	}
 }
 

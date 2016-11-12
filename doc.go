@@ -36,7 +36,7 @@ Example:
 			// Do something...
 
 			// Add after hook to the ctx
-			ctx.After(func(ctx *gear.Context) {
+			ctx.After(func() {
 				// Do something in after hook
 				fmt.Println("After hook")
 			})
@@ -97,4 +97,4 @@ Learn more at https://github.com/teambition/gear
 package gear
 
 // Version is Gear's version
-const Version = "v0.15.2"
+const Version = "v0.16.0"

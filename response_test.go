@@ -99,7 +99,7 @@ func TestGearResponse(t *testing.T) {
 
 		count := 0
 		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
-		ctx.After(func(_ *Context) {
+		ctx.After(func() {
 			count++
 		})
 		assert.Equal(false, ctx.Res.HeaderWrote())
@@ -126,7 +126,7 @@ func TestGearResponse(t *testing.T) {
 
 		count := 0
 		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
-		ctx.After(func(_ *Context) {
+		ctx.After(func() {
 			count++
 		})
 

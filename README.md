@@ -132,18 +132,15 @@ import "github.com/teambition/gear/middleware"
 All this middlewares can be use in app layer, router layer or middleware layer.
 
 ## About Hook
-```go
-type Hook func(*Context)
-```
 `Hook` can be used to some teardowm job dynamically. For example, Logger middleware use `ctx.OnEnd` to write logs to underlayer. Hooks are executed in LIFO order, just like go `defer`. `Hook` can only be add in middleware. You can't add another hook in a hook.
 
 ```go
-ctx.After(hook gear.Hook)
+ctx.After(hook func())
 ```
 Add one or more "after hook" to current request process. They will run after middleware process(means context process `ended`), and before `Response.WriteHeader`. If some middleware return `error`, the middleware process will stop, all "after hooks" will be clear and not run.
 
 ```go
-ctx.OnEnd(hook gear.Hook)
+ctx.OnEnd(hook func())
 ```
 Add one or more "end hook" to current request process. They will run after `Response.WriteHeader` called. The middleware error will not stop "end hook" process.
 
@@ -152,7 +149,7 @@ Here is example using "end hook" in Logger middleware.
 func NewLogger(logger Logger) gear.Middleware {
 	return func(ctx *gear.Context) error {
 		// Add a "end hook" to flush logs.
-		ctx.OnEnd(func(ctx *gear.Context) {
+		ctx.OnEnd(func() {
 			log := logger.FromCtx(ctx)
 
 			log["Status"] = ctx.Res.Status

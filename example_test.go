@@ -31,7 +31,7 @@ func Example() {
 		// Do something...
 
 		// Add after hook to the ctx
-		ctx.After(func(ctx *gear.Context) {
+		ctx.After(func() {
 			// Do something in after hook
 			fmt.Println("After hook")
 		})

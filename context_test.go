@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io"
 	"io/ioutil"
+	"log"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +16,8 @@ import (
 	"time"
 
 	"strings"
+
+	"os"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -433,11 +436,11 @@ func TestGearContextHTML(t *testing.T) {
 	app := New()
 	count := 0
 	app.Use(func(ctx *Context) error {
-		ctx.OnEnd(func(_ *Context) {
+		ctx.OnEnd(func() {
 			count++
 			assert.Equal(2, count)
 		})
-		ctx.After(func(_ *Context) {
+		ctx.After(func() {
 			count++
 			assert.Equal(1, count)
 		})
@@ -466,21 +469,21 @@ func TestGearContextJSON(t *testing.T) {
 	count := 0
 	app.Use(func(ctx *Context) error {
 		if ctx.Path == "/error" {
-			ctx.OnEnd(func(_ *Context) {
+			ctx.OnEnd(func() {
 				count++
 				assert.Equal(3, count)
 			})
-			ctx.After(func(_ *Context) {
+			ctx.After(func() {
 				panic("this hook unreachable")
 			})
 			return ctx.JSON(http.StatusOK, math.NaN())
 		}
 
-		ctx.OnEnd(func(_ *Context) {
+		ctx.OnEnd(func() {
 			count++
 			assert.Equal(2, count)
 		})
-		ctx.After(func(_ *Context) {
+		ctx.After(func() {
 			count++
 			assert.Equal(1, count)
 		})
@@ -517,21 +520,21 @@ func TestGearContextJSONP(t *testing.T) {
 	count := 0
 	app.Use(func(ctx *Context) error {
 		if ctx.Path == "/error" {
-			ctx.OnEnd(func(_ *Context) {
+			ctx.OnEnd(func() {
 				count++
 				assert.Equal(3, count)
 			})
-			ctx.After(func(_ *Context) {
+			ctx.After(func() {
 				panic("this hook unreachable")
 			})
 			return ctx.JSONP(http.StatusOK, "cb123", math.NaN())
 		}
 
-		ctx.OnEnd(func(_ *Context) {
+		ctx.OnEnd(func() {
 			count++
 			assert.Equal(2, count)
 		})
-		ctx.After(func(_ *Context) {
+		ctx.After(func() {
 			count++
 			assert.Equal(1, count)
 		})
@@ -575,11 +578,11 @@ func TestGearContextXML(t *testing.T) {
 	count := 0
 	app.Use(func(ctx *Context) error {
 		if ctx.Path == "/error" {
-			ctx.OnEnd(func(_ *Context) {
+			ctx.OnEnd(func() {
 				count++
 				assert.Equal(3, count)
 			})
-			ctx.After(func(_ *Context) {
+			ctx.After(func() {
 				panic("this hook unreachable")
 			})
 
@@ -594,11 +597,11 @@ func TestGearContextXML(t *testing.T) {
 			})
 		}
 
-		ctx.OnEnd(func(_ *Context) {
+		ctx.OnEnd(func() {
 			count++
 			assert.Equal(2, count)
 		})
-		ctx.After(func(_ *Context) {
+		ctx.After(func() {
 			count++
 			assert.Equal(1, count)
 		})
@@ -701,5 +704,230 @@ func TestGearContextRender(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(404, res.StatusCode)
 		assert.Equal(`html/template: "helloA" is undefined`, PickRes(res.Text()).(string))
+	})
+}
+
+func TestGearContextStream(t *testing.T) {
+	data, err := ioutil.ReadFile("testdata/hello.html")
+	if err != nil {
+		panic(NewAppError(err.Error()))
+	}
+
+	t.Run("should work", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			file, err := os.Open("testdata/hello.html")
+			if err != nil {
+				return err
+			}
+			return ctx.Stream(http.StatusOK, MIMETextHTMLCharsetUTF8, file)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal(MIMETextHTMLCharsetUTF8, res.Header.Get(HeaderContentType))
+		assert.Equal(string(data), PickRes(res.Text()).(string))
+	})
+
+	t.Run("should log error if context ended", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := New()
+		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
+		app.Use(func(ctx *Context) error {
+			ctx.End(204)
+
+			file, err := os.Open("testdata/hello.html")
+			if err != nil {
+				return err
+			}
+			return ctx.Stream(200, MIMETextHTMLCharsetUTF8, file)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(204, res.StatusCode)
+		assert.Equal("TEST: {Code: 500, Msg: [App] context is ended, Meta: [App] context is ended}\n", buf.String())
+	})
+}
+
+func TestGearContextAttachment(t *testing.T) {
+	data, err := ioutil.ReadFile("testdata/README.md")
+	if err != nil {
+		panic(NewAppError(err.Error()))
+	}
+
+	t.Run("should work as attachment", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			file, err := os.Open("testdata/README.md")
+			if err != nil {
+				return err
+			}
+			return ctx.Attachment("README.md", file)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("attachment; filename=README.md", res.Header.Get(HeaderContentDisposition))
+		assert.Equal(MIMETextPlainCharsetUTF8, res.Header.Get(HeaderContentType))
+		assert.Equal(string(data), PickRes(res.Text()).(string))
+	})
+
+	t.Run("should work as inline", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			file, err := os.Open("testdata/README.md")
+			if err != nil {
+				return err
+			}
+			return ctx.Attachment("README.md", file, true)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("inline; filename=README.md", res.Header.Get(HeaderContentDisposition))
+		assert.Equal(MIMETextPlainCharsetUTF8, res.Header.Get(HeaderContentType))
+		assert.Equal(string(data), PickRes(res.Text()).(string))
+	})
+
+	t.Run("should log error if context ended", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := New()
+		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
+		app.Use(func(ctx *Context) error {
+			ctx.End(204)
+
+			file, err := os.Open("testdata/README.md")
+			if err != nil {
+				return err
+			}
+			return ctx.Attachment("README.md", file)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(204, res.StatusCode)
+		assert.Equal("TEST: {Code: 500, Msg: [App] context is ended, Meta: [App] context is ended}\n", buf.String())
+	})
+}
+
+func TestGearContextRedirect(t *testing.T) {
+	t.Run("should work", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		redirected := false
+		app.Use(func(ctx *Context) error {
+			if ctx.Path != "/ok" {
+				redirected = true
+				return ctx.Redirect(301, "/ok")
+			}
+			return ctx.HTML(200, "OK")
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.True(redirected)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("OK", PickRes(res.Text()).(string))
+	})
+
+	t.Run("should log error if context ended", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := New()
+		redirected := false
+		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
+		app.Use(func(ctx *Context) error {
+			ctx.End(204)
+
+			if ctx.Path != "/ok" {
+				redirected = true
+				return ctx.Redirect(301, "/ok")
+			}
+			return ctx.HTML(200, "OK")
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.True(redirected)
+		assert.Equal(204, res.StatusCode)
+		assert.Equal("TEST: {Code: 500, Msg: [App] context is ended, Meta: [App] context is ended}\n", buf.String())
+	})
+}
+
+func TestGearContextError(t *testing.T) {
+	t.Run("should work", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		count := 0
+		app.Use(func(ctx *Context) error {
+			ctx.After(func() {
+				count++
+			})
+			err := &Error{Code: 401, Msg: "some error"}
+			return ctx.Error(err)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req := NewRequst()
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(0, count)
+		assert.Equal(401, res.StatusCode)
+		assert.Equal("some error", PickRes(res.Text()).(string))
 	})
 }

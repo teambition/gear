@@ -36,8 +36,8 @@ type Context struct {
 
 	ended      bool // indicate that app middlewares run out.
 	query      url.Values
-	afterHooks []Hook
-	endHooks   []Hook
+	afterHooks []func()
+	endHooks   []func()
 	ctx        context.Context
 	cancelCtx  context.CancelFunc
 	kv         map[interface{}]interface{}
@@ -379,24 +379,16 @@ func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error
 }
 
 // Attachment sends a response from `io.ReaderSeeker` as attachment, prompting
-// client to save the file.
+// client to save the file. If inline is true, the attachment will sends as inline,
+// opening the file in the browser.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
-func (ctx *Context) Attachment(name string, content io.ReadSeeker) error {
-	return ctx.contentDisposition("attachment", name, content)
-}
-
-// Inline sends a response from `io.ReaderSeeker` as inline, opening
-// the file in the browser.
-// It will end the ctx. The middlewares after current middleware will not run.
-// "after hooks" and "end hooks" will run normally.
-// Note that this will not stop the current handler.
-func (ctx *Context) Inline(name string, content io.ReadSeeker) error {
-	return ctx.contentDisposition("inline", name, content)
-}
-
-func (ctx *Context) contentDisposition(dispositionType, name string, content io.ReadSeeker) (err error) {
+func (ctx *Context) Attachment(name string, content io.ReadSeeker, inline ...bool) (err error) {
+	dispositionType := "attachment"
+	if len(inline) > 0 && inline[0] {
+		dispositionType = "inline"
+	}
 	if err = ctx.setEnd(); err == nil {
 		ctx.Set(HeaderContentDisposition, fmt.Sprintf("%s; filename=%s", dispositionType, name))
 		http.ServeContent(ctx.Res, ctx.Req, name, time.Time{}, content)
@@ -404,7 +396,7 @@ func (ctx *Context) contentDisposition(dispositionType, name string, content io.
 	return
 }
 
-// Redirect redirects the request with status code.
+// Redirect redirects the request with status code. It is a wrap of http.Redirect.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
@@ -424,13 +416,8 @@ func (ctx *Context) Error(e error) (err error) {
 	if e := ParseError(e); e != nil {
 		return ctx.End(e.Status(), []byte(e.Error()))
 	}
-	return &Error{Code: 500, Msg: NewAppError("nil-error").Error()}
+	return &Error{Code: 500, Msg: NewAppError("nil-error").Error(), Meta: e}
 }
-
-// AppError write error to app's ErrorLog
-// func (ctx *Context) AppError(err error) {
-// 	ctx.app.Error(err)
-// }
 
 // End end the ctx with bytes and status code optionally.
 // After it's called, the rest of middleware handles will not run.
@@ -451,7 +438,7 @@ func (ctx *Context) End(code int, buf ...[]byte) (err error) {
 
 // After add a "after hook" to the ctx that will run after middleware process,
 // but before Response.WriteHeader.
-func (ctx *Context) After(hook Hook) {
+func (ctx *Context) After(hook func()) {
 	if ctx.ended { // should not add afterHooks if ctx.ended
 		panic(NewAppError(`can't add "after hook" after context ended`))
 	}
@@ -459,7 +446,7 @@ func (ctx *Context) After(hook Hook) {
 }
 
 // OnEnd add a "end hook" to the ctx that will run after Response.WriteHeader.
-func (ctx *Context) OnEnd(hook Hook) {
+func (ctx *Context) OnEnd(hook func()) {
 	if ctx.ended { // should not add endHooks if ctx.ended
 		panic(NewAppError(`can't add "end hook" after context ended`))
 	}

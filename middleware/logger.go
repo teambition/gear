@@ -130,7 +130,7 @@ func (logger *DefaultLogger) WriteLog(log Log) {
 func NewLogger(logger Logger) gear.Middleware {
 	return func(ctx *gear.Context) error {
 		// Add a "end hook" to flush logs.
-		ctx.OnEnd(func(ctx *gear.Context) {
+		ctx.OnEnd(func() {
 			log := logger.FromCtx(ctx)
 
 			log["Status"] = ctx.Res.Status
