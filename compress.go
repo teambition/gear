@@ -10,11 +10,12 @@ import (
 
 // Compress interface is use to enable compress response context.
 type Compress interface {
-	// Compressible checks the response content type to decide whether to compress.
-	Compressible(contentType string) bool
-	// Threshold return the minimun response size in bytes to compress.
-	// Default value is 1024 (1 kb).
-	Threshold() int
+	// Compressible checks the response Content-Type and Content-Length to
+	// determine whether to compress.
+	// Recommend use mime database https://github.com/GitbookIO/mimedb to find
+	// which Content-Type is compressible.
+	// `length == 0` means response body maybe stream, or will be writed later.
+	Compressible(contentType string, contentLength int) bool
 }
 
 // DefaultCompress is defalut Compress implemented. Use it to enable compress:
@@ -24,18 +25,11 @@ type Compress interface {
 type DefaultCompress struct{}
 
 // Compressible implemented Compress interface.
-func (d *DefaultCompress) Compressible(contentType string) bool {
-	// Should use mime database https://github.com/GitbookIO/mimedb to find
-	// which contentType is compressible
-	if contentType == "" {
+func (d *DefaultCompress) Compressible(contentType string, contentLength int) bool {
+	if contentLength > 0 && contentLength <= 1024 {
 		return false
 	}
-	return true
-}
-
-// Threshold implemented Compress interface.
-func (d *DefaultCompress) Threshold() int {
-	return 1024
+	return contentType != ""
 }
 
 type compressWriter struct {
@@ -47,44 +41,31 @@ type compressWriter struct {
 }
 
 func newCompress(res *Response, c Compress, acceptEncoding string) *compressWriter {
-	var encoding string
 	encodings := strings.Split(acceptEncoding, ",")
-
-loop:
-	for _, encoding = range encodings {
-		encoding = strings.TrimSpace(encoding)
-		switch encoding {
-		case "gzip", "deflate":
-			break loop
-		default:
-			return nil
+	encoding := strings.TrimSpace(encodings[0])
+	switch encoding {
+	case "gzip", "deflate":
+		return &compressWriter{
+			body:     &res.Body,
+			compress: c,
+			encoding: encoding,
+			res:      res.res,
 		}
-	}
-
-	return &compressWriter{
-		body:     &res.Body,
-		compress: c,
-		encoding: encoding,
-		res:      res.res,
+	default:
+		return nil
 	}
 }
 
 func (cw *compressWriter) WriteHeader(code int) {
 	defer cw.res.WriteHeader(code)
 
-	if code == http.StatusNoContent ||
-		code == http.StatusResetContent ||
-		code == http.StatusNotModified {
-		return
-	}
-
-	length := len(*cw.body)
-	if length > 0 && length < cw.compress.Threshold() {
+	switch code {
+	case http.StatusNoContent, http.StatusResetContent, http.StatusNotModified:
 		return
 	}
 
 	header := cw.res.Header()
-	if cw.compress.Compressible(header.Get(HeaderContentType)) {
+	if cw.compress.Compressible(header.Get(HeaderContentType), len(*cw.body)) {
 		var w io.WriteCloser
 
 		switch cw.encoding {

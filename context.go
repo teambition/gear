@@ -20,7 +20,7 @@ const paramsKey contextKey = 0
 
 // Any interface is used by ctx.Any.
 type Any interface {
-	New(*Context) (interface{}, error)
+	New(ctx *Context) (interface{}, error)
 }
 
 // Context represents the context of the current HTTP request. It holds request and

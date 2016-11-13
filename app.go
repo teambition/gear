@@ -16,17 +16,17 @@ import (
 
 // Handler interface is used by app.UseHandler as a middleware.
 type Handler interface {
-	Serve(*Context) error
+	Serve(ctx *Context) error
 }
 
 // Renderer interface is used by ctx.Render.
 type Renderer interface {
-	Render(*Context, io.Writer, string, interface{}) error
+	Render(ctx *Context, w io.Writer, name string, data interface{}) error
 }
 
 // OnError interface is use to deal with ctx error.
 type OnError interface {
-	OnError(*Context, error) *Error
+	OnError(ctx *Context, err error) *Error
 }
 
 // DefaultOnError is default ctx error handler.
