@@ -10,10 +10,10 @@ import (
 type Response struct {
 	ctx         *Context
 	res         http.ResponseWriter
-	header      http.Header // response Header
+	header      http.Header
 	wroteHeader bool
 
-	Status int    // response Status
+	Status int    // response Status Code
 	Type   string // response Content-Type
 	Body   []byte // response Content
 }
@@ -40,6 +40,13 @@ func (r *Response) Get(key string) string {
 // Set sets the header entries associated with key to the single element value. It replaces any existing values associated with key.
 func (r *Response) Set(key, value string) {
 	r.header.Set(key, value)
+}
+
+// ResetHeader reset headers.
+func (r *Response) ResetHeader() {
+	for key := range r.header {
+		delete(r.header, key)
+	}
 }
 
 // Header returns the header map that will be sent by WriteHeader.
@@ -71,11 +78,12 @@ func (r *Response) WriteHeader(code int) {
 
 	r.Status = code
 	// ensure that ended is true
-	r.ctx.ended = true
+	r.ctx.setEnd(false)
 	// execute "after hooks" in LIFO order before Response.WriteHeader
 	for i := len(r.ctx.afterHooks) - 1; i >= 0; i-- {
 		r.ctx.afterHooks[i]()
 	}
+	r.ctx.afterHooks = nil
 	// r.Status maybe changed in hooks
 	// check Status
 	if r.Status <= 0 {
@@ -94,6 +102,7 @@ func (r *Response) WriteHeader(code int) {
 	for i := len(r.ctx.endHooks) - 1; i >= 0; i-- {
 		r.ctx.endHooks[i]()
 	}
+	r.ctx.endHooks = nil
 }
 
 // HeaderWrote indecates that whether the reply header has been (logically) written.
@@ -108,5 +117,5 @@ func (r *Response) respond() (err error) {
 			_, err = r.Write(r.Body)
 		}
 	}
-	return err
+	return
 }

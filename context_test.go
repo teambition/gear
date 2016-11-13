@@ -1134,7 +1134,7 @@ func TestGearContextEnd(t *testing.T) {
 
 		app := New()
 		app.Use(func(ctx *Context) error {
-			ctx.setEnd()
+			ctx.setEnd(false)
 			return ctx.End(200, []byte("OK"))
 		})
 
@@ -1203,7 +1203,7 @@ func TestGearContextAfter(t *testing.T) {
 			count++
 			assert.Equal(1, count)
 			ctx.Status(204)
-			ctx.setEnd()
+			ctx.setEnd(false)
 			assert.Panics(func() {
 				ctx.After(func() {})
 			})
@@ -1284,7 +1284,7 @@ func TestGearContextOnEnd(t *testing.T) {
 			count++
 			assert.Equal(1, count)
 			ctx.Status(204)
-			ctx.setEnd()
+			ctx.setEnd(false)
 			assert.Panics(func() {
 				ctx.OnEnd(func() {})
 			})

@@ -151,8 +151,8 @@ func NewRouter(routerOptions ...RouterOptions) *Router {
 
 	return &Router{
 		root:       opts.Root,
-		trie:       newTrie(opts.IgnoreCase, opts.TrailingSlashRedirect),
 		middleware: make([]Middleware, 0),
+		trie:       newTrie(opts.IgnoreCase, opts.TrailingSlashRedirect),
 	}
 }
 
@@ -274,27 +274,21 @@ func (r *Router) Serve(ctx *Context) error {
 	if res.params != nil {
 		ctx.SetAny(paramsKey, res.params)
 	}
-	err := r.run(ctx, handlers)
-	ctx.ended = true
-	return err
+	return r.run(ctx, handlers)
 }
 
 func (r *Router) run(ctx *Context, handlers []Middleware) (err error) {
+	defer ctx.setEnd(false)
+
 	for _, handle := range r.middleware {
-		if err = handle(ctx); !isNil(err) {
+		if err = handle(ctx); !isNil(err) || ctx.ended {
 			return
-		}
-		if ctx.ended {
-			return // middleware and fn should not run if true
 		}
 	}
 
 	for _, handle := range handlers {
-		if err = handle(ctx); !isNil(err) {
+		if err = handle(ctx); !isNil(err) || ctx.ended {
 			return
-		}
-		if ctx.ended {
-			return // middleware and fn should not run if true
 		}
 	}
 	return

@@ -264,7 +264,9 @@ func (app *App) Start(addr ...string) *ServerListener {
 // Error writes error to underlayer logging system (ErrorLog).
 func (app *App) Error(err error) {
 	if err := ParseError(err); err != nil {
-		app.logger.Println(err.String())
+		if err.Code == 500 || err.Code > 501 || err.Code < 400 {
+			app.logger.Println(err.String())
+		}
 	}
 }
 
@@ -295,6 +297,8 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.app.Error(err)
 
 			if !ctx.Res.HeaderWrote() {
+				ctx.Res.ResetHeader()
+				ctx.afterHooks = nil // clear afterHooks
 				ctx.Error(err)
 			}
 		}
@@ -302,21 +306,18 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		<-ctx.Done()
+		ctx.ended = true
 		// if context canceled abnormally...
 		if err := ctx.Err(); err != nil && !ctx.Res.HeaderWrote() {
+			ctx.Res.ResetHeader()
 			ctx.Status(503)
-			ctx.afterHooks = nil // clear afterHooks
 			if err := h.app.onerror.OnError(ctx, err); err != nil {
-				// 5xx Server Error will send to app.Error
-				if err.Code == 500 || err.Code > 501 || err.Code < 400 {
-					h.app.Error(err)
-				}
+				h.app.Error(err)
+				ctx.afterHooks = nil // clear afterHooks
 				ctx.String(err.Status(), err.Error())
 				ctx.Res.respond()
 			}
 		}
-		// ensure middleware process ended
-		ctx.ended = true
 	}()
 
 	// handle "/abc//efg"
@@ -327,24 +328,18 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// process app middleware
 	for _, handle := range h.middleware {
-		if err = handle(ctx); !isNil(err) {
+		if err = handle(ctx); !isNil(err) || ctx.ended {
 			break
-		}
-		if ctx.ended {
-			break // end up the middleware process
 		}
 	}
 
-	// ensure that ended is true after middleware process finished.
-	ctx.ended = true
 	if !isNil(err) {
-		ctx.afterHooks = nil // clear afterHooks when error
+		ctx.ended = true
+		ctx.Res.ResetHeader()
 		// process middleware error with OnError
 		if err := h.app.onerror.OnError(ctx, err); err != nil {
-			// 5xx Server Error will send to app.Error
-			if err.Code == 500 || err.Code > 501 || err.Code < 400 {
-				h.app.Error(err)
-			}
+			h.app.Error(err)
+			ctx.afterHooks = nil // clear afterHooks
 			ctx.String(err.Status(), err.Error())
 		}
 	}

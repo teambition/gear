@@ -90,8 +90,8 @@ func (ctx *Context) Value(key interface{}) (val interface{}) {
 // Cancel cancel the ctx and all it' children context.
 // The ctx' process will ended too.
 func (ctx *Context) Cancel() {
-	ctx.ended = true     // end the middleware process
 	ctx.afterHooks = nil // clear afterHooks
+	ctx.setEnd(false)    // end the middleware process
 	ctx.cancelCtx()
 }
 
@@ -390,7 +390,7 @@ func (ctx *Context) Render(code int, name string, data interface{}) (err error) 
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error) {
-	if err = ctx.setEnd(); err == nil {
+	if err = ctx.setEnd(true); err == nil {
 		ctx.Status(code)
 		ctx.Type(contentType)
 		_, err = io.Copy(ctx.Res, r)
@@ -409,7 +409,7 @@ func (ctx *Context) Attachment(name string, content io.ReadSeeker, inline ...boo
 	if len(inline) > 0 && inline[0] {
 		dispositionType = "inline"
 	}
-	if err = ctx.setEnd(); err == nil {
+	if err = ctx.setEnd(true); err == nil {
 		ctx.Set(HeaderContentDisposition, fmt.Sprintf("%s; filename=%s", dispositionType, name))
 		http.ServeContent(ctx.Res, ctx.Req, name, time.Time{}, content)
 	}
@@ -421,7 +421,7 @@ func (ctx *Context) Attachment(name string, content io.ReadSeeker, inline ...boo
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) Redirect(code int, url string) (err error) {
-	if err = ctx.setEnd(); err == nil {
+	if err = ctx.setEnd(true); err == nil {
 		http.Redirect(ctx.Res, ctx.Req, url, code)
 	}
 	return
@@ -444,7 +444,7 @@ func (ctx *Context) Error(e error) (err error) {
 // But "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) End(code int, buf ...[]byte) (err error) {
-	if err = ctx.setEnd(); err == nil {
+	if err = ctx.setEnd(true); err == nil {
 		if code != 0 {
 			ctx.Status(code)
 		}
@@ -473,9 +473,9 @@ func (ctx *Context) OnEnd(hook func()) {
 	ctx.endHooks = append(ctx.endHooks, hook)
 }
 
-func (ctx *Context) setEnd() (err error) {
+func (ctx *Context) setEnd(check bool) (err error) {
 	ctx.mu.Lock()
-	if ctx.ended {
+	if check && ctx.ended {
 		err = NewAppError("context is ended")
 	} else {
 		ctx.ended = true
