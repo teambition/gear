@@ -83,11 +83,18 @@ func TestGearServer(t *testing.T) {
 		})
 		err := app3.Listen(":3323")
 		assert.NotNil(err)
+
+		app4 := New()
+		app4.Use(func(ctx *Context) error {
+			return ctx.End(204)
+		})
+		err = app3.ListenTLS(":3323", "", "")
+		assert.NotNil(err)
+
 		go func() {
 			time.Sleep(time.Second)
 			srv.Close()
 		}()
-
 		err = srv.Wait()
 		assert.NotNil(err)
 	})
@@ -539,4 +546,45 @@ func TestGearWrapHandlerFunc(t *testing.T) {
 	assert.Equal(3, count)
 	assert.Equal(404, res.StatusCode)
 	res.Body.Close()
+}
+
+type WriterTest struct {
+	res http.ResponseWriter
+}
+
+func (wt *WriterTest) WriteHeader(code int) {
+	wt.res.WriteHeader(code)
+}
+
+func (wt *WriterTest) Header() http.Header {
+	return wt.res.Header()
+}
+
+func (wt *WriterTest) Write(b []byte) (int, error) {
+	return 0, errors.New("can't write")
+}
+
+func TestGearWrapResponseWriter(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	var buf bytes.Buffer
+	app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
+	app.Use(func(ctx *Context) error {
+		ctx.Res.res = &WriterTest{ctx.Res.res}
+		ctx.String(200, "OK")
+		return nil
+	})
+
+	srv := app.Start()
+	defer srv.Close()
+
+	req := NewRequst()
+	res, err := req.Get("http://" + srv.Addr().String())
+	assert.Nil(err)
+	assert.Equal(200, res.StatusCode)
+	res.Body.Close()
+
+	log := buf.String()
+	assert.True(strings.Contains(log, "can't write"))
 }

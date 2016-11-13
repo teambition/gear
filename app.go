@@ -293,7 +293,10 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Meta: buf,
 			}
 			h.app.Error(err)
-			ctx.Error(err)
+
+			if !ctx.Res.HeaderWrote() {
+				ctx.Error(err)
+			}
 		}
 	}()
 
@@ -348,7 +351,7 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// ensure respond
 	if err = ctx.Res.respond(); err != nil {
-		panic(err)
+		h.app.Error(err)
 	}
 }
 
