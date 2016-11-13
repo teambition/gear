@@ -49,7 +49,7 @@ func TestGearServer(t *testing.T) {
 		app.Use(func(ctx *Context) error {
 			return ctx.End(204)
 		})
-		srv := app.Start(":54444")
+		srv := app.Start(":3324")
 		defer srv.Close()
 
 		req := NewRequst()
@@ -66,7 +66,7 @@ func TestGearServer(t *testing.T) {
 		app.Use(func(ctx *Context) error {
 			return ctx.End(204)
 		})
-		srv := app.Start(":54444")
+		srv := app.Start(":3323")
 		defer srv.Close()
 
 		app2 := New()
@@ -74,14 +74,14 @@ func TestGearServer(t *testing.T) {
 			return ctx.End(204)
 		})
 		assert.Panics(func() {
-			app2.Start(":54444")
+			app2.Start(":3323")
 		})
 
 		app3 := New()
 		app3.Use(func(ctx *Context) error {
 			return ctx.End(204)
 		})
-		err := app3.Listen(":54444")
+		err := app3.Listen(":3323")
 		assert.NotNil(err)
 		go func() {
 			time.Sleep(time.Second)

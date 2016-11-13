@@ -119,7 +119,7 @@ func TestGearContextWithContext(t *testing.T) {
 		ctx.Cancel()
 		assert.True(ctx.ended)
 		assert.Nil(ctx.afterHooks)
-
+		time.Sleep(time.Millisecond)
 		return nil
 	})
 	app.Use(func(ctx *Context) error {
@@ -132,7 +132,7 @@ func TestGearContextWithContext(t *testing.T) {
 	req := NewRequst()
 	res, err := req.Get("http://" + srv.Addr().String())
 	assert.Nil(err)
-	assert.Equal(404, res.StatusCode)
+	assert.Equal(503, res.StatusCode)
 	assert.True(cancelDone)
 	assert.True(deadlineDone)
 	assert.True(timeoutDone)
