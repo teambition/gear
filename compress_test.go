@@ -6,10 +6,9 @@ import (
 	"compress/gzip"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
-
-	"strconv"
 
 	"github.com/stretchr/testify/assert"
 )

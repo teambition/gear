@@ -1,7 +1,9 @@
 package gear
 
-import "net/http"
-import "strconv"
+import (
+	"net/http"
+	"strconv"
+)
 
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.

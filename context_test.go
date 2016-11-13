@@ -11,14 +11,11 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
-	"testing"
-
-	"time"
-
-	"strings"
-
 	"os"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
