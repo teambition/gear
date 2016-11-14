@@ -133,8 +133,9 @@ func NewLogger(logger Logger) gear.Middleware {
 		ctx.OnEnd(func() {
 			log := logger.FromCtx(ctx)
 
-			log["Status"] = ctx.Res.Status
 			log["Length"] = len(ctx.Res.Body)
+			log["Status"] = ctx.Res.Status
+			log["Type"] = ctx.Res.Type
 			logger.WriteLog(log)
 		})
 		return nil

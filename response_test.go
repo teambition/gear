@@ -30,6 +30,30 @@ func TestGearResponse(t *testing.T) {
 		assert.Equal("", res.Get("link"))
 	})
 
+	t.Run("ResetHeader", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+		res := ctx.Res
+		res.Set("accept", "text/plain")
+		res.Set("allow", "GET")
+		res.Set("retry-after", "3 seconds")
+		res.Set("warning", "some warning")
+		res.Set("access-control-allow-origin", "*")
+		res.Set("Set-Cookie", "Set-Cookie: UserID=JohnDoe; Max-Age=3600; Version=")
+
+		res.ResetHeader(true)
+		assert.Equal("text/plain", res.Get(HeaderAccept))
+		assert.Equal("GET", res.Get(HeaderAllow))
+		assert.Equal("3 seconds", res.Get(HeaderRetryAfter))
+		assert.Equal("some warning", res.Get(HeaderWarning))
+		assert.Equal("*", res.Get(HeaderAccessControlAllowOrigin))
+		assert.Equal("", res.Get(HeaderSetCookie))
+
+		res.ResetHeader(false)
+		assert.Equal(0, len(res.Header()))
+	})
+
 	t.Run("implicit WriteHeader call", func(t *testing.T) {
 		assert := assert.New(t)
 

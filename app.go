@@ -297,9 +297,11 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.app.Error(err)
 
 			if !ctx.Res.HeaderWrote() {
-				ctx.Res.ResetHeader()
+				ctx.Res.ResetHeader(false)
 				ctx.afterHooks = nil // clear afterHooks
-				ctx.Error(err)
+				ctx.Set(HeaderXContentTypeOptions, "nosniff")
+				ctx.String(err.Status(), err.Error())
+				ctx.Res.respond()
 			}
 		}
 	}()
@@ -309,11 +311,12 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx.ended = true
 		// if context canceled abnormally...
 		if err := ctx.Err(); err != nil && !ctx.Res.HeaderWrote() {
-			ctx.Res.ResetHeader()
+			ctx.Res.ResetHeader(true)
 			ctx.Status(503)
 			if err := h.app.onerror.OnError(ctx, err); err != nil {
 				h.app.Error(err)
 				ctx.afterHooks = nil // clear afterHooks
+				ctx.Set(HeaderXContentTypeOptions, "nosniff")
 				ctx.String(err.Status(), err.Error())
 				ctx.Res.respond()
 			}
@@ -335,11 +338,12 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if !isNil(err) {
 		ctx.ended = true
-		ctx.Res.ResetHeader()
+		ctx.Res.ResetHeader(true)
 		// process middleware error with OnError
 		if err := h.app.onerror.OnError(ctx, err); err != nil {
 			h.app.Error(err)
 			ctx.afterHooks = nil // clear afterHooks
+			ctx.Set(HeaderXContentTypeOptions, "nosniff")
 			ctx.String(err.Status(), err.Error())
 		}
 	}

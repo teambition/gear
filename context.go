@@ -218,7 +218,7 @@ func (ctx *Context) IP() net.IP {
 
 // Param returns path parameter by name.
 func (ctx *Context) Param(key string) (val string) {
-	if res, err := ctx.Any(paramsKey); err == nil {
+	if res, _ := ctx.Any(paramsKey); res != nil {
 		val, _ = res.(map[string]string)[key]
 	}
 	return
@@ -434,6 +434,7 @@ func (ctx *Context) Redirect(code int, url string) (err error) {
 func (ctx *Context) Error(e error) (err error) {
 	ctx.afterHooks = nil // clear afterHooks when any error
 	if e := ParseError(e); e != nil {
+		ctx.Type(MIMETextPlainCharsetUTF8)
 		return ctx.End(e.Status(), []byte(e.Error()))
 	}
 	return &Error{Code: 500, Msg: NewAppError("nil-error").Error()}

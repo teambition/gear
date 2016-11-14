@@ -271,9 +271,7 @@ func (r *Router) Serve(ctx *Context) error {
 		}
 	}
 
-	if res.params != nil {
-		ctx.SetAny(paramsKey, res.params)
-	}
+	ctx.SetAny(paramsKey, res.params)
 	return r.run(ctx, handlers)
 }
 

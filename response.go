@@ -2,8 +2,11 @@ package gear
 
 import (
 	"net/http"
+	"regexp"
 	"strconv"
 )
+
+var defaultErrorHeaderReg = regexp.MustCompile(`(?i)^(accept|allow|retry-after|warning|access-control-allow-)`)
 
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.
@@ -13,9 +16,9 @@ type Response struct {
 	header      http.Header
 	wroteHeader bool
 
+	Body   []byte // response Content
 	Status int    // response Status Code
 	Type   string // response Content-Type
-	Body   []byte // response Content
 }
 
 func newResponse(ctx *Context, w http.ResponseWriter) *Response {
@@ -42,10 +45,13 @@ func (r *Response) Set(key, value string) {
 	r.header.Set(key, value)
 }
 
-// ResetHeader reset headers.
-func (r *Response) ResetHeader() {
+// ResetHeader reset headers. If keepSubset is true,
+// header matching `(?i)^(accept|allow|retry-after|warning|access-control-allow-)` will be keep
+func (r *Response) ResetHeader(keepSubset bool) {
 	for key := range r.header {
-		delete(r.header, key)
+		if !keepSubset || !defaultErrorHeaderReg.MatchString(key) {
+			delete(r.header, key)
+		}
 	}
 }
 
