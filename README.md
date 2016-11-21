@@ -3,8 +3,7 @@
 [![Coverage Status](http://img.shields.io/coveralls/teambition/gear.svg?style=flat-square)](https://coveralls.io/r/teambition/gear)
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/teambition/gear/master/LICENSE)
 [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/teambition/gear)
-
------
+=====
 Expressive web framework with context.Context for Go, focuses on performance and composition.
 
 ## Demo
@@ -47,10 +46,6 @@ func main() {
 // package gear
 import "github.com/teambition/gear"
 ```
-
-## Full Document
-
-https://godoc.org/github.com/teambition/gear
 
 ## About Router
 [gear.Router](https://godoc.org/github.com/teambition/gear#Router) is a tire base HTTP request handler.
@@ -159,6 +154,12 @@ func NewLogger(logger Logger) gear.Middleware {
 	}
 }
 ```
+
+## Documentation
+
+https://godoc.org/github.com/teambition/gear
+
+## Benchmark
 
 ### Gear with "net/http": 50030
 ```sh

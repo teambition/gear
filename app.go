@@ -131,7 +131,7 @@ type App struct {
 	onerror  OnError
 	renderer Renderer
 	// Default to nil, do not compress response content.
-	compress Compress
+	compress Compressible
 	// Default to 0
 	timeout time.Duration
 
@@ -203,8 +203,8 @@ func (app *App) Set(setting string, val interface{}) {
 			app.logger = logger
 		}
 	case "AppCompress":
-		if compress, ok := val.(Compress); !ok {
-			panic("AppCompress setting must implemented gear.Compress interface")
+		if compress, ok := val.(Compressible); !ok {
+			panic("AppCompress setting must implemented gear.Compressible interface")
 		} else {
 			app.compress = compress
 		}

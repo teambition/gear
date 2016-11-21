@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// Compress interface is use to enable compress response context.
-type Compress interface {
+// Compressible interface is use to enable compress response context.
+type Compressible interface {
 	// Compressible checks the response Content-Type and Content-Length to
 	// determine whether to compress.
 	// Recommend use mime database https://github.com/GitbookIO/mimedb to find
@@ -34,13 +34,13 @@ func (d *DefaultCompress) Compressible(contentType string, contentLength int) bo
 
 type compressWriter struct {
 	body     *[]byte
-	compress Compress
+	compress Compressible
 	encoding string
 	writer   io.WriteCloser
 	res      http.ResponseWriter
 }
 
-func newCompress(res *Response, c Compress, acceptEncoding string) *compressWriter {
+func newCompress(res *Response, c Compressible, acceptEncoding string) *compressWriter {
 	encodings := strings.Split(acceptEncoding, ",")
 	encoding := strings.TrimSpace(encodings[0])
 	switch encoding {
