@@ -55,11 +55,12 @@ Features:
 1. Support regexp
 2. Support multi-router
 3. Support router layer middlewares
-4. Support trailing slash automatic redirection
-5. Automatic handle `405 Method Not Allowed`
-6. Automatic handle `501 Not Implemented`
-7. Automatic handle `OPTIONS` method
-8. Best Performance
+4. Support fixed path automatic redirection
+5. Support trailing slash automatic redirection
+6. Automatic handle `405 Method Not Allowed`
+7. Automatic handle `501 Not Implemented`
+8. Automatic handle `OPTIONS` method
+9. Best Performance
 
 The registered path, against which the router matches incoming requests, can contain three types of parameters:
 

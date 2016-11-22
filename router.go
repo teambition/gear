@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/teambition/trie-mux"
 )
 
 // Router is a tire base HTTP request handler for Gear which can be used to
@@ -92,7 +94,7 @@ import (
 //
 type Router struct {
 	root       string
-	trie       *trie
+	trie       *trie.Trie
 	tsr        bool
 	otherwise  []Middleware
 	middleware []Middleware
@@ -103,17 +105,31 @@ type RouterOptions struct {
 	// Router's namespace. Gear supports multiple routers with different namespace.
 	// Root string should start with "/", default to "/"
 	Root string
+
 	// Ignore case when matching URL path.
 	IgnoreCase bool
+
+	// Enables automatic redirection if the current path can't be matched but
+	// a handler for the fixed path exists.
+	// For example if "/api//foo" is requested but a route only exists for "/api/foo", the
+	// client is redirected to "/api/foo"" with http status code 301 for GET requests
+	// and 307 for all other request methods.
+	FixedPathRedirect bool
+
 	// Enables automatic redirection if the current route can't be matched but a
 	// handler for the path with (without) the trailing slash exists.
-	// For example if /foo/ is requested but a route only exists for /foo, the
-	// client is redirected to /foo with http status code 301 for GET requests
+	// For example if "/foo/" is requested but a route only exists for "/foo", the
+	// client is redirected to "/foo"" with http status code 301 for GET requests
 	// and 307 for all other request methods.
 	TrailingSlashRedirect bool
 }
 
-var defaultRouterOptions = RouterOptions{Root: "/", IgnoreCase: true, TrailingSlashRedirect: true}
+var defaultRouterOptions = RouterOptions{
+	Root:                  "/",
+	IgnoreCase:            true,
+	FixedPathRedirect:     true,
+	TrailingSlashRedirect: true,
+}
 
 // NewRouter returns a new Router instance with root path and ignoreCase option.
 // Gear support multi-routers. For example:
@@ -129,7 +145,8 @@ var defaultRouterOptions = RouterOptions{Root: "/", IgnoreCase: true, TrailingSl
 //  apiRouter := gear.NewRouter(RouterOptions{
 //  	Root: "/api",
 //  	IgnoreCase: true,
-//  	TrailingSlashRedirect: true
+//  	FixedPathRedirect: true,
+//  	TrailingSlashRedirect: true,
 //  })
 //  // support one more middleware
 //  apiRouter.Get("/user/:id", API.Auth, API.User)
@@ -152,7 +169,11 @@ func NewRouter(routerOptions ...RouterOptions) *Router {
 	return &Router{
 		root:       opts.Root,
 		middleware: make([]Middleware, 0),
-		trie:       newTrie(opts.IgnoreCase, opts.TrailingSlashRedirect),
+		trie: trie.New(trie.Options{
+			IgnoreCase:            opts.IgnoreCase,
+			FixedPathRedirect:     opts.FixedPathRedirect,
+			TrailingSlashRedirect: opts.TrailingSlashRedirect,
+		}),
 	}
 }
 
@@ -175,7 +196,7 @@ func (r *Router) Handle(method, pattern string, handlers ...Middleware) {
 	if len(handlers) == 0 {
 		panic(NewAppError("invalid middleware"))
 	}
-	r.trie.define(pattern).handle(strings.ToUpper(method), handlers)
+	r.trie.Define(pattern).Handle(strings.ToUpper(method), handlers)
 }
 
 // Get registers a new GET route for a path with matching handler in the router.
@@ -232,46 +253,48 @@ func (r *Router) Serve(ctx *Context) error {
 		return nil
 	}
 
-	res := r.trie.match(strings.TrimPrefix(path, r.root))
-	// TrailingSlashRedirect
-	if res.tsr && len(ctx.Path) > 1 {
-		if ctx.Path[len(ctx.Path)-1] == '/' {
-			ctx.Req.URL.Path = ctx.Path[:len(ctx.Path)-1]
-		} else {
-			ctx.Req.URL.Path = ctx.Path + "/"
+	res := r.trie.Match(strings.TrimPrefix(path, r.root))
+	if res.Node == nil {
+		// FixedPathRedirect or TrailingSlashRedirect
+		if res.TSR != "" || res.FPR != "" {
+			ctx.Req.URL.Path = res.TSR
+			if res.FPR != "" {
+				ctx.Req.URL.Path = res.FPR
+			}
+			if ctx.Req.URL.Path[0] != '/' {
+				ctx.Req.URL.Path = "/" + ctx.Req.URL.Path
+			}
+
+			code := 301
+			if method != "GET" {
+				code = 307
+			}
+			return ctx.Redirect(code, ctx.Req.URL.String())
 		}
 
-		code := 301
-		if ctx.Method != "GET" {
-			code = 307
-		}
-		return ctx.Redirect(code, ctx.Req.URL.String())
-	}
-
-	if res.node == nil {
 		if r.otherwise == nil {
 			return &Error{Code: 501, Msg: fmt.Sprintf(`"%s" not implemented`, path)}
 		}
 		handlers = r.otherwise
 	} else {
-		handlers = res.node.methods[method]
-		if len(handlers) == 0 {
+		ok := false
+		if handlers, ok = res.Node.Methods[method].([]Middleware); !ok {
 			// OPTIONS support
 			if method == http.MethodOptions {
-				ctx.Set(HeaderAllow, res.node.allowMethods)
+				ctx.Set(HeaderAllow, res.Node.AllowMethods)
 				return ctx.End(204)
 			}
 
 			if r.otherwise == nil {
 				// If no route handler is returned, it's a 405 error
-				ctx.Set(HeaderAllow, res.node.allowMethods)
+				ctx.Set(HeaderAllow, res.Node.AllowMethods)
 				return &Error{Code: 405, Msg: fmt.Sprintf(`"%s" not allowed in "%s"`, method, path)}
 			}
 			handlers = r.otherwise
 		}
 	}
 
-	ctx.SetAny(paramsKey, res.params)
+	ctx.SetAny(paramsKey, res.Params)
 	return r.run(ctx, handlers)
 }
 

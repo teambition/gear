@@ -503,6 +503,99 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 	})
 
+	t.Run("router with FixedPathRedirect = true (defalut)", func(t *testing.T) {
+		assert := assert.New(t)
+		app := New()
+
+		r := NewRouter()
+
+		r.Get("/", func(ctx *Context) error {
+			return ctx.HTML(200, "/")
+		})
+
+		r.Get("/abc/efg", func(ctx *Context) error {
+			return ctx.HTML(200, "/abc/efg")
+		})
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Get(host + "/")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Get(host + "/abc/efg")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/abc/efg", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Get(host + "/abc//efg")
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/abc/efg", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		ctx := CtxTest(app, "GET", "/abc//efg", nil)
+		r.Serve(ctx)
+		rt := CtxResult(ctx)
+		assert.Equal(301, rt.StatusCode)
+		assert.Equal("/abc/efg", rt.Header.Get("Location"))
+	})
+
+	t.Run("router with FixedPathRedirect = false", func(t *testing.T) {
+		assert := assert.New(t)
+		app := New()
+
+		r := NewRouter(RouterOptions{})
+
+		r.Get("/", func(ctx *Context) error {
+			return ctx.HTML(200, "/")
+		})
+
+		r.Get("/abc/efg", func(ctx *Context) error {
+			return ctx.HTML(200, "/abc/efg")
+		})
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := req.Get(host)
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Get(host + "/")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Get(host + "/abc/efg")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/abc/efg", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = req.Get(host + "/abc//efg")
+		assert.Equal(501, res.StatusCode)
+		res.Body.Close()
+
+		ctx := CtxTest(app, "GET", "/abc//efg", nil)
+		err = r.Serve(ctx)
+		assert.Equal(501, err.(HTTPError).Status())
+	})
+
 	t.Run("router with TrailingSlashRedirect = true (defalut)", func(t *testing.T) {
 		assert := assert.New(t)
 		app := New()

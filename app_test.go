@@ -122,32 +122,6 @@ func TestGearAppHello(t *testing.T) {
 		assert.Equal("<h1>Hello!</h1>", PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
-
-	t.Run("should 404 when multi-slash", func(t *testing.T) {
-		assert := assert.New(t)
-
-		app := New()
-
-		app.Use(func(ctx *Context) error {
-			return ctx.End(200, []byte("<h1>Hello!</h1>"))
-		})
-		srv := app.Start()
-		defer srv.Close()
-
-		req := NewRequst()
-		host := "http://" + srv.Addr().String()
-		res, err := req.Get(host + "/a/b/c")
-		assert.Nil(err)
-		assert.Equal(200, res.StatusCode)
-		assert.Equal("<h1>Hello!</h1>", PickRes(res.Text()).(string))
-		res.Body.Close()
-
-		res, err = req.Get(host + "/a//b/c")
-		assert.Nil(err)
-		assert.Equal(404, res.StatusCode)
-		assert.Equal("404 page not found\n", PickRes(res.Text()).(string))
-		res.Body.Close()
-	})
 }
 
 type testOnError struct{}

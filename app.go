@@ -10,7 +10,6 @@ import (
 	"os"
 	"reflect"
 	"runtime"
-	"strings"
 	"time"
 )
 
@@ -322,12 +321,6 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}()
-
-	// handle "/abc//efg"
-	if strings.Contains(ctx.Path, "//") {
-		http.NotFound(ctx.Res, ctx.Req)
-		return
-	}
 
 	// process app middleware
 	for _, handle := range h.middleware {
