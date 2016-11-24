@@ -2,7 +2,11 @@ package gear
 
 import (
 	"bytes"
+	"compress/gzip"
+	"compress/zlib"
 	"errors"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/textproto"
@@ -11,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mozillazg/request"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -36,11 +39,70 @@ func PickError(res interface{}, err error) error {
 	return err
 }
 
-func NewRequst() *request.Request {
-	c := &http.Client{}
-	return request.NewRequest(c)
+// ------Helpers for help test --------
+var DefaultClient = &http.Client{}
+
+type GearResponse struct {
+	*http.Response
 }
 
+func RequestBy(method, url string) (*GearResponse, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := DefaultClient.Do(req)
+	return &GearResponse{res}, err
+}
+func DefaultClientDo(req *http.Request) (*GearResponse, error) {
+	res, err := DefaultClient.Do(req)
+	return &GearResponse{res}, err
+}
+func DefaultClientDoWithCookies(req *http.Request, cookies map[string]string) (*http.Response, error) {
+	for k, v := range cookies {
+		req.AddCookie(&http.Cookie{Name: k, Value: v})
+	}
+	return DefaultClient.Do(req)
+}
+func NewRequst(method, url string) (*http.Request, error) {
+	return http.NewRequest(method, url, nil)
+}
+
+func (resp *GearResponse) OK() bool {
+	return resp.StatusCode < 400
+}
+func (resp *GearResponse) Content() (val []byte, err error) {
+	var b []byte
+	var reader io.ReadCloser
+	switch resp.Header.Get("Content-Encoding") {
+	case "gzip":
+		if reader, err = gzip.NewReader(resp.Body); err != nil {
+			return nil, err
+		}
+	case "deflate":
+		if reader, err = zlib.NewReader(resp.Body); err != nil {
+			return nil, err
+		}
+	default:
+		reader = resp.Body
+	}
+
+	defer reader.Close()
+	if b, err = ioutil.ReadAll(reader); err != nil {
+		return nil, err
+	}
+	return b, err
+}
+
+func (resp *GearResponse) Text() (val string, err error) {
+	b, err := resp.Content()
+	if err != nil {
+		return "", err
+	}
+	return string(b), err
+}
+
+//--------- End ---------
 func TestGearServer(t *testing.T) {
 	t.Run("start with addr", func(t *testing.T) {
 		assert := assert.New(t)
@@ -49,11 +111,10 @@ func TestGearServer(t *testing.T) {
 		app.Use(func(ctx *Context) error {
 			return ctx.End(204)
 		})
-		srv := app.Start(":3324")
+		srv := app.Start("127.0.0.1:3324")
 		defer srv.Close()
 
-		req := NewRequst()
-		res, err := req.Get("http://" + srv.Addr().String())
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(204, res.StatusCode)
 		res.Body.Close()
@@ -115,8 +176,7 @@ func TestGearAppHello(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		req := NewRequst()
-		res, err := req.Get("http://" + srv.Addr().String())
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("<h1>Hello!</h1>", PickRes(res.Text()).(string))
@@ -153,8 +213,7 @@ func TestGearError(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		req := NewRequst()
-		res, err := req.Get("http://" + srv.Addr().String())
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(503, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
@@ -179,8 +238,7 @@ func TestGearError(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		req := NewRequst()
-		res, err := req.Get("http://" + srv.Addr().String())
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(204, res.StatusCode)
 		assert.Equal("", res.Header.Get(HeaderContentType))
@@ -202,8 +260,7 @@ func TestGearError(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		req := NewRequst()
-		res, err := req.Get("http://" + srv.Addr().String())
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("panic recovered: Some error", PickRes(res.Text()).(string))
@@ -369,7 +426,7 @@ func TestGearAppTimeout(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		req := NewRequst()
+
 		assert.Panics(func() {
 			app.Set("AppTimeout", struct{}{})
 		})
@@ -385,7 +442,7 @@ func TestGearAppTimeout(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		res, err := req.Get("http://" + srv.Addr().String())
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(503, res.StatusCode)
 		assert.Equal("context deadline exceeded", PickRes(res.Text()).(string))
@@ -396,7 +453,6 @@ func TestGearAppTimeout(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		req := NewRequst()
 
 		app.Set("AppTimeout", time.Millisecond*100)
 
@@ -412,7 +468,7 @@ func TestGearAppTimeout(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		res, err := req.Get("http://" + srv.Addr().String())
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(503, res.StatusCode)
 		assert.Equal("context canceled", PickRes(res.Text()).(string))
@@ -423,7 +479,6 @@ func TestGearAppTimeout(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		req := NewRequst()
 
 		app.Set("AppTimeout", time.Millisecond*100)
 
@@ -437,7 +492,7 @@ func TestGearAppTimeout(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		res, err := req.Get("http://" + srv.Addr().String())
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("OK", PickRes(res.Text()).(string))
@@ -475,8 +530,7 @@ func TestGearWrapHandler(t *testing.T) {
 	srv := app.Start()
 	defer srv.Close()
 
-	req := NewRequst()
-	res, err := req.Get("http://" + srv.Addr().String())
+	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
 	assert.Equal(3, count)
 	assert.Equal(404, res.StatusCode)
@@ -514,8 +568,7 @@ func TestGearWrapHandlerFunc(t *testing.T) {
 	srv := app.Start()
 	defer srv.Close()
 
-	req := NewRequst()
-	res, err := req.Get("http://" + srv.Addr().String())
+	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
 	assert.Equal(3, count)
 	assert.Equal(404, res.StatusCode)
@@ -553,8 +606,7 @@ func TestGearWrapResponseWriter(t *testing.T) {
 	srv := app.Start()
 	defer srv.Close()
 
-	req := NewRequst()
-	res, err := req.Get("http://" + srv.Addr().String())
+	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
 	assert.Equal(200, res.StatusCode)
 	res.Body.Close()
