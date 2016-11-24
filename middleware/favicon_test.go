@@ -1,11 +1,11 @@
 package middleware
 
 import (
+	"io"
 	"net/http"
 	"reflect"
 	"testing"
 
-	"github.com/mozillazg/request"
 	"github.com/stretchr/testify/assert"
 	"github.com/teambition/gear"
 )
@@ -31,10 +31,7 @@ func PickError(res interface{}, err error) error {
 	return err
 }
 
-func NewRequst() *request.Request {
-	c := &http.Client{}
-	return request.NewRequest(c)
-}
+
 
 func TestGearMiddlewareFavicon(t *testing.T) {
 	assert.Panics(t, func() {
@@ -49,12 +46,10 @@ func TestGearMiddlewareFavicon(t *testing.T) {
 	srv := app.Start()
 	defer srv.Close()
 
-	req := NewRequst()
-
 	t.Run("GET", func(t *testing.T) {
 		assert := assert.New(t)
 
-		res, err := req.Get("http://" + srv.Addr().String() + "/favicon.ico")
+		res, err = RequestBy("GET", "http://" + srv.Addr().String()+ "/favicon.ico")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("image/x-icon", res.Header.Get(gear.HeaderContentType))
@@ -64,7 +59,7 @@ func TestGearMiddlewareFavicon(t *testing.T) {
 	t.Run("HEAD", func(t *testing.T) {
 		assert := assert.New(t)
 
-		res, err := req.Head("http://" + srv.Addr().String() + "/favicon.ico")
+		res, err = RequestBy("HEAD", "http://" + srv.Addr().String()+ "/favicon.ico")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("image/x-icon", res.Header.Get(gear.HeaderContentType))
@@ -74,7 +69,7 @@ func TestGearMiddlewareFavicon(t *testing.T) {
 	t.Run("OPTIONS", func(t *testing.T) {
 		assert := assert.New(t)
 
-		res, err := req.Options("http://" + srv.Addr().String() + "/favicon.ico")
+		res, err = RequestBy("OPTIONS", "http://" + srv.Addr().String()+ "/favicon.ico")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
@@ -85,7 +80,7 @@ func TestGearMiddlewareFavicon(t *testing.T) {
 	t.Run("Other method", func(t *testing.T) {
 		assert := assert.New(t)
 
-		res, err := req.Patch("http://" + srv.Addr().String() + "/favicon.ico")
+		res, err = RequestBy("PATCH", "http://" + srv.Addr().String()+"/favicon.ico")
 		assert.Nil(err)
 		assert.Equal(405, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
@@ -96,7 +91,7 @@ func TestGearMiddlewareFavicon(t *testing.T) {
 	t.Run("Other path", func(t *testing.T) {
 		assert := assert.New(t)
 
-		res, err := req.Patch("http://" + srv.Addr().String() + "/abc")
+		res, err = RequestBy("PATCH", "http://" + srv.Addr().String()++ "/favicon.ico")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		res.Body.Close()

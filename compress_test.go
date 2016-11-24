@@ -78,10 +78,11 @@ func TestGearResponseCompress(t *testing.T) {
 		t.Run("gzip compress", func(t *testing.T) {
 			assert := assert.New(t)
 
-			req := NewRequst()
-			req.Headers["Accept-Encoding"] = "gzip, deflate"
+			req, _ := NewRequst("GET", host+"/full")
 
-			res, err := req.Get(host + "/full")
+			req.Header.Set("Accept-Encoding", "gzip, deflate")
+
+			res, err := DefaultClientDo(req)
 			assert.Nil(err)
 			assert.True(res.OK())
 			content := PickRes(ioutil.ReadAll(res.Body)).([]byte)
@@ -99,10 +100,9 @@ func TestGearResponseCompress(t *testing.T) {
 		t.Run("deflate compress", func(t *testing.T) {
 			assert := assert.New(t)
 
-			req := NewRequst()
-			req.Headers["Accept-Encoding"] = "deflate,gzip"
-
-			res, err := req.Get(host + "/full")
+			req, _ := NewRequst("GET", host+"/full")
+			req.Header.Set("Accept-Encoding", "deflate,gzip")
+			res, err := DefaultClientDo(req)
 			assert.Nil(err)
 			assert.True(res.OK())
 			content := PickRes(ioutil.ReadAll(res.Body)).([]byte)
@@ -120,10 +120,10 @@ func TestGearResponseCompress(t *testing.T) {
 		t.Run("when no Accept-Encoding", func(t *testing.T) {
 			assert := assert.New(t)
 
-			req := NewRequst()
-			req.Headers["Accept-Encoding"] = ""
+			req, _ := NewRequst("GET", host+"/full")
+			req.Header.Set("Accept-Encoding", "")
 
-			res, err := req.Get(host + "/full")
+			res, err := DefaultClientDo(req)
 			assert.Nil(err)
 			assert.True(res.OK())
 			content := PickRes(res.Content()).([]byte)
@@ -137,10 +137,9 @@ func TestGearResponseCompress(t *testing.T) {
 		t.Run("compress threshold", func(t *testing.T) {
 			assert := assert.New(t)
 
-			req := NewRequst()
-			req.Headers["Accept-Encoding"] = "gzip, deflate"
-
-			res, err := req.Get(host + "/short")
+			req, _ := NewRequst("GET", host+"/short")
+			req.Header.Set("Accept-Encoding", "gzip, deflate")
+			res, err := DefaultClientDo(req)
 			assert.Nil(err)
 			assert.True(res.OK())
 			content := PickRes(res.Content()).([]byte)
@@ -170,9 +169,9 @@ func TestGearResponseCompress(t *testing.T) {
 
 			host := "http://" + srv.Addr().String()
 
-			req := NewRequst()
+			req, _ := NewRequst("GET", host+"/full")
 
-			res, err := req.Get(host + "/full")
+			res, err := DefaultClientDo(req)
 			assert.Nil(err)
 			assert.True(res.OK())
 			content := PickRes(res.Content()).([]byte)
@@ -209,17 +208,15 @@ func TestGearResponseCompress(t *testing.T) {
 
 			host := "http://" + srv.Addr().String()
 
-			req := NewRequst()
-
-			res, _ := req.Get(host + "/204")
+			res, _ := RequestBy("GET", host+"/204")
 			assert.Equal(204, res.StatusCode)
 			assert.Equal("", res.Header.Get(HeaderContentEncoding))
 
-			res, _ = req.Get(host + "/205")
+			res, _ = RequestBy("GET", host+"/205")
 			assert.Equal(205, res.StatusCode)
 			assert.Equal("", res.Header.Get(HeaderContentEncoding))
 
-			res, _ = req.Get(host + "/304")
+			res, _ = RequestBy("GET", host+"/304")
 			assert.Equal(304, res.StatusCode)
 			assert.Equal("", res.Header.Get(HeaderContentEncoding))
 		})
