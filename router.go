@@ -253,7 +253,14 @@ func (r *Router) Serve(ctx *Context) error {
 		return nil
 	}
 
-	res := r.trie.Match(strings.TrimPrefix(path, r.root))
+	if len(r.root) > 1 {
+		path = strings.TrimPrefix(path, r.root)
+		if path == "" {
+			path = "/"
+		}
+	}
+
+	res := r.trie.Match(path)
 	if res.Node == nil {
 		// FixedPathRedirect or TrailingSlashRedirect
 		if res.TSR != "" || res.FPR != "" {
@@ -261,8 +268,8 @@ func (r *Router) Serve(ctx *Context) error {
 			if res.FPR != "" {
 				ctx.Req.URL.Path = res.FPR
 			}
-			if ctx.Req.URL.Path[0] != '/' {
-				ctx.Req.URL.Path = "/" + ctx.Req.URL.Path
+			if len(r.root) > 1 {
+				ctx.Req.URL.Path = r.root + ctx.Req.URL.Path
 			}
 
 			code := 301
@@ -273,7 +280,7 @@ func (r *Router) Serve(ctx *Context) error {
 		}
 
 		if r.otherwise == nil {
-			return &Error{Code: 501, Msg: fmt.Sprintf(`"%s" not implemented`, path)}
+			return &Error{Code: 501, Msg: fmt.Sprintf(`"%s" not implemented`, ctx.Path)}
 		}
 		handlers = r.otherwise
 	} else {
@@ -288,7 +295,7 @@ func (r *Router) Serve(ctx *Context) error {
 			if r.otherwise == nil {
 				// If no route handler is returned, it's a 405 error
 				ctx.Set(HeaderAllow, res.Node.AllowMethods)
-				return &Error{Code: 405, Msg: fmt.Sprintf(`"%s" not allowed in "%s"`, method, path)}
+				return &Error{Code: 405, Msg: fmt.Sprintf(`"%s" not allowed in "%s"`, method, ctx.Path)}
 			}
 			handlers = r.otherwise
 		}
