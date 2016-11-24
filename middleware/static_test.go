@@ -39,12 +39,10 @@ func TestGearMiddlewareStatic(t *testing.T) {
 	srv := app.Start()
 	defer srv.Close()
 
-	req := NewRequst()
-
 	t.Run("GET", func(t *testing.T) {
 		assert := assert.New(t)
 
-		res, err := req.Get("http://" + srv.Addr().String() + "/hello.html")
+		res, err := RequestBy("GET", "http://"+srv.Addr().String()+"/hello.html")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
@@ -54,7 +52,7 @@ func TestGearMiddlewareStatic(t *testing.T) {
 	t.Run("GET with StripPrefix", func(t *testing.T) {
 		assert := assert.New(t)
 
-		res, err := req.Get("http://" + srv.Addr().String() + "/static/hello.html")
+		res, err := RequestBy("GET", "http://"+srv.Addr().String()+"/static/hello.html")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
@@ -64,7 +62,7 @@ func TestGearMiddlewareStatic(t *testing.T) {
 	t.Run("HEAD", func(t *testing.T) {
 		assert := assert.New(t)
 
-		res, err := req.Head("http://" + srv.Addr().String() + "/hello.html")
+		res, err := RequestBy("HEAD", "http://"+srv.Addr().String()+"/hello.html")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
@@ -74,7 +72,7 @@ func TestGearMiddlewareStatic(t *testing.T) {
 	t.Run("OPTIONS", func(t *testing.T) {
 		assert := assert.New(t)
 
-		res, err := req.Options("http://" + srv.Addr().String() + "/hello.html")
+		res, err := RequestBy("OPTIONS", "http://"+srv.Addr().String()+"/hello.html")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
@@ -85,7 +83,7 @@ func TestGearMiddlewareStatic(t *testing.T) {
 	t.Run("Other method", func(t *testing.T) {
 		assert := assert.New(t)
 
-		res, err := req.Patch("http://" + srv.Addr().String() + "/hello.html")
+		res, err := RequestBy("PATCH", "http://"+srv.Addr().String()+"/hello.html")
 		assert.Nil(err)
 		assert.Equal(405, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
@@ -96,7 +94,7 @@ func TestGearMiddlewareStatic(t *testing.T) {
 	t.Run("Other file", func(t *testing.T) {
 		assert := assert.New(t)
 
-		res, err := req.Get("http://" + srv.Addr().String() + "/favicon.ico")
+		res, err := RequestBy("GET", "http://"+srv.Addr().String()+"/favicon.ico")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("image/x-icon", res.Header.Get(gear.HeaderContentType))
@@ -106,7 +104,9 @@ func TestGearMiddlewareStatic(t *testing.T) {
 	t.Run("Should compress", func(t *testing.T) {
 		assert := assert.New(t)
 
-		res, err := req.Get("http://" + srv.Addr().String() + "/README.md")
+		req, _ := NewRequst("GET", "http://"+srv.Addr().String()+"/README.md")
+		req.Header.Set("Accept-Encoding", "gzip, deflate")
+		res, err := DefaultClientDo(req)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
@@ -117,7 +117,7 @@ func TestGearMiddlewareStatic(t *testing.T) {
 	t.Run("404", func(t *testing.T) {
 		assert := assert.New(t)
 
-		res, err := req.Get("http://" + srv.Addr().String() + "/none.html")
+		res, err := RequestBy("GET", "http://"+srv.Addr().String()+"/none.html")
 		assert.Nil(err)
 		assert.Equal(404, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))

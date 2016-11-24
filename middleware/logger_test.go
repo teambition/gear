@@ -77,8 +77,7 @@ func TestGearLogger(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		req := NewRequst()
-		res, err := req.Get("http://" + srv.Addr().String())
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
@@ -107,8 +106,7 @@ func TestGearLogger(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		req := NewRequst()
-		res, err := req.Get("http://" + srv.Addr().String())
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
@@ -137,8 +135,7 @@ func TestGearLogger(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		req := NewRequst()
-		res, err := req.Post("http://" + srv.Addr().String())
+		res, err := RequestBy("POST", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))

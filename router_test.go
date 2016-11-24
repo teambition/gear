@@ -15,8 +15,6 @@ func TestGearRouter(t *testing.T) {
 		return app.Start()
 	}
 
-	req := NewRequst()
-
 	t.Run("router.Use, router.Handle", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -35,21 +33,21 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(0, called)
 		assert.Equal(444, res.StatusCode)
 		assert.Equal("", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/api")
+		res, err = RequestBy("GET", host+"/api")
 		assert.Nil(err)
 		assert.Equal(0, called)
 		assert.Equal(501, res.StatusCode)
 		assert.Equal("\"/api\" not implemented", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/api/users")
+		res, err = RequestBy("GET", host+"/api/users")
 		assert.Nil(err)
 		assert.Equal(1, called)
 		assert.Equal(200, res.StatusCode)
@@ -92,7 +90,7 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(3, called)
 		assert.Equal(200, res.StatusCode)
@@ -123,43 +121,43 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("GET", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Head(host)
+		res, err = RequestBy("HEAD", host)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Post(host)
+		res, err = RequestBy("POST", host)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("POST", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Put(host)
+		res, err = RequestBy("PUT", host)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("PUT", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Patch(host)
+		res, err = RequestBy("PATCH", host)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("PATCH", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Delete(host)
+		res, err = RequestBy("DELETE", host)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("DELETE", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Options(host)
+		res, err = RequestBy("OPTIONS", host)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("OPTIONS", PickRes(res.Text()).(string))
@@ -182,7 +180,7 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Options(host)
+		res, err := RequestBy("OPTIONS", host)
 		assert.Nil(err)
 		assert.Equal(204, res.StatusCode)
 		assert.Equal("GET, HEAD, POST, PUT", res.Header.Get(HeaderAllow))
@@ -217,7 +215,7 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(3, called)
 		assert.Equal(200, res.StatusCode)
@@ -237,7 +235,7 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(501, res.StatusCode)
 		assert.Equal("nosniff", res.Header.Get(HeaderXContentTypeOptions))
@@ -258,7 +256,7 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Put(host + "/abc")
+		res, err := RequestBy("PUT", host+"/abc")
 		assert.Nil(err)
 		assert.Equal(405, res.StatusCode)
 		assert.Equal("GET", res.Header.Get(HeaderAllow))
@@ -285,7 +283,7 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host + "/api/user/123")
+		res, err := RequestBy("GET", host+"/api/user/123")
 		assert.Nil(err)
 		assert.Equal(1, count)
 		assert.Equal(200, res.StatusCode)
@@ -310,7 +308,7 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host + "/api/:/123")
+		res, err := RequestBy("GET", host+"/api/:/123")
 		assert.Nil(err)
 		assert.Equal(1, count)
 		assert.Equal(200, res.StatusCode)
@@ -335,7 +333,7 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host + "/api/user/123")
+		res, err := RequestBy("GET", host+"/api/user/123")
 		assert.Nil(err)
 		assert.Equal(1, count)
 		assert.Equal(200, res.StatusCode)
@@ -360,13 +358,13 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host + "/api/user/abc")
+		res, err := RequestBy("GET", host+"/api/user/abc")
 		assert.Nil(err)
 		assert.Equal(0, count)
 		assert.Equal(501, res.StatusCode)
 		res.Body.Close()
 
-		res, err = req.Get(host + "/api/user/123")
+		res, err = RequestBy("GET", host+"/api/user/123")
 		assert.Nil(err)
 		assert.Equal(1, count)
 		assert.Equal(200, res.StatusCode)
@@ -394,21 +392,21 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host + "/api")
+		res, err := RequestBy("GET", host+"/api")
 		assert.Nil(err)
 		assert.Equal(1, count)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("OK", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/api/user/abc")
+		res, err = RequestBy("GET", host+"/api/user/abc")
 		assert.Nil(err)
 		assert.Equal(2, count)
 		assert.Equal(404, res.StatusCode)
 		assert.Equal("GET /api/user/abc", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Put(host + "/api")
+		res, err = RequestBy("PUT", host+"/api")
 		assert.Nil(err)
 		assert.Equal(3, count)
 		assert.Equal(404, res.StatusCode)
@@ -444,7 +442,7 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(3, called)
 		assert.Equal(200, res.StatusCode)
@@ -465,13 +463,13 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host + "/api/user/123")
+		res, err := RequestBy("GET", host+"/api/user/123")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("user123", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/API/User/Abc")
+		res, err = RequestBy("GET", host+"/API/User/Abc")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("UserAbc", PickRes(res.Text()).(string))
@@ -491,12 +489,12 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host + "/api/user/123")
+		res, err := RequestBy("GET", host+"/api/user/123")
 		assert.Nil(err)
 		assert.Equal(501, res.StatusCode)
 		res.Body.Close()
 
-		res, err = req.Get(host + "/Api/User/Abc")
+		res, err = RequestBy("GET", host+"/Api/User/Abc")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("UserAbc", PickRes(res.Text()).(string))
@@ -521,25 +519,25 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/")
+		res, err = RequestBy("GET", host+"/")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/abc/efg")
+		res, err = RequestBy("GET", host+"/abc/efg")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/abc/efg", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/abc//efg")
+		res, err = RequestBy("GET", host+"/abc//efg")
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/abc/efg", PickRes(res.Text()).(string))
 		res.Body.Close()
@@ -569,25 +567,25 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/")
+		res, err = RequestBy("GET", host+"/")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/abc/efg")
+		res, err = RequestBy("GET", host+"/abc/efg")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/abc/efg", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/abc//efg")
+		res, err = RequestBy("GET", host+"/abc//efg")
 		assert.Equal(501, res.StatusCode)
 		res.Body.Close()
 
@@ -618,25 +616,25 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/")
+		res, err = RequestBy("GET", host+"/")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/abc/efg")
+		res, err = RequestBy("GET", host+"/abc/efg")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/abc/efg", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/abc/efg/")
+		res, err = RequestBy("GET", host+"/abc/efg/")
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/abc/efg", PickRes(res.Text()).(string))
 		res.Body.Close()
@@ -647,13 +645,13 @@ func TestGearRouter(t *testing.T) {
 		assert.Equal(301, rt.StatusCode)
 		assert.Equal("/abc/efg", rt.Header.Get("Location"))
 
-		res, err = req.Put(host + "/abc/xyz/")
+		res, err = RequestBy("PUT", host+"/abc/xyz/")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/abc/xyz/", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Put(host + "/abc/xyz")
+		res, err = RequestBy("PUT", host+"/abc/xyz")
 		assert.Equal(307, res.StatusCode)
 		assert.Equal("/abc/xyz/", res.Header.Get("Location"))
 		res.Body.Close()
@@ -687,25 +685,25 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/")
+		res, err = RequestBy("GET", host+"/")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/abc/efg")
+		res, err = RequestBy("GET", host+"/abc/efg")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/abc/efg", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Get(host + "/abc/efg/")
+		res, err = RequestBy("GET", host+"/abc/efg/")
 		assert.Equal(501, res.StatusCode)
 		res.Body.Close()
 
@@ -713,13 +711,13 @@ func TestGearRouter(t *testing.T) {
 		err = r.Serve(ctx)
 		assert.Equal(501, err.(HTTPError).Status())
 
-		res, err = req.Put(host + "/abc/xyz/")
+		res, err = RequestBy("PUT", host+"/abc/xyz/")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/abc/xyz/", PickRes(res.Text()).(string))
 		res.Body.Close()
 
-		res, err = req.Put(host + "/abc/xyz")
+		res, err = RequestBy("PUT", host+"/abc/xyz")
 		assert.Equal(501, res.StatusCode)
 		res.Body.Close()
 
@@ -743,7 +741,7 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("OK", PickRes(res.Text()).(string))
@@ -765,7 +763,7 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("some error", PickRes(res.Text()).(string))
@@ -786,7 +784,7 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("OK", PickRes(res.Text()).(string))
@@ -807,7 +805,7 @@ func TestGearRouter(t *testing.T) {
 		defer srv.Close()
 		host := "http://" + srv.Addr().String()
 
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("some error", PickRes(res.Text()).(string))

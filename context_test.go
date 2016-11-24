@@ -65,8 +65,7 @@ func TestGearContextContextInterface(t *testing.T) {
 	srv := app.Start()
 	defer srv.Close()
 
-	req := NewRequst()
-	res, err := req.Get("http://" + srv.Addr().String())
+	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
 	assert.True(done)
@@ -126,8 +125,7 @@ func TestGearContextWithContext(t *testing.T) {
 	srv := app.Start()
 	defer srv.Close()
 
-	req := NewRequst()
-	res, err := req.Get("http://" + srv.Addr().String())
+	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
 	assert.Equal(503, res.StatusCode)
 	assert.True(cancelDone)
@@ -155,9 +153,7 @@ func TestGearContextTiming(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal(`["hello"]`, PickRes(res.Text()).(string))
@@ -180,9 +176,7 @@ func TestGearContextTiming(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("context deadline exceeded", PickRes(res.Text()).(string))
@@ -208,9 +202,7 @@ func TestGearContextTiming(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(503, res.StatusCode)
 		assert.Equal("context deadline exceeded", PickRes(res.Text()).(string))
@@ -340,26 +332,29 @@ func TestGearContextIP(t *testing.T) {
 	defer srv.Close()
 
 	host := "http://" + srv.Addr().String()
-	req := NewRequst()
-	req.Headers["X-Forwarded-For"] = "127.0.0.10"
-	res, err := req.Get(host + "/XForwardedFor")
+	req, _ := NewRequst("GET", host+"/XForwardedFor")
+	req.Header.Set("X-Forwarded-For", "127.0.0.10")
+
+	res, err := DefaultClientDo(req)
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
 
-	req = NewRequst()
-	req.Headers["X-Real-IP"] = "127.0.0.20"
-	res, err = req.Get(host + "/XRealIP")
+	req, _ = NewRequst("GET", host+"/XRealIP")
+	req.Header.Set("X-Real-IP", "127.0.0.20")
+
+	res, err = DefaultClientDo(req)
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
 
-	req = NewRequst()
-	res, err = req.Get(host)
+	req, _ = NewRequst("GET", host)
+	res, err = DefaultClientDo(req)
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
 
-	req = NewRequst()
-	req.Headers["X-Real-IP"] = "1.2.3"
-	res, err = req.Get(host + "/err")
+	req, _ = NewRequst("GET", host+"/err")
+	req.Header.Set("X-Real-IP", "1.2.3")
+
+	res, err = DefaultClientDo(req)
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
 }
@@ -385,13 +380,12 @@ func TestGearContextParam(t *testing.T) {
 	defer srv.Close()
 
 	host := "http://" + srv.Addr().String()
-	req := NewRequst()
-	res, err := req.Get(host + "/api/user/123")
+	res, err := RequestBy("GET", host+"/api/user/123")
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
 
-	req = NewRequst()
-	res, err = req.Get(host + "/view/user/123")
+	res, err = RequestBy("GET", host+"/view/user/123")
+
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
 }
@@ -420,13 +414,11 @@ func TestGearContextQuery(t *testing.T) {
 	defer srv.Close()
 
 	host := "http://" + srv.Addr().String()
-	req := NewRequst()
-	res, err := req.Get(host + "/api?type=user&id=123")
+	res, err := RequestBy("GET", host+"/api?type=user&id=123")
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
 
-	req = NewRequst()
-	res, err = req.Get(host + "/view?id=123&id=abc")
+	res, err = RequestBy("GET", host+"/view?id=123&id=abc")
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
 }
@@ -455,9 +447,8 @@ func TestGearContextCookie(t *testing.T) {
 	defer srv.Close()
 
 	host := "http://" + srv.Addr().String()
-	req := NewRequst()
-	req.Cookies = map[string]string{"Gear": "test", "Gear.sig": "abc123"}
-	res, err := req.Get(host)
+	req, _ := NewRequst("GET", host)
+	res, err := DefaultClientDoWithCookies(req, map[string]string{"Gear": "test", "Gear.sig": "abc123"})
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
 	c := res.Cookies()[0]
@@ -537,9 +528,7 @@ func TestGearContextHTML(t *testing.T) {
 	srv := app.Start()
 	defer srv.Close()
 
-	host := "http://" + srv.Addr().String()
-	req := NewRequst()
-	res, err := req.Get(host)
+	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
 	assert.Equal(200, res.StatusCode)
 	assert.Equal("Hello", PickRes(res.Text()).(string))
@@ -581,15 +570,14 @@ func TestGearContextJSON(t *testing.T) {
 	defer srv.Close()
 
 	host := "http://" + srv.Addr().String()
-	req := NewRequst()
-	res, err := req.Get(host)
+	res, err := RequestBy("GET", host)
 	assert.Nil(err)
 	assert.Equal(200, res.StatusCode)
 	assert.Equal(`["Hello"]`, PickRes(res.Text()).(string))
 	assert.Equal(2, count)
 	assert.Equal(MIMEApplicationJSONCharsetUTF8, res.Header.Get(HeaderContentType))
 
-	res, err = req.Get(host + "/error")
+	res, err = RequestBy("GET", host+"/error")
 	assert.Nil(err)
 	assert.Equal(500, res.StatusCode)
 	assert.True(strings.Contains(PickRes(res.Text()).(string), "json: unsupported value"))
@@ -632,8 +620,7 @@ func TestGearContextJSONP(t *testing.T) {
 	defer srv.Close()
 
 	host := "http://" + srv.Addr().String()
-	req := NewRequst()
-	res, err := req.Get(host)
+	res, err := RequestBy("GET", host)
 	assert.Nil(err)
 	assert.Equal(200, res.StatusCode)
 	assert.Equal(`/**/ typeof cb123 === "function" && cb123(["Hello"]);`, PickRes(res.Text()).(string))
@@ -641,7 +628,7 @@ func TestGearContextJSONP(t *testing.T) {
 	assert.Equal("nosniff", res.Header.Get(HeaderXContentTypeOptions))
 	assert.Equal(MIMEApplicationJavaScriptCharsetUTF8, res.Header.Get(HeaderContentType))
 
-	res, err = req.Get(host + "/error")
+	res, err = RequestBy("GET", host+"/error")
 	assert.Nil(err)
 	assert.Equal(500, res.StatusCode)
 	assert.True(strings.Contains(PickRes(res.Text()).(string), "json: unsupported value"))
@@ -699,15 +686,14 @@ func TestGearContextXML(t *testing.T) {
 	defer srv.Close()
 
 	host := "http://" + srv.Addr().String()
-	req := NewRequst()
-	res, err := req.Get(host)
+	res, err := RequestBy("GET", host)
 	assert.Nil(err)
 	assert.Equal(200, res.StatusCode)
 	assert.Equal(`<XMLData type="test"><!--golang-->123</XMLData>`, PickRes(res.Text()).(string))
 	assert.Equal(2, count)
 	assert.Equal(MIMEApplicationXMLCharsetUTF8, res.Header.Get(HeaderContentType))
 
-	res, err = req.Get(host + "/error")
+	res, err = RequestBy("GET", host+"/error")
 	assert.Nil(err)
 	assert.Equal(500, res.StatusCode)
 	assert.True(strings.Contains(PickRes(res.Text()).(string), "xml: unsupported type"))
@@ -738,9 +724,7 @@ func TestGearContextRender(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.True(strings.Contains(PickRes(res.Text()).(string), "[App] renderer not registered"))
@@ -763,9 +747,7 @@ func TestGearContextRender(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("Hello, Gear!", PickRes(res.Text()).(string))
@@ -785,9 +767,7 @@ func TestGearContextRender(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(404, res.StatusCode)
 		assert.Equal(`html/template: "helloA" is undefined`, PickRes(res.Text()).(string))
@@ -815,9 +795,7 @@ func TestGearContextStream(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal(MIMETextHTMLCharsetUTF8, res.Header.Get(HeaderContentType))
@@ -843,9 +821,7 @@ func TestGearContextStream(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(204, res.StatusCode)
 		assert.Equal("TEST: {Code: 500, Msg: [App] context is ended, Meta: [App] context is ended}\n", buf.String())
@@ -873,9 +849,7 @@ func TestGearContextAttachment(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("attachment; filename=README.md", res.Header.Get(HeaderContentDisposition))
@@ -898,9 +872,7 @@ func TestGearContextAttachment(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("inline; filename=README.md", res.Header.Get(HeaderContentDisposition))
@@ -927,9 +899,7 @@ func TestGearContextAttachment(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(204, res.StatusCode)
 		assert.Equal("TEST: {Code: 500, Msg: [App] context is ended, Meta: [App] context is ended}\n", buf.String())
@@ -953,9 +923,7 @@ func TestGearContextRedirect(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.True(redirected)
 		assert.Equal(200, res.StatusCode)
@@ -982,9 +950,7 @@ func TestGearContextRedirect(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.True(redirected)
 		assert.Equal(204, res.StatusCode)
@@ -1009,9 +975,7 @@ func TestGearContextError(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(0, count)
 		assert.Equal(401, res.StatusCode)
@@ -1033,9 +997,7 @@ func TestGearContextError(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(0, count)
 		assert.Equal(500, res.StatusCode)
@@ -1058,9 +1020,7 @@ func TestGearContextError(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(0, count)
 		assert.Equal(500, res.StatusCode)
@@ -1081,9 +1041,7 @@ func TestGearContextEnd(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(204, res.StatusCode)
 	})
@@ -1101,9 +1059,7 @@ func TestGearContextEnd(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("OK", PickRes(res.Text()).(string))
@@ -1121,9 +1077,7 @@ func TestGearContextEnd(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("OK", PickRes(res.Text()).(string))
@@ -1141,9 +1095,7 @@ func TestGearContextEnd(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("[App] context is ended", PickRes(res.Text()).(string))
@@ -1178,9 +1130,7 @@ func TestGearContextAfter(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(4, count)
 		assert.Equal(204, res.StatusCode)
@@ -1213,9 +1163,7 @@ func TestGearContextAfter(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(2, count)
 		assert.Equal(204, res.StatusCode)
@@ -1251,9 +1199,7 @@ func TestGearContextOnEnd(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(4, count)
 		assert.Equal(204, res.StatusCode)
@@ -1294,9 +1240,7 @@ func TestGearContextOnEnd(t *testing.T) {
 		srv := app.Start()
 		defer srv.Close()
 
-		host := "http://" + srv.Addr().String()
-		req := NewRequst()
-		res, err := req.Get(host)
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(3, count)
 		assert.Equal(204, res.StatusCode)
