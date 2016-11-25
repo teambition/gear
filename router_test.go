@@ -663,6 +663,33 @@ func TestGearRouter(t *testing.T) {
 		assert.Equal("/abc/xyz/", rt.Header.Get("Location"))
 	})
 
+	t.Run("router with root and FixedPathRedirect", func(t *testing.T) {
+		assert := assert.New(t)
+		app := New()
+
+		r := NewRouter(RouterOptions{Root: "/api", FixedPathRedirect: true, TrailingSlashRedirect: true})
+
+		r.Get("/abc/efg", func(ctx *Context) error {
+			return ctx.HTML(200, "/api/abc/efg")
+		})
+
+		srv := newApp(r)
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := RequestBy("GET", host+"/api//abc///efg//")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("/api/abc/efg", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		ctx := CtxTest(app, "GET", "/api//abc///efg//", nil)
+		r.Serve(ctx)
+		rt := CtxResult(ctx)
+		assert.Equal(301, rt.StatusCode)
+		assert.Equal("/api/abc/efg", rt.Header.Get("Location"))
+	})
+
 	t.Run("router with TrailingSlashRedirect = false", func(t *testing.T) {
 		assert := assert.New(t)
 		app := New()

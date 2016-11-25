@@ -54,6 +54,7 @@ import (
 //  :name          named parameter
 //  :name*         named with catch-all parameter
 //  :name(regexp)  named with regexp parameter
+//  ::name         not named parameter, it is literal `:name`
 //
 // Named parameters are dynamic path segments. They match anything until the
 // next '/' or the path end:
@@ -285,16 +286,16 @@ func (r *Router) Serve(ctx *Context) error {
 		handlers = r.otherwise
 	} else {
 		ok := false
-		if handlers, ok = res.Node.Methods[method].([]Middleware); !ok {
+		if handlers, ok = res.Node.GetHandler(method).([]Middleware); !ok {
 			// OPTIONS support
 			if method == http.MethodOptions {
-				ctx.Set(HeaderAllow, res.Node.AllowMethods)
+				ctx.Set(HeaderAllow, res.Node.GetAllow())
 				return ctx.End(204)
 			}
 
 			if r.otherwise == nil {
 				// If no route handler is returned, it's a 405 error
-				ctx.Set(HeaderAllow, res.Node.AllowMethods)
+				ctx.Set(HeaderAllow, res.Node.GetAllow())
 				return &Error{Code: 405, Msg: fmt.Sprintf(`"%s" not allowed in "%s"`, method, ctx.Path)}
 			}
 			handlers = r.otherwise
