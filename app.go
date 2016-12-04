@@ -124,7 +124,7 @@ func ParseError(e error, code ...int) *Error {
 //  }
 //
 type App struct {
-	middleware []Middleware
+	middleware middlewares
 	settings   map[string]interface{}
 
 	onerror  OnError
@@ -144,7 +144,7 @@ type App struct {
 func New() *App {
 	app := new(App)
 	app.Server = new(http.Server)
-	app.middleware = make([]Middleware, 0)
+	app.middleware = make(middlewares, 0)
 	app.settings = make(map[string]interface{})
 
 	app.Set("AppEnv", "development")
@@ -271,7 +271,7 @@ func (app *App) Error(err error) {
 
 type serveHandler struct {
 	app        *App
-	middleware []Middleware
+	middleware middlewares
 }
 
 func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -323,11 +323,12 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// process app middleware
-	for _, handle := range h.middleware {
-		if err = handle(ctx); !isNil(err) || ctx.ended {
-			break
-		}
-	}
+	// for _, handle := range h.middleware {
+	// 	if err = handle(ctx); !isNil(err) || ctx.ended {
+	// 		break
+	// 	}
+	// }
+	_, err = h.middleware.run(ctx)
 
 	if !isNil(err) {
 		ctx.ended = true
@@ -397,4 +398,15 @@ func isNil(val interface{}) bool {
 	default:
 		return false
 	}
+}
+
+type middlewares []Middleware
+
+func (m middlewares) run(ctx *Context) (ok bool, err error) {
+	for _, handle := range m {
+		if err = handle(ctx); !isNil(err) || ctx.ended {
+			return false, err
+		}
+	}
+	return true, nil
 }

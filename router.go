@@ -97,8 +97,8 @@ type Router struct {
 	root       string
 	trie       *trie.Trie
 	tsr        bool
-	otherwise  []Middleware
-	middleware []Middleware
+	otherwise  middlewares
+	middleware middlewares
 }
 
 // RouterOptions is options for Router
@@ -169,7 +169,7 @@ func NewRouter(routerOptions ...RouterOptions) *Router {
 
 	return &Router{
 		root:       opts.Root,
-		middleware: make([]Middleware, 0),
+		middleware: make(middlewares, 0),
 		trie: trie.New(trie.Options{
 			IgnoreCase:            opts.IgnoreCase,
 			FixedPathRedirect:     opts.FixedPathRedirect,
@@ -197,7 +197,7 @@ func (r *Router) Handle(method, pattern string, handlers ...Middleware) {
 	if len(handlers) == 0 {
 		panic(NewAppError("invalid middleware"))
 	}
-	r.trie.Define(pattern).Handle(strings.ToUpper(method), handlers)
+	r.trie.Define(pattern).Handle(strings.ToUpper(method), middlewares(handlers))
 }
 
 // Get registers a new GET route for a path with matching handler in the router.
@@ -248,7 +248,7 @@ func (r *Router) Otherwise(handlers ...Middleware) {
 func (r *Router) Serve(ctx *Context) error {
 	path := ctx.Path
 	method := ctx.Method
-	var handlers []Middleware
+	var handlers middlewares
 
 	if !strings.HasPrefix(path, r.root) {
 		return nil
@@ -286,7 +286,7 @@ func (r *Router) Serve(ctx *Context) error {
 		handlers = r.otherwise
 	} else {
 		ok := false
-		if handlers, ok = res.Node.GetHandler(method).([]Middleware); !ok {
+		if handlers, ok = res.Node.GetHandler(method).(middlewares); !ok {
 			// OPTIONS support
 			if method == http.MethodOptions {
 				ctx.Set(HeaderAllow, res.Node.GetAllow())
@@ -306,19 +306,11 @@ func (r *Router) Serve(ctx *Context) error {
 	return r.run(ctx, handlers)
 }
 
-func (r *Router) run(ctx *Context, handlers []Middleware) (err error) {
+func (r *Router) run(ctx *Context, handlers middlewares) (err error) {
 	defer ctx.setEnd(false)
-
-	for _, handle := range r.middleware {
-		if err = handle(ctx); !isNil(err) || ctx.ended {
-			return
-		}
-	}
-
-	for _, handle := range handlers {
-		if err = handle(ctx); !isNil(err) || ctx.ended {
-			return
-		}
+	ok := false
+	if ok, err = r.middleware.run(ctx); ok {
+		_, err = handlers.run(ctx)
 	}
 	return
 }
