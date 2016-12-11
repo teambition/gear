@@ -96,7 +96,6 @@ import (
 type Router struct {
 	root       string
 	trie       *trie.Trie
-	tsr        bool
 	otherwise  middlewares
 	middleware middlewares
 }
@@ -261,13 +260,13 @@ func (r *Router) Serve(ctx *Context) error {
 		}
 	}
 
-	res := r.trie.Match(path)
-	if res.Node == nil {
+	matched := r.trie.Match(path)
+	if matched.Node == nil {
 		// FixedPathRedirect or TrailingSlashRedirect
-		if res.TSR != "" || res.FPR != "" {
-			ctx.Req.URL.Path = res.TSR
-			if res.FPR != "" {
-				ctx.Req.URL.Path = res.FPR
+		if matched.TSR != "" || matched.FPR != "" {
+			ctx.Req.URL.Path = matched.TSR
+			if matched.FPR != "" {
+				ctx.Req.URL.Path = matched.FPR
 			}
 			if len(r.root) > 1 {
 				ctx.Req.URL.Path = r.root + ctx.Req.URL.Path
@@ -286,23 +285,23 @@ func (r *Router) Serve(ctx *Context) error {
 		handlers = r.otherwise
 	} else {
 		ok := false
-		if handlers, ok = res.Node.GetHandler(method).(middlewares); !ok {
+		if handlers, ok = matched.Node.GetHandler(method).(middlewares); !ok {
 			// OPTIONS support
 			if method == http.MethodOptions {
-				ctx.Set(HeaderAllow, res.Node.GetAllow())
+				ctx.Set(HeaderAllow, matched.Node.GetAllow())
 				return ctx.End(204)
 			}
 
 			if r.otherwise == nil {
 				// If no route handler is returned, it's a 405 error
-				ctx.Set(HeaderAllow, res.Node.GetAllow())
+				ctx.Set(HeaderAllow, matched.Node.GetAllow())
 				return &Error{Code: 405, Msg: fmt.Sprintf(`"%s" not allowed in "%s"`, method, ctx.Path)}
 			}
 			handlers = r.otherwise
 		}
 	}
 
-	ctx.SetAny(paramsKey, res.Params)
+	ctx.SetAny(paramsKey, matched.Params)
 	return r.run(ctx, handlers)
 }
 
