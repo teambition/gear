@@ -28,7 +28,7 @@ type Logger interface {
 // A custom logger example:
 //
 //  type myLogger struct {
-//  	W io.Writer
+//  	Writer io.Writer
 //  }
 //
 //  func (logger *myLogger) FromCtx(ctx *gear.Context) Log {
@@ -68,15 +68,11 @@ type Logger interface {
 //  		str = fmt.Sprintf("%s ERROR %s", end.Format(time.RFC3339), err.Error())
 //  	}
 //  	// Don't block current process.
-//  	go func() {
-//  		if _, err := fmt.Fprintln(logger.W, str); err != nil {
-//  			panic(err)
-//  		}
-//  	}()
+//  	go fmt.Fprintln(logger.Writer, str)
 //  }
 //
 type DefaultLogger struct {
-	W io.Writer
+	Writer io.Writer
 }
 
 // FromCtx implements Logger interface
@@ -105,11 +101,7 @@ func (logger *DefaultLogger) WriteLog(log Log) {
 		float64(time.Now().Sub(log["Start"].(time.Time)))/1e6,
 	)
 	// Don't block current process.
-	go func() {
-		if _, err := fmt.Fprintln(logger.W, str); err != nil {
-			panic(err)
-		}
-	}()
+	go fmt.Fprintln(logger.Writer, str)
 }
 
 // NewLogger creates a middleware with a Logger instance.

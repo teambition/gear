@@ -44,7 +44,7 @@ func TestGearRouter(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(0, called)
 		assert.Equal(501, res.StatusCode)
-		assert.Equal("\"/api\" not implemented", PickRes(res.Text()).(string))
+		assert.Equal(`"/api" is not implemented`, PickRes(res.Text()).(string))
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/api/users")
@@ -240,7 +240,7 @@ func TestGearRouter(t *testing.T) {
 		assert.Equal(501, res.StatusCode)
 		assert.Equal("nosniff", res.Header.Get(HeaderXContentTypeOptions))
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal("\"/\" not implemented", PickRes(res.Text()).(string))
+		assert.Equal(`"/" is not implemented`, PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 
@@ -262,7 +262,7 @@ func TestGearRouter(t *testing.T) {
 		assert.Equal("GET", res.Header.Get(HeaderAllow))
 		assert.Equal("nosniff", res.Header.Get(HeaderXContentTypeOptions))
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal("\"PUT\" not allowed in \"/abc\"", PickRes(res.Text()).(string))
+		assert.Equal(`"PUT" is not allowed in "/abc"`, PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 
@@ -350,7 +350,7 @@ func TestGearRouter(t *testing.T) {
 			count++
 			return nil
 		})
-		r.Get("/api/:type/:ID(^\\d+$)", func(ctx *Context) error {
+		r.Get(`/api/:type/:ID(^\d+$)`, func(ctx *Context) error {
 			return ctx.HTML(200, ctx.Param("type")+ctx.Param("ID"))
 		})
 

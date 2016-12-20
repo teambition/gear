@@ -23,7 +23,7 @@ func main() {
 	app := gear.New()
 
 	// Add app middleware
-	logger := &middleware.DefaultLogger{W: os.Stdout}
+	logger := &middleware.DefaultLogger{os.Stdout}
 	app.Use(middleware.NewLogger(logger))
 
 	// Add router middleware

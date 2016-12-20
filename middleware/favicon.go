@@ -23,7 +23,6 @@ import (
 //
 //  func main() {
 //  	app := gear.New()
-//  	app.Use(gear.NewDefaultLogger())
 //  	app.Use(middleware.NewFavicon("./testdata/favicon.ico"))
 //  	app.Use(func(ctx *gear.Context) error {
 //  		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
@@ -42,7 +41,7 @@ func NewFavicon(iconpath string) gear.Middleware {
 	}
 	info, _ := os.Stat(iconpath)
 	if info == nil || info.IsDir() {
-		panic(gear.NewAppError(fmt.Sprintf("invalid favicon path: %s", iconpath)))
+		panic(gear.NewAppError(fmt.Sprintf(`invalid favicon path: "%s"`, iconpath)))
 	}
 	file, err := ioutil.ReadFile(iconpath)
 	if err != nil {

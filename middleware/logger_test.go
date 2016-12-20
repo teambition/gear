@@ -54,11 +54,7 @@ func (logger *testLogger) WriteLog(log Log) {
 		str = fmt.Sprintf("%s ERROR %s", end.Format(time.RFC3339), err.Error())
 	}
 	// Don't block current process.
-	go func() {
-		if _, err := fmt.Fprintln(logger.W, str); err != nil {
-			panic(err)
-		}
-	}()
+	go fmt.Fprintln(logger.W, str)
 }
 
 func TestGearLogger(t *testing.T) {

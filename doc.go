@@ -19,7 +19,7 @@ Example:
 		app := gear.New()
 
 		// Use a default logger middleware
-		logger := &middleware.DefaultLogger{W: os.Stdout}
+		logger := &middleware.DefaultLogger{os.Stdout}
 		app.Use(middleware.NewLogger(logger))
 
 		// Add a static middleware
@@ -97,4 +97,4 @@ Learn more at https://github.com/teambition/gear
 package gear
 
 // Version is Gear's version
-const Version = "v0.17.3"
+const Version = "v0.17.4"

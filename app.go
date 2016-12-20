@@ -323,11 +323,6 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// process app middleware
-	// for _, handle := range h.middleware {
-	// 	if err = handle(ctx); !isNil(err) || ctx.ended {
-	// 		break
-	// 	}
-	// }
 	_, err = h.middleware.run(ctx)
 
 	if !isNil(err) {

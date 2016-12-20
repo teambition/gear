@@ -280,7 +280,7 @@ func (r *Router) Serve(ctx *Context) error {
 		}
 
 		if r.otherwise == nil {
-			return &Error{Code: 501, Msg: fmt.Sprintf(`"%s" not implemented`, ctx.Path)}
+			return &Error{Code: 501, Msg: fmt.Sprintf(`"%s" is not implemented`, ctx.Path)}
 		}
 		handlers = r.otherwise
 	} else {
@@ -295,7 +295,7 @@ func (r *Router) Serve(ctx *Context) error {
 			if r.otherwise == nil {
 				// If no route handler is returned, it's a 405 error
 				ctx.Set(HeaderAllow, matched.Node.GetAllow())
-				return &Error{Code: 405, Msg: fmt.Sprintf(`"%s" not allowed in "%s"`, method, ctx.Path)}
+				return &Error{Code: 405, Msg: fmt.Sprintf(`"%s" is not allowed in "%s"`, method, ctx.Path)}
 			}
 			handlers = r.otherwise
 		}
