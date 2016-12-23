@@ -9,5 +9,6 @@ before_install:
 script:
   - go test -coverprofile=gear.coverprofile
   - go test -coverprofile=middleware.coverprofile ./middleware
+  - go test -coverprofile=middleware.coverprofile ./middleware/logger
   - gover
   - goveralls -coverprofile=gover.coverprofile -service=travis-ci

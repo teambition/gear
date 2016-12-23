@@ -1,4 +1,4 @@
-package middleware
+package logger
 
 import (
 	"bytes"
@@ -6,12 +6,37 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/teambition/gear"
 )
+
+// ----- Test Helpers -----
+type GearResponse struct {
+	*http.Response
+}
+
+var DefaultClient = &http.Client{}
+
+func RequestBy(method, url string) (*GearResponse, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := DefaultClient.Do(req)
+	return &GearResponse{res}, err
+}
+func NewRequst(method, url string) (*http.Request, error) {
+	return http.NewRequest(method, url, nil)
+}
+func DefaultClientDo(req *http.Request) (*GearResponse, error) {
+	res, err := DefaultClient.Do(req)
+	return &GearResponse{res}, err
+}
 
 type testLogger struct {
 	W io.Writer
@@ -88,6 +113,9 @@ func TestGearLogger(t *testing.T) {
 	})
 
 	t.Run("Default log", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("use native color func for windows platform")
+		}
 		assert := assert.New(t)
 
 		var buf bytes.Buffer
@@ -107,6 +135,7 @@ func TestGearLogger(t *testing.T) {
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		log := buf.String()
+
 		assert.Contains(log, "\x1b[34;1mGET\x1b[39;22m")
 		assert.Contains(log, "\x1b[32;1m200\x1b[39;22m")
 		res.Body.Close()
@@ -147,20 +176,21 @@ func TestGearLogger(t *testing.T) {
 	})
 
 	t.Run("Color", func(t *testing.T) {
+
 		assert := assert.New(t)
 
-		assert.Equal("\x1b[32;1m200\x1b[39;22m", ColorStatus(200))
-		assert.Equal("\x1b[32;1m204\x1b[39;22m", ColorStatus(204))
-		assert.Equal("\x1b[37;1m304\x1b[39;22m", ColorStatus(304))
-		assert.Equal("\x1b[33;1m404\x1b[39;22m", ColorStatus(404))
-		assert.Equal("\x1b[31;1m504\x1b[39;22m", ColorStatus(504))
+		assert.Equal(ColorCodeGreen, ColorStatus(200))
+		assert.Equal(ColorCodeGreen, ColorStatus(204))
+		assert.Equal(ColorCodeWhite, ColorStatus(304))
+		assert.Equal(ColorCodeYellow, ColorStatus(404))
+		assert.Equal(ColorCodeRed, ColorStatus(504))
 
-		assert.Equal("\x1b[34;1mGET\x1b[39;22m", ColorMethod("GET"))
-		assert.Equal("\x1b[35;1mHEAD\x1b[39;22m", ColorMethod("HEAD"))
-		assert.Equal("\x1b[36;1mPOST\x1b[39;22m", ColorMethod("POST"))
-		assert.Equal("\x1b[33;1mPUT\x1b[39;22m", ColorMethod("PUT"))
-		assert.Equal("\x1b[31;1mDELETE\x1b[39;22m", ColorMethod("DELETE"))
-		assert.Equal("\x1b[37;1mOPTIONS\x1b[39;22m", ColorMethod("OPTIONS"))
-		assert.Equal("PATCH", ColorMethod("PATCH"))
+		assert.Equal(ColorCodeBlue, ColorMethod("GET"))
+		assert.Equal(ColorCodeMagenta, ColorMethod("HEAD"))
+		assert.Equal(ColorCodeCyan, ColorMethod("POST"))
+		assert.Equal(ColorCodeYellow, ColorMethod("PUT"))
+		assert.Equal(ColorCodeRed, ColorMethod("DELETE"))
+		assert.Equal(ColorCodeWhite, ColorMethod("OPTIONS"))
+		assert.Equal(ColorCodeWhite, ColorMethod("PATCH"))
 	})
 }
