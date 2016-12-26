@@ -169,7 +169,7 @@ func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
 }
 
 // SetAny save a key, value pair on the ctx.
-// logger middleware used ctx.SetAny and ctx.Any to implement "logger.FromCtx":
+// logging middleware used ctx.SetAny and ctx.Any to implement "logger.FromCtx":
 //
 //  func (logger *DefaultLogger) FromCtx(ctx *gear.Context) Log {
 //  	if any, err := ctx.Any(logger); err == nil {

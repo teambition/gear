@@ -1,4 +1,4 @@
-package middleware
+package static
 
 import (
 	"fmt"
@@ -10,26 +10,27 @@ import (
 	"github.com/teambition/gear"
 )
 
-// StaticOptions is static middleware options
-type StaticOptions struct {
+// Options is static middleware options
+type Options struct {
 	Root        string // The directory you wish to serve
 	Prefix      string // The url prefix you wish to serve as static request, default to `'/'`.
 	StripPrefix bool   // Strip the prefix from URL path, default to `false`.
 }
 
-// NewStatic returns a Static middleware to serves static content from the provided root directory.
+// New creates a static middleware to serves static content from the provided root directory.
 //
 //  package main
 //
 //  import (
 //  	"github.com/teambition/gear"
-//  	"github.com/teambition/gear/middleware"
+//  	"github.com/teambition/gear/middleware/favicon"
+//  	"github.com/teambition/gear/middleware/static"
 //  )
 //
 //  func main() {
 //  	app := gear.New()
-//  	app.Use(middleware.NewFavicon("./testdata/favicon.ico"))
-//  	app.Use(middleware.NewStatic(middleware.StaticOptions{
+//  	app.Use(favicon.New("./testdata/favicon.ico"))
+//  	app.Use(static.New(static.Options{
 //  		Root:        "./testdata",
 //  		Prefix:      "/",
 //  		StripPrefix: false,
@@ -40,7 +41,7 @@ type StaticOptions struct {
 //  	app.Error(app.Listen(":3000"))
 //  }
 //
-func NewStatic(opts StaticOptions) gear.Middleware {
+func New(opts Options) gear.Middleware {
 	if opts.Root == "" {
 		opts.Root = "."
 	}

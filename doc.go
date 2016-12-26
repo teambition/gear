@@ -11,20 +11,21 @@ Example:
 		"time"
 
 		"github.com/teambition/gear"
-		"github.com/teambition/gear/middleware"
+		"github.com/teambition/gear/middleware/logging"
+		"github.com/teambition/gear/middleware/static"
 	)
 
 	func main() {
 		// Create app
 		app := gear.New()
 
-		// Use a default logger middleware
-		logger := &middleware.DefaultLogger{os.Stdout}
-		app.Use(middleware.NewLogger(logger))
+		// Use a default logging middleware
+		logger := &logging.DefaultLogger{os.Stdout}
+		app.Use(logging.New(logger))
 
 		// Add a static middleware
-		// http://localhost:3000/middleware/static.go
-		app.Use(middleware.NewStatic(middleware.StaticOptions{
+		// http://localhost:3000/middleware/static/static.go
+		app.Use(static.New(static.Options{
 			Root:        "./middleware",
 			Prefix:      "/middleware",
 			StripPrefix: true,
@@ -97,4 +98,4 @@ Learn more at https://github.com/teambition/gear
 package gear
 
 // Version is Gear's version
-const Version = "v0.17.4"
+const Version = "v0.18.0"

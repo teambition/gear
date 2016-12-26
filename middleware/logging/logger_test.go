@@ -1,4 +1,4 @@
-package middleware
+package logging
 
 import (
 	"bytes"
@@ -6,12 +6,37 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/teambition/gear"
 )
+
+// ----- Test Helpers -----
+type GearResponse struct {
+	*http.Response
+}
+
+var DefaultClient = &http.Client{}
+
+func RequestBy(method, url string) (*GearResponse, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := DefaultClient.Do(req)
+	return &GearResponse{res}, err
+}
+func NewRequst(method, url string) (*http.Request, error) {
+	return http.NewRequest(method, url, nil)
+}
+func DefaultClientDo(req *http.Request) (*GearResponse, error) {
+	res, err := DefaultClient.Do(req)
+	return &GearResponse{res}, err
+}
 
 type testLogger struct {
 	W io.Writer
@@ -53,8 +78,7 @@ func (logger *testLogger) WriteLog(log Log) {
 	default:
 		str = fmt.Sprintf("%s ERROR %s", end.Format(time.RFC3339), err.Error())
 	}
-	// Don't block current process.
-	go fmt.Fprintln(logger.W, str)
+	fmt.Fprintln(logger.W, str)
 }
 
 func TestGearLogger(t *testing.T) {
@@ -64,7 +88,7 @@ func TestGearLogger(t *testing.T) {
 		var buf bytes.Buffer
 		app := gear.New()
 		logger := &testLogger{&buf}
-		app.Use(NewLogger(logger))
+		app.Use(New(logger))
 		app.Use(func(ctx *gear.Context) error {
 			log := logger.FromCtx(ctx)
 			log["Data"] = []int{1, 2, 3}
@@ -77,6 +101,7 @@ func TestGearLogger(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		time.Sleep(10 * time.Millisecond)
 		log := buf.String()
 		assert.Contains(log, time.Now().Format(time.RFC3339)[0:19])
 		assert.Contains(log, " INFO ")
@@ -88,12 +113,15 @@ func TestGearLogger(t *testing.T) {
 	})
 
 	t.Run("Default log", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("use native color func for windows platform")
+		}
 		assert := assert.New(t)
 
 		var buf bytes.Buffer
 		app := gear.New()
 		logger := &DefaultLogger{&buf}
-		app.Use(NewLogger(logger))
+		app.Use(New(logger))
 		app.Use(func(ctx *gear.Context) error {
 			log := logger.FromCtx(ctx)
 			log["Data"] = []int{1, 2, 3}
@@ -106,7 +134,9 @@ func TestGearLogger(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		time.Sleep(10 * time.Millisecond)
 		log := buf.String()
+
 		assert.Contains(log, "\x1b[34;1mGET\x1b[39;22m")
 		assert.Contains(log, "\x1b[32;1m200\x1b[39;22m")
 		res.Body.Close()
@@ -122,7 +152,7 @@ func TestGearLogger(t *testing.T) {
 		app.Set("AppLogger", log.New(&errbuf, "TEST: ", 0))
 
 		logger := &testLogger{&buf}
-		app.Use(NewLogger(logger))
+		app.Use(New(logger))
 		app.Use(func(ctx *gear.Context) (err error) {
 			log := logger.FromCtx(ctx)
 			log["Data"] = map[string]interface{}{"a": 0}
@@ -135,6 +165,7 @@ func TestGearLogger(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		time.Sleep(10 * time.Millisecond)
 		log := buf.String()
 		assert.Contains(log, time.Now().Format(time.RFC3339)[0:19])
 		assert.Contains(log, " INFO ")
@@ -147,20 +178,21 @@ func TestGearLogger(t *testing.T) {
 	})
 
 	t.Run("Color", func(t *testing.T) {
+
 		assert := assert.New(t)
 
-		assert.Equal("\x1b[32;1m200\x1b[39;22m", ColorStatus(200))
-		assert.Equal("\x1b[32;1m204\x1b[39;22m", ColorStatus(204))
-		assert.Equal("\x1b[37;1m304\x1b[39;22m", ColorStatus(304))
-		assert.Equal("\x1b[33;1m404\x1b[39;22m", ColorStatus(404))
-		assert.Equal("\x1b[31;1m504\x1b[39;22m", ColorStatus(504))
+		assert.Equal(ColorGreen, ColorStatus(200))
+		assert.Equal(ColorGreen, ColorStatus(204))
+		assert.Equal(ColorWhite, ColorStatus(304))
+		assert.Equal(ColorYellow, ColorStatus(404))
+		assert.Equal(ColorRed, ColorStatus(504))
 
-		assert.Equal("\x1b[34;1mGET\x1b[39;22m", ColorMethod("GET"))
-		assert.Equal("\x1b[35;1mHEAD\x1b[39;22m", ColorMethod("HEAD"))
-		assert.Equal("\x1b[36;1mPOST\x1b[39;22m", ColorMethod("POST"))
-		assert.Equal("\x1b[33;1mPUT\x1b[39;22m", ColorMethod("PUT"))
-		assert.Equal("\x1b[31;1mDELETE\x1b[39;22m", ColorMethod("DELETE"))
-		assert.Equal("\x1b[37;1mOPTIONS\x1b[39;22m", ColorMethod("OPTIONS"))
-		assert.Equal("PATCH", ColorMethod("PATCH"))
+		assert.Equal(ColorBlue, ColorMethod("GET"))
+		assert.Equal(ColorMagenta, ColorMethod("HEAD"))
+		assert.Equal(ColorCyan, ColorMethod("POST"))
+		assert.Equal(ColorYellow, ColorMethod("PUT"))
+		assert.Equal(ColorRed, ColorMethod("DELETE"))
+		assert.Equal(ColorWhite, ColorMethod("OPTIONS"))
+		assert.Equal(ColorWhite, ColorMethod("PATCH"))
 	})
 }

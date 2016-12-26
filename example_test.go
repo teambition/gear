@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/teambition/gear"
-	"github.com/teambition/gear/middleware"
+	"github.com/teambition/gear/middleware/logging"
+	"github.com/teambition/gear/middleware/static"
 )
 
 func Example() {
@@ -14,12 +15,12 @@ func Example() {
 	app := gear.New()
 
 	// Use a default logger middleware
-	logger := &middleware.DefaultLogger{os.Stdout}
-	app.Use(middleware.NewLogger(logger))
+	logger := &logging.DefaultLogger{Writer: os.Stdout}
+	app.Use(logging.New(logger))
 
 	// Add a static middleware
 	// http://localhost:3000/middleware/static.go
-	app.Use(middleware.NewStatic(middleware.StaticOptions{
+	app.Use(static.New(static.Options{
 		Root:        "./middleware",
 		Prefix:      "/middleware",
 		StripPrefix: true,

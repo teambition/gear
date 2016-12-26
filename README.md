@@ -16,15 +16,15 @@ import (
 	"os"
 
 	"github.com/teambition/gear"
-	"github.com/teambition/gear/middleware"
+	"github.com/teambition/gear/middleware/logging"
 )
 
 func main() {
 	app := gear.New()
 
 	// Add app middleware
-	logger := &middleware.DefaultLogger{os.Stdout}
-	app.Use(middleware.NewLogger(logger))
+	logger := &logging.DefaultLogger{os.Stdout}
+	app.Use(logging.New(logger))
 
 	// Add router middleware
 	router := gear.NewRouter()
