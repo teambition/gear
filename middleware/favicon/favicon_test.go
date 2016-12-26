@@ -1,4 +1,4 @@
-package middleware
+package favicon
 
 import (
 	"net/http"
@@ -52,11 +52,11 @@ func PickError(res interface{}, err error) error {
 
 func TestGearMiddlewareFavicon(t *testing.T) {
 	assert.Panics(t, func() {
-		NewFavicon("../testdata/favicon1.ico")
+		New("../../testdata/favicon1.ico")
 	})
 
 	app := gear.New()
-	app.Use(NewFavicon("../testdata/favicon.ico"))
+	app.Use(New("../../testdata/favicon.ico"))
 	app.Use(func(ctx *gear.Context) error {
 		return ctx.HTML(200, "OK")
 	})

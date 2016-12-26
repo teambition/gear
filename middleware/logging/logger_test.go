@@ -1,4 +1,4 @@
-package logger
+package logging
 
 import (
 	"bytes"
@@ -78,8 +78,7 @@ func (logger *testLogger) WriteLog(log Log) {
 	default:
 		str = fmt.Sprintf("%s ERROR %s", end.Format(time.RFC3339), err.Error())
 	}
-	// Don't block current process.
-	go fmt.Fprintln(logger.W, str)
+	fmt.Fprintln(logger.W, str)
 }
 
 func TestGearLogger(t *testing.T) {
@@ -89,7 +88,7 @@ func TestGearLogger(t *testing.T) {
 		var buf bytes.Buffer
 		app := gear.New()
 		logger := &testLogger{&buf}
-		app.Use(NewLogger(logger))
+		app.Use(New(logger))
 		app.Use(func(ctx *gear.Context) error {
 			log := logger.FromCtx(ctx)
 			log["Data"] = []int{1, 2, 3}
@@ -102,6 +101,7 @@ func TestGearLogger(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		time.Sleep(10 * time.Millisecond)
 		log := buf.String()
 		assert.Contains(log, time.Now().Format(time.RFC3339)[0:19])
 		assert.Contains(log, " INFO ")
@@ -121,7 +121,7 @@ func TestGearLogger(t *testing.T) {
 		var buf bytes.Buffer
 		app := gear.New()
 		logger := &DefaultLogger{&buf}
-		app.Use(NewLogger(logger))
+		app.Use(New(logger))
 		app.Use(func(ctx *gear.Context) error {
 			log := logger.FromCtx(ctx)
 			log["Data"] = []int{1, 2, 3}
@@ -134,6 +134,7 @@ func TestGearLogger(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		time.Sleep(10 * time.Millisecond)
 		log := buf.String()
 
 		assert.Contains(log, "\x1b[34;1mGET\x1b[39;22m")
@@ -151,7 +152,7 @@ func TestGearLogger(t *testing.T) {
 		app.Set("AppLogger", log.New(&errbuf, "TEST: ", 0))
 
 		logger := &testLogger{&buf}
-		app.Use(NewLogger(logger))
+		app.Use(New(logger))
 		app.Use(func(ctx *gear.Context) (err error) {
 			log := logger.FromCtx(ctx)
 			log["Data"] = map[string]interface{}{"a": 0}
@@ -164,6 +165,7 @@ func TestGearLogger(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		time.Sleep(10 * time.Millisecond)
 		log := buf.String()
 		assert.Contains(log, time.Now().Format(time.RFC3339)[0:19])
 		assert.Contains(log, " INFO ")
@@ -179,18 +181,18 @@ func TestGearLogger(t *testing.T) {
 
 		assert := assert.New(t)
 
-		assert.Equal(ColorCodeGreen, ColorStatus(200))
-		assert.Equal(ColorCodeGreen, ColorStatus(204))
-		assert.Equal(ColorCodeWhite, ColorStatus(304))
-		assert.Equal(ColorCodeYellow, ColorStatus(404))
-		assert.Equal(ColorCodeRed, ColorStatus(504))
+		assert.Equal(ColorGreen, ColorStatus(200))
+		assert.Equal(ColorGreen, ColorStatus(204))
+		assert.Equal(ColorWhite, ColorStatus(304))
+		assert.Equal(ColorYellow, ColorStatus(404))
+		assert.Equal(ColorRed, ColorStatus(504))
 
-		assert.Equal(ColorCodeBlue, ColorMethod("GET"))
-		assert.Equal(ColorCodeMagenta, ColorMethod("HEAD"))
-		assert.Equal(ColorCodeCyan, ColorMethod("POST"))
-		assert.Equal(ColorCodeYellow, ColorMethod("PUT"))
-		assert.Equal(ColorCodeRed, ColorMethod("DELETE"))
-		assert.Equal(ColorCodeWhite, ColorMethod("OPTIONS"))
-		assert.Equal(ColorCodeWhite, ColorMethod("PATCH"))
+		assert.Equal(ColorBlue, ColorMethod("GET"))
+		assert.Equal(ColorMagenta, ColorMethod("HEAD"))
+		assert.Equal(ColorCyan, ColorMethod("POST"))
+		assert.Equal(ColorYellow, ColorMethod("PUT"))
+		assert.Equal(ColorRed, ColorMethod("DELETE"))
+		assert.Equal(ColorWhite, ColorMethod("OPTIONS"))
+		assert.Equal(ColorWhite, ColorMethod("PATCH"))
 	})
 }

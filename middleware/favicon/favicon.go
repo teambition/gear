@@ -1,4 +1,4 @@
-package middleware
+package favicon
 
 import (
 	"bytes"
@@ -12,25 +12,25 @@ import (
 	"github.com/teambition/gear"
 )
 
-// NewFavicon returns a middleware to serve favicon from the provided directory.
+// New creates a favicon middleware to serve favicon from the provided directory.
 //
 //  package main
 //
 //  import (
 //  	"github.com/teambition/gear"
-//  	"github.com/teambition/gear/middleware"
+//  	"github.com/teambition/gear/middleware/favicon"
 //  )
 //
 //  func main() {
 //  	app := gear.New()
-//  	app.Use(middleware.NewFavicon("./testdata/favicon.ico"))
+//  	app.Use(favicon.New("./testdata/favicon.ico"))
 //  	app.Use(func(ctx *gear.Context) error {
 //  		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
 //  	})
 //  	app.Error(app.Listen(":3000"))
 //  }
 //
-func NewFavicon(iconpath string) gear.Middleware {
+func New(iconpath string) gear.Middleware {
 	iconpath = filepath.FromSlash(iconpath)
 	if iconpath != "" && iconpath[0] != os.PathSeparator {
 		wd, err := os.Getwd()

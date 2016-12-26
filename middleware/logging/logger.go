@@ -1,4 +1,4 @@
-package logger
+package logging
 
 import (
 	"fmt"
@@ -11,8 +11,8 @@ import (
 	"github.com/teambition/gear"
 )
 
-// Log recodes key-value pairs for logs.
-// It will be initialized by NewLogger middleware.
+// Log records key-value pairs for structured logging.
+// It will be initialized by New middleware.
 type Log map[string]interface{}
 
 // Logger is a interface for logging. See DefaultLogger.
@@ -69,6 +69,7 @@ type Logger interface {
 //  	default:
 //  		str = fmt.Sprintf("%s ERROR %s", end.Format(time.RFC3339), err.Error())
 //  	}
+//  	fmt.Fprintln(logger.Writer, str)
 //  }
 //
 type DefaultLogger struct {
@@ -92,37 +93,35 @@ func (logger *DefaultLogger) FromCtx(ctx *gear.Context) Log {
 
 // WriteLog implements Logger interface
 func (logger *DefaultLogger) WriteLog(log Log) {
-	go func() {
-		method := log["Method"].(string)
-		PrintStrWithColor(logger.Writer, method, ColorMethod(method))
-		fmt.Fprint(logger.Writer, " ")
+	method := log["Method"].(string)
+	FprintWithColor(logger.Writer, method, ColorMethod(method))
+	fmt.Fprint(logger.Writer, " ")
 
-		PrintStrWithColor(logger.Writer, log["URL"].(string), ColorCodeGray)
-		fmt.Fprint(logger.Writer, " ")
+	FprintWithColor(logger.Writer, log["URL"].(string), ColorGray)
+	fmt.Fprint(logger.Writer, " ")
 
-		status := log["Status"].(int)
-		PrintStrWithColor(logger.Writer, strconv.Itoa(status), ColorStatus(status))
-		fmt.Fprint(logger.Writer, " ")
+	status := log["Status"].(int)
+	FprintWithColor(logger.Writer, strconv.Itoa(status), ColorStatus(status))
+	fmt.Fprint(logger.Writer, " ")
 
-		length := log["Length"].(int)
-		fmt.Fprint(logger.Writer, strconv.Itoa(length)+" ")
+	length := log["Length"].(int)
+	fmt.Fprint(logger.Writer, strconv.Itoa(length)+" ")
 
-		start := fmt.Sprintf(" - %.3f ms", float64(time.Now().Sub(log["Start"].(time.Time)))/1e6)
-		fmt.Fprintln(logger.Writer, start)
-	}()
+	start := fmt.Sprintf(" - %.3f ms", float64(time.Now().Sub(log["Start"].(time.Time)))/1e6)
+	fmt.Fprintln(logger.Writer, start)
 }
 
 // ColorStatus ...
 func ColorStatus(code int) ColorType {
 	switch {
 	case code >= 200 && code < 300:
-		return ColorCodeGreen
+		return ColorGreen
 	case code >= 300 && code < 400:
-		return ColorCodeWhite
+		return ColorWhite
 	case code >= 400 && code < 500:
-		return ColorCodeYellow
+		return ColorYellow
 	default:
-		return ColorCodeRed
+		return ColorRed
 	}
 }
 
@@ -130,27 +129,27 @@ func ColorStatus(code int) ColorType {
 func ColorMethod(method string) ColorType {
 	switch method {
 	case http.MethodGet:
-		return ColorCodeBlue
+		return ColorBlue
 	case http.MethodHead:
-		return ColorCodeMagenta
+		return ColorMagenta
 	case http.MethodPost:
-		return ColorCodeCyan
+		return ColorCyan
 	case http.MethodPut:
-		return ColorCodeYellow
+		return ColorYellow
 	case http.MethodDelete:
-		return ColorCodeRed
+		return ColorRed
 	case http.MethodOptions:
-		return ColorCodeWhite
+		return ColorWhite
 	default:
-		return ColorCodeWhite
+		return ColorWhite
 	}
 }
 
-// NewLogger creates a middleware with a Logger instance.
+// New creates a logging middleware with a Logger instance.
 //
 //  app := gear.New()
 //  logger := &myLogger{os.Stdout}
-//  app.Use(middleware.NewLogger(logger))
+//  app.Use(logging.New(logger))
 //  app.Use(func(ctx *gear.Context) error {
 //  	log := logger.FromCtx(ctx)
 //  	log["Data"] = []int{1, 2, 3}
@@ -159,16 +158,17 @@ func ColorMethod(method string) ColorType {
 // `appLogger` Output:
 //
 //  2016-10-25T08:52:19+08:00 INFO {"Data":{},"IP":"127.0.0.1","Length":2,"Method":"GET","Status":200,"Time":0,"URL":"/","UserAgent":"go-request/0.6.0"}
-func NewLogger(logger Logger) gear.Middleware {
+func New(logger Logger) gear.Middleware {
 	return func(ctx *gear.Context) error {
 		// Add a "end hook" to flush logs.
 		ctx.OnEnd(func() {
 			log := logger.FromCtx(ctx)
-
 			log["Length"] = len(ctx.Res.Body)
 			log["Status"] = ctx.Res.Status
 			log["Type"] = ctx.Res.Type
-			logger.WriteLog(log)
+
+			// Don't block current process.
+			go logger.WriteLog(log)
 		})
 		return nil
 	}

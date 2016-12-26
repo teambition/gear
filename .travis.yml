@@ -8,7 +8,8 @@ before_install:
   - go get github.com/mattn/goveralls
 script:
   - go test -coverprofile=gear.coverprofile
-  - go test -coverprofile=middleware.coverprofile ./middleware
-  - go test -coverprofile=middleware.coverprofile ./middleware/logger
+  - go test -coverprofile=favicon.coverprofile ./middleware/favicon
+  - go test -coverprofile=logging.coverprofile ./middleware/logging
+  - go test -coverprofile=static.coverprofile ./middleware/static
   - gover
   - goveralls -coverprofile=gover.coverprofile -service=travis-ci

@@ -1,22 +1,46 @@
-package middleware
+package static
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/teambition/gear"
 )
 
+// ----- Test Helpers -----
+type GearResponse struct {
+	*http.Response
+}
+
+var DefaultClient = &http.Client{}
+
+func RequestBy(method, url string) (*GearResponse, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := DefaultClient.Do(req)
+	return &GearResponse{res}, err
+}
+func NewRequst(method, url string) (*http.Request, error) {
+	return http.NewRequest(method, url, nil)
+}
+func DefaultClientDo(req *http.Request) (*GearResponse, error) {
+	res, err := DefaultClient.Do(req)
+	return &GearResponse{res}, err
+}
+
 func TestGearMiddlewareStatic(t *testing.T) {
 	assert.Panics(t, func() {
-		NewStatic(StaticOptions{
-			Root:        "../testdata1",
+		New(Options{
+			Root:        "../../testdata1",
 			Prefix:      "/",
 			StripPrefix: false,
 		})
 	})
 	assert.NotPanics(t, func() {
-		NewStatic(StaticOptions{
+		New(Options{
 			Root:        "",
 			Prefix:      "",
 			StripPrefix: true,
@@ -26,13 +50,13 @@ func TestGearMiddlewareStatic(t *testing.T) {
 	app := gear.New()
 	app.Set("AppCompress", &gear.DefaultCompress{})
 
-	app.Use(NewStatic(StaticOptions{
-		Root:        "../testdata",
+	app.Use(New(Options{
+		Root:        "../../testdata",
 		Prefix:      "/static",
 		StripPrefix: true,
 	}))
-	app.Use(NewStatic(StaticOptions{
-		Root:        "../testdata",
+	app.Use(New(Options{
+		Root:        "../../testdata",
 		Prefix:      "/",
 		StripPrefix: false,
 	}))

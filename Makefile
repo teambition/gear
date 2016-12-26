@@ -1,6 +1,8 @@
 test:
 	go test
-	go test ./middleware
+	go test ./middleware/favicon
+	go test ./middleware/logging
+	go test ./middleware/static
 
 bench:
 	go test -bench=.
@@ -8,7 +10,9 @@ bench:
 cover:
 	rm -f *.coverprofile
 	go test -coverprofile=gear.coverprofile
-	go test -coverprofile=middleware.coverprofile ./middleware
+	go test -coverprofile=favicon.coverprofile ./middleware/favicon
+	go test -coverprofile=logging.coverprofile ./middleware/logging
+	go test -coverprofile=static.coverprofile ./middleware/static
 	gover
 	go tool cover -html=gover.coverprofile
 

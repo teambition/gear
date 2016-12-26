@@ -33,7 +33,6 @@ import (
 //  func main() {
 //  	app := gear.New()
 //  	// Add app middleware
-//  	app.Use(gear.NewDefaultLogger())
 //
 //  	router := gear.NewRouter()
 //  	router.Use(SomeRouterMiddleware) // Add router middleware, optionally
