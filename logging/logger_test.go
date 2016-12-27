@@ -3,13 +3,14 @@ package logging
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"reflect"
 	"runtime"
 	"testing"
 	"time"
+
+	"strings"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/teambition/gear"
@@ -48,7 +49,6 @@ func TestGearLogger(t *testing.T) {
 	t.Run("Default logger", func(t *testing.T) {
 		assert := assert.New(t)
 
-		now := time.Now().UTC().Format("2006-01-02T15:04:05.999Z")
 		logger := Default()
 		assert.Equal(logger.l, DebugLevel)
 		assert.Equal(logger.tf, "2006-01-02T15:04:05.999Z")
@@ -58,87 +58,87 @@ func TestGearLogger(t *testing.T) {
 
 		logger.Out = &buf
 		logger.Emerg("Hello")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "EMERG Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), " EMERG Hello\n"))
 		buf.Reset()
 
 		Emerg("Hello1")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "EMERG Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), " EMERG Hello1\n"))
 		buf.Reset()
 
 		logger.Alert("Hello")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "ALERT Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), " ALERT Hello\n"))
 		buf.Reset()
 
 		Alert("Hello1")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "ALERT Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), " ALERT Hello1\n"))
 		buf.Reset()
 
 		logger.Crit("Hello")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "CRIT Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), " CRIT Hello\n"))
 		buf.Reset()
 
 		Crit("Hello1")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "CRIT Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), " CRIT Hello1\n"))
 		buf.Reset()
 
 		logger.Err("Hello")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "ERR Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), " ERR Hello\n"))
 		buf.Reset()
 
 		Err("Hello1")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "ERR Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), " ERR Hello1\n"))
 		buf.Reset()
 
 		logger.Warning("Hello")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "WARNING Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), " WARNING Hello\n"))
 		buf.Reset()
 
 		Warning("Hello1")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "WARNING Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), " WARNING Hello1\n"))
 		buf.Reset()
 
 		logger.Notice("Hello")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "NOTICE Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), " NOTICE Hello\n"))
 		buf.Reset()
 
 		Notice("Hello1")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "NOTICE Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), " NOTICE Hello1\n"))
 		buf.Reset()
 
 		logger.Info("Hello")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "INFO Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), " INFO Hello\n"))
 		buf.Reset()
 
 		Info("Hello1")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "INFO Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), " INFO Hello1\n"))
 		buf.Reset()
 
 		logger.Debug("Hello")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "DEBUG Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), " DEBUG Hello\n"))
 		buf.Reset()
 
 		Debug("Hello1")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "DEBUG Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), " DEBUG Hello1\n"))
 		buf.Reset()
 
 		assert.Panics(func() {
 			logger.Panic("Hello")
 		})
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "EMERG Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), " EMERG Hello\n"))
 		buf.Reset()
 
 		assert.Panics(func() {
 			Panic("Hello1")
 		})
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "EMERG Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), " EMERG Hello1\n"))
 		buf.Reset()
 
 		logger.Fatal("Hello")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "EMERG Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), " EMERG Hello\n"))
 		buf.Reset()
 
 		Fatal("Hello1")
-		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "EMERG Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), " EMERG Hello1\n"))
 		buf.Reset()
 
 		logger.Print("Hello")
@@ -169,11 +169,8 @@ func TestGearLogger(t *testing.T) {
 	t.Run("logger setting", func(t *testing.T) {
 		assert := assert.New(t)
 
-		logger := Default()
-
 		var buf bytes.Buffer
-		logger.Out = &buf
-
+		logger := New(&buf)
 		assert.Panics(func() {
 			var level Level = 8
 			logger.SetLevel(level)
@@ -181,6 +178,12 @@ func TestGearLogger(t *testing.T) {
 		logger.SetLevel(NoticeLevel)
 		logger.Info("Hello")
 		assert.Equal(buf.String(), "")
+		buf.Reset()
+
+		logger.SetLogFormat("%s") // with invalid format
+		logger.SetLevel(DebugLevel)
+		logger.Info("Hello")
+		assert.Equal(strings.Contains(buf.String(), "INFO"), true)
 		buf.Reset()
 	})
 }
@@ -210,6 +213,8 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		time.Sleep(10 * time.Millisecond)
+		logger.mu.Lock()
+		defer logger.mu.Unlock()
 		log := buf.String()
 
 		assert.Contains(log, "127.0.0.1 GET / ")
@@ -240,6 +245,8 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		time.Sleep(10 * time.Millisecond)
+		logger.mu.Lock()
+		defer logger.mu.Unlock()
 		log := buf.String()
 
 		assert.Contains(log, "127.0.0.1 GET / ")
@@ -287,6 +294,8 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		time.Sleep(10 * time.Millisecond)
+		logger.mu.Lock()
+		defer logger.mu.Unlock()
 		log := buf.String()
 		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:19])
 		assert.Contains(log, " INFO ")
@@ -340,8 +349,10 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		time.Sleep(10 * time.Millisecond)
+		logger.mu.Lock()
+		defer logger.mu.Unlock()
 		log := buf.String()
-		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:19])
+		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:18])
 		assert.Contains(log, " INFO ")
 		assert.Contains(log, `"Data":{"a":0}`)
 		assert.Contains(log, `"Method":"POST"`)

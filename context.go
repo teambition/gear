@@ -41,7 +41,7 @@ type Context struct {
 	ctx        context.Context
 	cancelCtx  context.CancelFunc
 	kv         map[interface{}]interface{}
-	mu         sync.Mutex
+	mu         sync.RWMutex
 }
 
 // NewContext creates an instance of Context. Export for testing middleware.
@@ -90,8 +90,8 @@ func (ctx *Context) Value(key interface{}) (val interface{}) {
 // Cancel cancel the ctx and all it' children context.
 // The ctx' process will ended too.
 func (ctx *Context) Cancel() {
-	ctx.afterHooks = nil // clear afterHooks
-	ctx.setEnd(false)    // end the middleware process
+	ctx.cleanAfterHooks()
+	ctx.setEnd(false) // end the middleware process
 	ctx.cancelCtx()
 }
 
@@ -155,6 +155,9 @@ func (ctx *Context) Timing(dt time.Duration, fn func() interface{}) (interface{}
 //
 func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
 	var ok bool
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+
 	if val, ok = ctx.kv[any]; !ok {
 		switch res := any.(type) {
 		case Any:
@@ -182,6 +185,8 @@ func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
 //  }
 //
 func (ctx *Context) SetAny(key, val interface{}) {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
 	ctx.kv[key] = val
 }
 
@@ -243,6 +248,8 @@ func (ctx *Context) Cookie(name string) (*http.Cookie, error) {
 
 // SetCookie adds a `Set-Cookie` header in HTTP response.
 func (ctx *Context) SetCookie(cookie *http.Cookie) {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
 	http.SetCookie(ctx.Res, cookie)
 }
 
@@ -261,14 +268,6 @@ func (ctx *Context) Set(key, value string) {
 	ctx.Res.Set(key, value)
 }
 
-// Status set a status code to response
-func (ctx *Context) Status(code int) {
-	if statusText := http.StatusText(code); statusText == "" {
-		code = 500
-	}
-	ctx.Res.Status = code
-}
-
 // Type set a content type to response
 func (ctx *Context) Type(str string) {
 	if str == "" {
@@ -280,9 +279,9 @@ func (ctx *Context) Type(str string) {
 
 // String set an text body with status code to response.
 func (ctx *Context) String(code int, str string) {
-	ctx.Status(code)
+	ctx.Res.SetStatus(code)
 	ctx.Type(MIMETextPlainCharsetUTF8)
-	ctx.Res.Body = []byte(str)
+	ctx.Res.setBody([]byte(str))
 }
 
 // HTML set an Html body with status code to response.
@@ -387,7 +386,7 @@ func (ctx *Context) Render(code int, name string, data interface{}) (err error) 
 // Note that this will not stop the current handler.
 func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error) {
 	if err = ctx.setEnd(true); err == nil {
-		ctx.Status(code)
+		ctx.Res.SetStatus(code)
 		ctx.Type(contentType)
 		_, err = io.Copy(ctx.Res, r)
 	}
@@ -428,7 +427,7 @@ func (ctx *Context) Redirect(code int, url string) (err error) {
 // "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) Error(e error) (err error) {
-	ctx.afterHooks = nil // clear afterHooks when any error
+	ctx.cleanAfterHooks() // clear afterHooks when any error
 	if e := ParseError(e); e != nil {
 		ctx.Type(MIMETextPlainCharsetUTF8)
 		return ctx.End(e.Status(), []byte(e.Error()))
@@ -443,10 +442,10 @@ func (ctx *Context) Error(e error) (err error) {
 func (ctx *Context) End(code int, buf ...[]byte) (err error) {
 	if err = ctx.setEnd(true); err == nil {
 		if code != 0 {
-			ctx.Status(code)
+			ctx.Res.SetStatus(code)
 		}
 		if len(buf) != 0 {
-			ctx.Res.Body = buf[0]
+			ctx.Res.setBody(buf[0])
 		}
 		err = ctx.Res.respond()
 	}
@@ -456,10 +455,18 @@ func (ctx *Context) End(code int, buf ...[]byte) (err error) {
 // After add a "after hook" to the ctx that will run after middleware process,
 // but before Response.WriteHeader.
 func (ctx *Context) After(hook func()) {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
 	if ctx.ended { // should not add afterHooks if ctx.ended
 		panic(NewAppError(`can't add "after hook" after context ended`))
 	}
 	ctx.afterHooks = append(ctx.afterHooks, hook)
+}
+
+func (ctx *Context) cleanAfterHooks() {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+	ctx.afterHooks = nil
 }
 
 // OnEnd add a "end hook" to the ctx that will run after Response.WriteHeader.
@@ -467,18 +474,40 @@ func (ctx *Context) OnEnd(hook func()) {
 	if ctx.ended { // should not add endHooks if ctx.ended
 		panic(NewAppError(`can't add "end hook" after context ended`))
 	}
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
 	ctx.endHooks = append(ctx.endHooks, hook)
+}
+
+func (ctx *Context) cleanEndHooks() {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+	ctx.endHooks = nil
 }
 
 func (ctx *Context) setEnd(check bool) (err error) {
 	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
 	if check && ctx.ended {
 		err = NewAppError("context is ended")
 	} else {
 		ctx.ended = true
 	}
-	ctx.mu.Unlock()
 	return
+}
+
+func (ctx *Context) isEnded() bool {
+	ctx.mu.RLock()
+	defer ctx.mu.RUnlock()
+	return ctx.ended
+}
+
+func (ctx *Context) salvage(err *Error) {
+	ctx.app.Error(err)
+	ctx.cleanAfterHooks()
+	ctx.Set(HeaderXContentTypeOptions, "nosniff")
+	ctx.String(err.Status(), err.Error())
+	ctx.Res.respond()
 }
 
 func (ctx *Context) handleCompress() (cw *compressWriter) {

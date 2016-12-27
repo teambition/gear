@@ -33,9 +33,9 @@ type DefaultOnError struct{}
 
 // OnError implemented OnError interface.
 func (o *DefaultOnError) OnError(ctx *Context, err error) *Error {
-	var code int
-	if ctx.Res.Status >= 400 {
-		code = ctx.Res.Status
+	code := ctx.Res.GetStatus()
+	if code < 400 {
+		code = 0
 	}
 	return ParseError(err, code)
 }
@@ -293,31 +293,25 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Msg:  fmt.Sprintf("panic recovered: %v", err),
 				Meta: buf,
 			}
-			h.app.Error(err)
 
-			if !ctx.Res.HeaderWrote() {
+			if ctx.Res.HeaderWrote() {
+				h.app.Error(err)
+			} else {
 				ctx.Res.ResetHeader(false)
-				ctx.afterHooks = nil // clear afterHooks
-				ctx.Set(HeaderXContentTypeOptions, "nosniff")
-				ctx.String(err.Status(), err.Error())
-				ctx.Res.respond()
+				ctx.salvage(err)
 			}
 		}
 	}()
 
 	go func() {
 		<-ctx.Done()
-		ctx.ended = true
+		ctx.setEnd(false)
 		// if context canceled abnormally...
 		if err := ctx.Err(); err != nil && !ctx.Res.HeaderWrote() {
 			ctx.Res.ResetHeader(true)
-			ctx.Status(503)
 			if err := h.app.onerror.OnError(ctx, err); err != nil {
-				h.app.Error(err)
-				ctx.afterHooks = nil // clear afterHooks
-				ctx.Set(HeaderXContentTypeOptions, "nosniff")
-				ctx.String(err.Status(), err.Error())
-				ctx.Res.respond()
+				err.Code = 503
+				ctx.salvage(err)
 			}
 		}
 	}()
@@ -326,14 +320,17 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, err = h.middleware.run(ctx)
 
 	if !isNil(err) {
-		ctx.ended = true
+		if ctx.Res.HeaderWrote() {
+			h.app.Error(err)
+			return
+		}
+
+		ctx.setEnd(false)
 		ctx.Res.ResetHeader(true)
 		// process middleware error with OnError
 		if err := h.app.onerror.OnError(ctx, err); err != nil {
-			h.app.Error(err)
-			ctx.afterHooks = nil // clear afterHooks
-			ctx.Set(HeaderXContentTypeOptions, "nosniff")
-			ctx.String(err.Status(), err.Error())
+			ctx.salvage(err)
+			return
 		}
 	}
 
@@ -399,7 +396,7 @@ type middlewares []Middleware
 
 func (m middlewares) run(ctx *Context) (ok bool, err error) {
 	for _, handle := range m {
-		if err = handle(ctx); !isNil(err) || ctx.ended {
+		if err = handle(ctx); !isNil(err) || ctx.isEnded() {
 			return false, err
 		}
 	}

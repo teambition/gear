@@ -232,7 +232,7 @@ func TestGearError(t *testing.T) {
 
 		app.Use(func(ctx *Context) error {
 			var err *Error
-			ctx.Status(204)
+			ctx.Res.SetStatus(204)
 			return err
 		})
 		srv := app.Start()
@@ -254,7 +254,7 @@ func TestGearError(t *testing.T) {
 		app := New()
 		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
 		app.Use(func(ctx *Context) error {
-			ctx.Status(400)
+			ctx.Res.SetStatus(400)
 			panic("Some error")
 		})
 		srv := app.Start()

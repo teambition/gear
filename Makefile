@@ -1,8 +1,8 @@
 test:
-	go test
-	go test ./logging
-	go test ./middleware/favicon
-	go test ./middleware/static
+	go test --race
+	go test --race ./logging
+	go test --race ./middleware/favicon
+	go test --race ./middleware/static
 
 bench:
 	go test -bench=.

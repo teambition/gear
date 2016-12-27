@@ -16,23 +16,21 @@ type Response struct {
 	header      http.Header
 	wroteHeader bool
 
-	Body   []byte // response Content
-	Status int    // response Status Code
-	Type   string // response Content-Type
+	body   []byte // response Content
+	status int    // response Status Code
 }
 
 func newResponse(ctx *Context, w http.ResponseWriter) *Response {
 	return &Response{ctx: ctx, res: w, header: w.Header()}
 }
 
-// Add adds the key, value pair to the header. It appends to any existing values associated with key.
-func (r *Response) Add(key, value string) {
-	r.header.Add(key, value)
-}
-
 // Del deletes the values associated with key.
 func (r *Response) Del(key string) {
-	r.header.Del(key)
+	r.ctx.mu.Lock()
+	defer r.ctx.mu.Unlock()
+	if !r.wroteHeader {
+		r.header.Del(key)
+	}
 }
 
 // Get gets the first value associated with the given key. If there are no values associated with the key, Get returns "". To access multiple values of a key, access the map directly with CanonicalHeaderKey.
@@ -42,15 +40,48 @@ func (r *Response) Get(key string) string {
 
 // Set sets the header entries associated with key to the single element value. It replaces any existing values associated with key.
 func (r *Response) Set(key, value string) {
-	r.header.Set(key, value)
+	r.ctx.mu.Lock()
+	defer r.ctx.mu.Unlock()
+	if !r.wroteHeader {
+		r.header.Set(key, value)
+	}
+}
+
+// GetStatus returns status code of the response
+func (r *Response) GetStatus() int {
+	r.ctx.mu.RLock()
+	defer r.ctx.mu.RUnlock()
+	return r.status
+}
+
+// SetStatus sets status code to the response
+func (r *Response) SetStatus(status int) {
+	r.ctx.mu.Lock()
+	defer r.ctx.mu.Unlock()
+	r.status = status
+}
+
+// GetLen returns byte length of the response content
+func (r *Response) GetLen() int {
+	return len(r.body)
+}
+
+func (r *Response) setBody(body []byte) {
+	r.ctx.mu.Lock()
+	defer r.ctx.mu.Unlock()
+	r.body = body
 }
 
 // ResetHeader reset headers. If keepSubset is true,
 // header matching `(?i)^(accept|allow|retry-after|warning|access-control-allow-)` will be keep
 func (r *Response) ResetHeader(keepSubset bool) {
-	for key := range r.header {
-		if !keepSubset || !defaultErrorHeaderReg.MatchString(key) {
-			delete(r.header, key)
+	r.ctx.mu.Lock()
+	defer r.ctx.mu.Unlock()
+	if !r.wroteHeader {
+		for key := range r.header {
+			if !keepSubset || !defaultErrorHeaderReg.MatchString(key) {
+				delete(r.header, key)
+			}
 		}
 	}
 }
@@ -63,9 +94,11 @@ func (r *Response) Header() http.Header {
 // Write writes the data to the connection as part of an HTTP reply.
 func (r *Response) Write(buf []byte) (int, error) {
 	// Some http Handler will call Write directly.
-	if !r.wroteHeader {
-		r.WriteHeader(r.Status)
+	if !r.HeaderWrote() {
+		r.WriteHeader(r.status)
 	}
+	r.ctx.mu.Lock()
+	defer r.ctx.mu.Unlock()
 	return r.res.Write(buf)
 }
 
@@ -80,47 +113,49 @@ func (r *Response) WriteHeader(code int) {
 		return
 	}
 	r.wroteHeader = true
+	r.status = code
+	// ensure that ended is true
+	r.ctx.ended = true
 	r.ctx.mu.Unlock()
 
-	r.Status = code
-	// ensure that ended is true
-	r.ctx.setEnd(false)
 	// execute "after hooks" in LIFO order before Response.WriteHeader
 	for i := len(r.ctx.afterHooks) - 1; i >= 0; i-- {
 		r.ctx.afterHooks[i]()
 	}
-	r.ctx.afterHooks = nil
+	r.ctx.cleanAfterHooks()
 	// r.Status maybe changed in hooks
 	// check Status
-	if r.Status <= 0 {
-		if r.Body != nil {
-			r.Status = http.StatusOK
+	if r.status <= 0 {
+		if r.body != nil {
+			r.status = http.StatusOK
 		} else {
-			r.Status = 444 // 444 No Response (from Nginx)
+			r.status = 444 // 444 No Response (from Nginx)
 		}
 	}
 	// check Body and Content Length
-	if r.Body != nil && r.header.Get(HeaderContentLength) == "" {
-		r.header.Set(HeaderContentLength, strconv.FormatInt(int64(len(r.Body)), 10))
+	if r.body != nil && r.header.Get(HeaderContentLength) == "" {
+		r.header.Set(HeaderContentLength, strconv.FormatInt(int64(len(r.body)), 10))
 	}
-	r.res.WriteHeader(r.Status)
+	r.res.WriteHeader(r.status)
 	// execute "end hooks" in LIFO order after Response.WriteHeader
 	for i := len(r.ctx.endHooks) - 1; i >= 0; i-- {
 		r.ctx.endHooks[i]()
 	}
-	r.ctx.endHooks = nil
+	r.ctx.cleanEndHooks()
 }
 
 // HeaderWrote indecates that whether the reply header has been (logically) written.
 func (r *Response) HeaderWrote() bool {
+	r.ctx.mu.RLock()
+	defer r.ctx.mu.RUnlock()
 	return r.wroteHeader
 }
 
 func (r *Response) respond() (err error) {
-	if !r.wroteHeader {
-		r.WriteHeader(r.Status)
-		if r.Body != nil {
-			_, err = r.Write(r.Body)
+	if !r.HeaderWrote() {
+		r.WriteHeader(r.status)
+		if r.body != nil {
+			_, err = r.Write(r.body)
 		}
 	}
 	return

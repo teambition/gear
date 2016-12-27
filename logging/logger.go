@@ -140,7 +140,6 @@ func (l *Logger) Notice(v interface{}) {
 
 // Info produce a "Informational" log
 func (l *Logger) Info(v interface{}) {
-	fmt.Println(888, v)
 	l.Output(time.Now(), InfoLevel, fmt.Sprintln(v))
 }
 
@@ -270,6 +269,9 @@ func defaultConsumeLog(log Log, l *Logger) {
 // if not exists, FromCtx will create one and save it to the ctx with ctx.SetAny.
 // Here also some initialization work after created.
 func (l *Logger) FromCtx(ctx *gear.Context) Log {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	if any, err := ctx.Any(l); err == nil {
 		return any.(Log)
 	}
@@ -293,9 +295,9 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 	// Add a "end hook" to flush logs.
 	ctx.OnEnd(func() {
 		log := l.FromCtx(ctx)
-		log["Length"] = len(ctx.Res.Body)
-		log["Status"] = ctx.Res.Status
-		log["Type"] = ctx.Res.Type
+		log["Length"] = ctx.Res.GetLen()
+		log["Status"] = ctx.Res.GetStatus()
+		log["Type"] = ctx.Get(gear.HeaderContentType)
 
 		// Don't block current process.
 		go l.consume(log, l)

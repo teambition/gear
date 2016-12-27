@@ -14,6 +14,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -42,8 +43,8 @@ func CtxBody(ctx *Context) (val string) {
 func TestGearContextContextInterface(t *testing.T) {
 	assert := assert.New(t)
 
-	done := false
 	app := New()
+	ch := make(chan bool, 1)
 	app.Use(func(ctx *Context) error {
 		// ctx.Deadline
 		_, ok := ctx.Deadline()
@@ -57,7 +58,7 @@ func TestGearContextContextInterface(t *testing.T) {
 		go func() {
 			// ctx.Done
 			<-ctx.Done()
-			done = true
+			ch <- true
 		}()
 
 		return ctx.End(204)
@@ -68,15 +69,12 @@ func TestGearContextContextInterface(t *testing.T) {
 	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
-	assert.True(done)
+	assert.True(<-ch)
 }
 
 func TestGearContextWithContext(t *testing.T) {
 	assert := assert.New(t)
-
-	cancelDone := false
-	deadlineDone := false
-	timeoutDone := false
+	var count int32
 
 	app := New()
 	app.Use(func(ctx *Context) error {
@@ -92,29 +90,26 @@ func TestGearContextWithContext(t *testing.T) {
 
 		go func() {
 			<-c1.Done()
-			assert.True(ctx.ended)
-			assert.Nil(ctx.afterHooks)
-			cancelDone = true
+			assert.True(ctx.isEnded())
+			atomic.AddInt32(&count, 1)
 		}()
 
 		go func() {
 			<-c2.Done()
-			assert.True(ctx.ended)
-			assert.Nil(ctx.afterHooks)
-			deadlineDone = true
+			assert.True(ctx.isEnded())
+			atomic.AddInt32(&count, 1)
 		}()
 
 		go func() {
 			<-c3.Done()
-			assert.True(ctx.ended)
-			assert.Nil(ctx.afterHooks)
-			timeoutDone = true
+			assert.True(ctx.isEnded())
+			atomic.AddInt32(&count, 1)
 		}()
 
-		ctx.Status(404)
+		ctx.Res.SetStatus(404)
 		ctx.Cancel()
-		assert.True(ctx.ended)
-		assert.Nil(ctx.afterHooks)
+
+		assert.True(ctx.isEnded())
 		time.Sleep(time.Millisecond)
 		return nil
 	})
@@ -128,9 +123,7 @@ func TestGearContextWithContext(t *testing.T) {
 	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
 	assert.Equal(503, res.StatusCode)
-	assert.True(cancelDone)
-	assert.True(deadlineDone)
-	assert.True(timeoutDone)
+	assert.Equal(atomic.LoadInt32(&count), int32(3))
 }
 
 func TestGearContextTiming(t *testing.T) {
@@ -469,19 +462,6 @@ func TestGearContextGetSet(t *testing.T) {
 	assert.Equal("Some error", res.Header.Get(HeaderWarning))
 }
 
-func TestGearContextStatus(t *testing.T) {
-	assert := assert.New(t)
-
-	app := New()
-	ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
-	assert.Equal(ctx.Res.Status, 0)
-
-	ctx.Status(401)
-	assert.Equal(ctx.Res.Status, 401)
-	ctx.Status(0)
-	assert.Equal(ctx.Res.Status, 500)
-}
-
 func TestGearContextType(t *testing.T) {
 	assert := assert.New(t)
 
@@ -499,9 +479,9 @@ func TestGearContextString(t *testing.T) {
 	app := New()
 	ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
 	ctx.String(400, "Some error")
-	assert.Equal(400, ctx.Res.Status)
+	assert.Equal(400, ctx.Res.GetStatus())
 	assert.Equal(MIMETextPlainCharsetUTF8, ctx.Res.header.Get(HeaderContentType))
-	assert.Equal("Some error", string(ctx.Res.Body))
+	assert.Equal("Some error", string(ctx.Res.body))
 	assert.False(ctx.ended)
 }
 
@@ -1034,7 +1014,7 @@ func TestGearContextEnd(t *testing.T) {
 
 		app := New()
 		app.Use(func(ctx *Context) error {
-			ctx.Status(204)
+			ctx.Res.SetStatus(204)
 			return ctx.End(0)
 		})
 
@@ -1051,8 +1031,8 @@ func TestGearContextEnd(t *testing.T) {
 
 		app := New()
 		app.Use(func(ctx *Context) error {
-			ctx.Status(500)
-			ctx.Res.Body = []byte("OK")
+			ctx.Res.SetStatus(500)
+			ctx.Res.setBody([]byte("OK"))
 			return ctx.End(200)
 		})
 
@@ -1112,7 +1092,7 @@ func TestGearContextAfter(t *testing.T) {
 			ctx.After(func() {
 				count++
 				assert.Equal(4, count)
-				ctx.Status(204)
+				ctx.Res.SetStatus(204)
 			})
 			ctx.After(func() {
 				count++
@@ -1152,7 +1132,7 @@ func TestGearContextAfter(t *testing.T) {
 
 			count++
 			assert.Equal(1, count)
-			ctx.Status(204)
+			ctx.Res.SetStatus(204)
 			ctx.setEnd(false)
 			assert.Panics(func() {
 				ctx.After(func() {})
@@ -1180,12 +1160,12 @@ func TestGearContextOnEnd(t *testing.T) {
 			ctx.OnEnd(func() {
 				count++
 				assert.Equal(4, count)
-				ctx.Status(500)
+				ctx.Res.SetStatus(500)
 			})
 			ctx.After(func() {
 				count++
 				assert.Equal(2, count)
-				ctx.Status(204)
+				ctx.Res.SetStatus(204)
 			})
 			ctx.OnEnd(func() {
 				count++
@@ -1229,7 +1209,7 @@ func TestGearContextOnEnd(t *testing.T) {
 
 			count++
 			assert.Equal(1, count)
-			ctx.Status(204)
+			ctx.Res.SetStatus(204)
 			ctx.setEnd(false)
 			assert.Panics(func() {
 				ctx.OnEnd(func() {})

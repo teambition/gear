@@ -46,7 +46,7 @@ func newCompress(res *Response, c Compressible, acceptEncoding string) *compress
 	switch encoding {
 	case "gzip", "deflate":
 		return &compressWriter{
-			body:     &res.Body,
+			body:     &res.body,
 			compress: c,
 			encoding: encoding,
 			res:      res.res,

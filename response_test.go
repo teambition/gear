@@ -18,11 +18,6 @@ func TestGearResponse(t *testing.T) {
 		res := ctx.Res
 		header := res.Header()
 
-		res.Add("Link", "<http://localhost/>")
-		res.Add("Link", "<http://localhost:3000/>")
-		assert.Equal(res.Get("link"), "<http://localhost/>")
-		assert.Equal(res.Get("Link"), header.Get("Link"))
-
 		res.Set("Set-Cookie", "foo=bar; Path=/; HttpOnly")
 		assert.Equal(res.Get("Set-Cookie"), header.Get("Set-Cookie"))
 
@@ -61,13 +56,13 @@ func TestGearResponse(t *testing.T) {
 		res := ctx.Res
 
 		assert.Equal(false, res.HeaderWrote())
-		assert.Equal(0, res.Status)
+		assert.Equal(0, res.status)
 
-		res.Status = http.StatusUnavailableForLegalReasons
+		res.status = http.StatusUnavailableForLegalReasons
 		res.Write([]byte("Hello"))
 
 		assert.Equal(true, res.HeaderWrote())
-		assert.Equal(http.StatusUnavailableForLegalReasons, res.Status)
+		assert.Equal(http.StatusUnavailableForLegalReasons, res.status)
 		assert.Equal(http.StatusUnavailableForLegalReasons, CtxResult(ctx).StatusCode)
 		assert.Equal("Hello", CtxBody(ctx))
 	})
@@ -79,12 +74,12 @@ func TestGearResponse(t *testing.T) {
 		res := ctx.Res
 
 		assert.Equal(false, res.HeaderWrote())
-		assert.Equal(0, res.Status)
+		assert.Equal(0, res.status)
 
 		res.WriteHeader(0)
 
 		assert.Equal(true, res.HeaderWrote())
-		assert.Equal(444, res.Status)
+		assert.Equal(444, res.status)
 		assert.Equal(444, CtxResult(ctx).StatusCode)
 		assert.Equal("", CtxBody(ctx))
 
@@ -92,14 +87,14 @@ func TestGearResponse(t *testing.T) {
 		res = ctx.Res
 
 		assert.Equal(false, res.HeaderWrote())
-		assert.Equal(0, res.Status)
+		assert.Equal(0, res.status)
 
-		res.Body = []byte("Hello")
+		res.body = []byte("Hello")
 		res.WriteHeader(0)
-		res.Write(res.Body)
+		res.Write(res.body)
 
 		assert.Equal(true, res.HeaderWrote())
-		assert.Equal(200, res.Status)
+		assert.Equal(200, res.status)
 		assert.Equal(200, CtxResult(ctx).StatusCode)
 		assert.Equal("Hello", CtxBody(ctx))
 	})
@@ -109,10 +104,11 @@ func TestGearResponse(t *testing.T) {
 
 		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
 
-		ctx.Res.Status = 200
-		ctx.Res.Body = []byte("Hello")
+		ctx.Res.status = 200
+		ctx.Res.body = []byte("Hello")
 		ctx.Res.respond()
 
+		assert.Equal(ctx.Res.GetLen(), 5)
 		assert.Equal(true, ctx.Res.HeaderWrote())
 		assert.Equal(200, CtxResult(ctx).StatusCode)
 		assert.Equal("Hello", CtxBody(ctx))
@@ -127,7 +123,7 @@ func TestGearResponse(t *testing.T) {
 			count++
 		})
 		assert.Equal(false, ctx.Res.HeaderWrote())
-		assert.Equal(0, ctx.Res.Status)
+		assert.Equal(0, ctx.Res.status)
 
 		var wg sync.WaitGroup
 		wg.Add(1000)
@@ -141,7 +137,7 @@ func TestGearResponse(t *testing.T) {
 
 		assert.Equal(true, ctx.Res.HeaderWrote())
 		assert.Equal(1, count)
-		assert.Equal(204, ctx.Res.Status)
+		assert.Equal(204, ctx.Res.status)
 		assert.Equal(204, CtxResult(ctx).StatusCode)
 	})
 
@@ -155,12 +151,12 @@ func TestGearResponse(t *testing.T) {
 		})
 
 		assert.Equal(false, ctx.Res.HeaderWrote())
-		assert.Equal(0, ctx.Res.Status)
+		assert.Equal(0, ctx.Res.status)
 		http.NotFound(ctx.Res, ctx.Req)
 
 		assert.Equal(true, ctx.Res.HeaderWrote())
 		assert.Equal(1, count)
-		assert.Equal(404, ctx.Res.Status)
-		assert.Equal(404, ctx.Res.Status)
+		assert.Equal(404, ctx.Res.status)
+		assert.Equal(404, ctx.Res.status)
 	})
 }
