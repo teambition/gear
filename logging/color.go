@@ -7,7 +7,7 @@ import (
 	"io"
 )
 
-//ColorType ...
+// ColorType represents terminal color
 type ColorType uint16
 
 // Color Code https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -32,7 +32,7 @@ const (
 
 // colorString convert a string to a color string with color code.
 func colorString(code int, str string) string {
-	return fmt.Sprintf("\x1b[%d;1m%s\x1b[39;22m ", code, str)
+	return fmt.Sprintf("\x1b[%d;1m%s\x1b[39;22m", code, str)
 }
 
 // FprintWithColor formats string with terminal colors and writes to w.

@@ -2,11 +2,10 @@ package gear_test
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/teambition/gear"
-	"github.com/teambition/gear/middleware/logging"
+	"github.com/teambition/gear/logging"
 	"github.com/teambition/gear/middleware/static"
 )
 
@@ -15,8 +14,7 @@ func Example() {
 	app := gear.New()
 
 	// Use a default logger middleware
-	logger := &logging.DefaultLogger{Writer: os.Stdout}
-	app.Use(logging.New(logger))
+	app.UseHandler(logging.Default())
 
 	// Add a static middleware
 	// http://localhost:3000/middleware/static.go

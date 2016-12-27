@@ -11,7 +11,7 @@ Example:
 		"time"
 
 		"github.com/teambition/gear"
-		"github.com/teambition/gear/middleware/logging"
+		"github.com/teambition/gear/logging"
 		"github.com/teambition/gear/middleware/static"
 	)
 
@@ -20,8 +20,7 @@ Example:
 		app := gear.New()
 
 		// Use a default logging middleware
-		logger := &logging.DefaultLogger{os.Stdout}
-		app.Use(logging.New(logger))
+		app.UseHandler(logging.Default())
 
 		// Add a static middleware
 		// http://localhost:3000/middleware/static/static.go
