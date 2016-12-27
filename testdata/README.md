@@ -4,8 +4,8 @@
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/teambition/gear/master/LICENSE)
 [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/teambition/gear)
 
------
-Expressive web framework with context.Context for Go, focuses on performance and composition.
+=====
+A lightweight, composable and high performance web service framework for Go.
 
 ## Demo
 ```go
@@ -16,15 +16,14 @@ import (
 	"os"
 
 	"github.com/teambition/gear"
-	"github.com/teambition/gear/middleware"
+	"github.com/teambition/gear/logging"
 )
 
 func main() {
 	app := gear.New()
 
 	// Add app middleware
-	logger := &middleware.DefaultLogger{os.Stdout}
-	app.Use(middleware.NewLogger(logger))
+	app.UseHandler(logging.Default())
 
 	// Add router middleware
 	router := gear.NewRouter()
@@ -48,10 +47,6 @@ func main() {
 import "github.com/teambition/gear"
 ```
 
-## Full Document
-
-https://godoc.org/github.com/teambition/gear
-
 ## About Router
 [gear.Router](https://godoc.org/github.com/teambition/gear#Router) is a tire base HTTP request handler.
 Features:
@@ -59,11 +54,12 @@ Features:
 1. Support regexp
 2. Support multi-router
 3. Support router layer middlewares
-4. Support trailing slash automatic redirection
-5. Automatic handle `405 Method Not Allowed`
-6. Automatic handle `501 Not Implemented`
-7. Automatic handle `OPTIONS` method
-8. Best Performance
+4. Support fixed path automatic redirection
+5. Support trailing slash automatic redirection
+6. Automatic handle `405 Method Not Allowed`
+7. Automatic handle `501 Not Implemented`
+8. Automatic handle `OPTIONS` method
+9. Best Performance
 
 The registered path, against which the router matches incoming requests, can contain three types of parameters:
 
@@ -72,31 +68,32 @@ The registered path, against which the router matches incoming requests, can con
 | `:name` | named parameter |
 | `:name*` | named with catch-all parameter |
 | `:name(regexp)` | named with regexp parameter |
+| `::name` | not named parameter, it is literal `:name` |
 
 
 Named parameters are dynamic path segments. They match anything until the next '/' or the path end:
 
-Define: `/api/:type/:ID`
+Defined: `/api/:type/:ID`
 ```
-/api/user/123             match: type="user", ID="123"
+/api/user/123             matched: type="user", ID="123"
 /api/user                 no match
 /api/user/123/comments    no match
 ```
 
 Named with catch-all parameters match anything until the path end, including the directory index (the '/' before the catch-all). Since they match anything until the end, catch-all parameters must always be the final path element.
 
-Define: `/files/:filepath*`
+Defined: `/files/:filepath*`
 ```
 /files                           no match
-/files/LICENSE                   match: filepath="LICENSE"
-/files/templates/article.html    match: filepath="templates/article.html"
+/files/LICENSE                   matched: filepath="LICENSE"
+/files/templates/article.html    matched: filepath="templates/article.html"
 ```
 
 Named with regexp parameters match anything using regexp until the next '/' or the path end:
 
-Define: `/api/:type/:ID(^\\d+$)`
+Defined: `/api/:type/:ID(^\d+$)`
 ```
-/api/user/123             match: type="user", ID="123"
+/api/user/123             matched: type="user", ID="123"
 /api/user                 no match
 /api/user/abc             no match
 /api/user/123/comments    no match
@@ -125,8 +122,7 @@ import "github.com/teambition/gear/middleware"
 ```
 
 1. [Favicon middleware](https://godoc.org/github.com/teambition/gear/middleware#NewFavicon) Use to serve favicon.ico.
-2. [Logger middleware](https://godoc.org/github.com/teambition/gear/middleware#NewFavicon) Use to logging.
-3. [Static server middleware](https://godoc.org/github.com/teambition/gear/middleware#NewStatic) Use to serve static files.
+2. [Static server middleware](https://godoc.org/github.com/teambition/gear/middleware#NewStatic) Use to serve static files.
 
 All this middlewares can be use in app layer, router layer or middleware layer.
 
@@ -145,20 +141,26 @@ Add one or more "end hook" to current request process. They will run after `Resp
 
 Here is example using "end hook" in Logger middleware.
 ```go
-func NewLogger(logger Logger) gear.Middleware {
-	return func(ctx *gear.Context) error {
-		// Add a "end hook" to flush logs.
-		ctx.OnEnd(func() {
-			log := logger.FromCtx(ctx)
+func (l *Logger) Serve(ctx *gear.Context) error {
+	// Add a "end hook" to flush logs.
+	ctx.OnEnd(func() {
+		log := l.FromCtx(ctx)
+		log["Length"] = len(ctx.Res.Body)
+		log["Status"] = ctx.Res.Status
+		log["Type"] = ctx.Res.Type
 
-			log["Status"] = ctx.Res.Status
-			log["Length"] = len(ctx.Res.Body)
-			logger.WriteLog(log)
-		})
-		return nil
-	}
+		// Don't block current process.
+		go l.consume(log, l)
+	})
+	return nil
 }
 ```
+
+## Documentation
+
+https://godoc.org/github.com/teambition/gear
+
+## Benchmark
 
 ### Gear with "net/http": 50030
 ```sh

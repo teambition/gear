@@ -169,19 +169,15 @@ func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
 }
 
 // SetAny save a key, value pair on the ctx.
-// logging middleware used ctx.SetAny and ctx.Any to implement "logger.FromCtx":
+// package logging used ctx.SetAny and ctx.Any to implement "logger.FromCtx":
 //
-//  func (logger *DefaultLogger) FromCtx(ctx *gear.Context) Log {
-//  	if any, err := ctx.Any(logger); err == nil {
+//  func (l *Logger) FromCtx(ctx *gear.Context) Log {
+//  	if any, err := ctx.Any(l); err == nil {
 //  		return any.(Log)
 //  	}
 //  	log := Log{}
-//  	ctx.SetAny(logger, log)
-//
-//  	log["IP"] = ctx.IP()
-//  	log["Method"] = ctx.Method
-//  	log["URL"] = ctx.Req.URL.String()
-//  	log["Start"] = time.Now()
+//  	ctx.SetAny(l, log)
+//  	l.init(log, ctx)
 //  	return log
 //  }
 //

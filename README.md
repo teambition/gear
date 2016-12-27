@@ -16,15 +16,14 @@ import (
 	"os"
 
 	"github.com/teambition/gear"
-	"github.com/teambition/gear/middleware/logging"
+	"github.com/teambition/gear/logging"
 )
 
 func main() {
 	app := gear.New()
 
 	// Add app middleware
-	logger := &logging.DefaultLogger{os.Stdout}
-	app.Use(logging.New(logger))
+	app.UseHandler(logging.Default())
 
 	// Add router middleware
 	router := gear.NewRouter()
@@ -123,8 +122,7 @@ import "github.com/teambition/gear/middleware"
 ```
 
 1. [Favicon middleware](https://godoc.org/github.com/teambition/gear/middleware#NewFavicon) Use to serve favicon.ico.
-2. [Logger middleware](https://godoc.org/github.com/teambition/gear/middleware#NewFavicon) Use to logging.
-3. [Static server middleware](https://godoc.org/github.com/teambition/gear/middleware#NewStatic) Use to serve static files.
+2. [Static server middleware](https://godoc.org/github.com/teambition/gear/middleware#NewStatic) Use to serve static files.
 
 All this middlewares can be use in app layer, router layer or middleware layer.
 
@@ -143,18 +141,18 @@ Add one or more "end hook" to current request process. They will run after `Resp
 
 Here is example using "end hook" in Logger middleware.
 ```go
-func NewLogger(logger Logger) gear.Middleware {
-	return func(ctx *gear.Context) error {
-		// Add a "end hook" to flush logs.
-		ctx.OnEnd(func() {
-			log := logger.FromCtx(ctx)
+func (l *Logger) Serve(ctx *gear.Context) error {
+	// Add a "end hook" to flush logs.
+	ctx.OnEnd(func() {
+		log := l.FromCtx(ctx)
+		log["Length"] = len(ctx.Res.Body)
+		log["Status"] = ctx.Res.Status
+		log["Type"] = ctx.Res.Type
 
-			log["Status"] = ctx.Res.Status
-			log["Length"] = len(ctx.Res.Body)
-			logger.WriteLog(log)
-		})
-		return nil
-	}
+		// Don't block current process.
+		go l.consume(log, l)
+	})
+	return nil
 }
 ```
 
