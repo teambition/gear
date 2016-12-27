@@ -156,10 +156,12 @@ func (l *Logger) Panic(v interface{}) {
 	panic(s)
 }
 
+var exit = func() { os.Exit(1) }
+
 // Fatal produce a "Emergency" log and then calls os.Exit(1)
 func (l *Logger) Fatal(v interface{}) {
 	l.Emerg(v)
-	os.Exit(1)
+	exit()
 }
 
 // Print produce a log in the manner of fmt.Print, without timestamp and log level

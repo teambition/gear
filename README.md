@@ -22,7 +22,7 @@ import (
 func main() {
 	app := gear.New()
 
-	// Add app middleware
+	// Add logging middleware
 	app.UseHandler(logging.Default())
 
 	// Add router middleware

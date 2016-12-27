@@ -43,6 +43,8 @@ func DefaultClientDo(req *http.Request) (*GearResponse, error) {
 }
 
 func TestGearLogger(t *testing.T) {
+	exit = func() {} // overwrite exit function
+
 	t.Run("Default logger", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -53,6 +55,7 @@ func TestGearLogger(t *testing.T) {
 		assert.Equal(logger.lf, "%s %s %s")
 
 		var buf bytes.Buffer
+
 		logger.Out = &buf
 		logger.Emerg("Hello")
 		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "EMERG Hello\n"))
@@ -127,6 +130,14 @@ func TestGearLogger(t *testing.T) {
 		assert.Panics(func() {
 			Panic("Hello1")
 		})
+		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "EMERG Hello1\n"))
+		buf.Reset()
+
+		logger.Fatal("Hello")
+		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "EMERG Hello\n"))
+		buf.Reset()
+
+		Fatal("Hello1")
 		assert.Equal(buf.String(), fmt.Sprintf("%s %s", now, "EMERG Hello1\n"))
 		buf.Reset()
 
