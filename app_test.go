@@ -232,7 +232,7 @@ func TestGearError(t *testing.T) {
 
 		app.Use(func(ctx *Context) error {
 			var err *Error
-			ctx.Res.SetStatus(204)
+			ctx.Res.Status(204)
 			return err
 		})
 		srv := app.Start()
@@ -254,7 +254,7 @@ func TestGearError(t *testing.T) {
 		app := New()
 		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
 		app.Use(func(ctx *Context) error {
-			ctx.Res.SetStatus(400)
+			ctx.Res.Status(400)
 			panic("Some error")
 		})
 		srv := app.Start()
@@ -459,8 +459,7 @@ func TestGearAppTimeout(t *testing.T) {
 		app.Use(func(ctx *Context) error {
 			ctx.Cancel()
 			time.Sleep(time.Millisecond)
-			ctx.String(500, "some data")
-			return nil
+			return ctx.End(500, []byte("some data"))
 		})
 		app.Use(func(ctx *Context) error {
 			panic("this middleware unreachable")
@@ -518,7 +517,7 @@ func TestGearWrapHandler(t *testing.T) {
 		})
 		count++
 		assert.Equal(1, count)
-		ctx.String(400, "some error")
+		ctx.Res.Status(400)
 		return nil
 	})
 
@@ -553,7 +552,7 @@ func TestGearWrapHandlerFunc(t *testing.T) {
 		})
 		count++
 		assert.Equal(1, count)
-		ctx.String(400, "some error")
+		ctx.Res.Status(400)
 		return nil
 	})
 
@@ -599,8 +598,7 @@ func TestGearWrapResponseWriter(t *testing.T) {
 	app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
 	app.Use(func(ctx *Context) error {
 		ctx.Res.res = &WriterTest{ctx.Res.res}
-		ctx.String(200, "OK")
-		return nil
+		return ctx.End(200, []byte("OK"))
 	})
 
 	srv := app.Start()

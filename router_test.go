@@ -82,7 +82,7 @@ func TestGearRouter(t *testing.T) {
 		}, func(ctx *Context) error {
 			called++
 			assert.Equal(3, called)
-			ctx.String(200, "OK")
+			ctx.End(200, []byte("OK"))
 			return nil
 		})
 

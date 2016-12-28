@@ -2,6 +2,7 @@ package gear
 
 import (
 	"net/http"
+	"regexp"
 	"sync"
 	"testing"
 
@@ -37,7 +38,7 @@ func TestGearResponse(t *testing.T) {
 		res.Set("access-control-allow-origin", "*")
 		res.Set("Set-Cookie", "Set-Cookie: UserID=JohnDoe; Max-Age=3600; Version=")
 
-		res.ResetHeader(true)
+		res.ResetHeader()
 		assert.Equal("text/plain", res.Get(HeaderAccept))
 		assert.Equal("GET", res.Get(HeaderAllow))
 		assert.Equal("3 seconds", res.Get(HeaderRetryAfter))
@@ -45,7 +46,7 @@ func TestGearResponse(t *testing.T) {
 		assert.Equal("*", res.Get(HeaderAccessControlAllowOrigin))
 		assert.Equal("", res.Get(HeaderSetCookie))
 
-		res.ResetHeader(false)
+		res.ResetHeader(regexp.MustCompile(`^$`))
 		assert.Equal(0, len(res.Header()))
 	})
 
@@ -89,9 +90,9 @@ func TestGearResponse(t *testing.T) {
 		assert.Equal(false, res.HeaderWrote())
 		assert.Equal(0, res.status)
 
-		res.body = []byte("Hello")
+		res.bodyLength = len([]byte("Hello"))
 		res.WriteHeader(0)
-		res.Write(res.body)
+		res.Write([]byte("Hello"))
 
 		assert.Equal(true, res.HeaderWrote())
 		assert.Equal(200, res.status)
@@ -103,14 +104,11 @@ func TestGearResponse(t *testing.T) {
 		assert := assert.New(t)
 
 		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+		ctx.Res.respond(200, []byte("Hello"))
 
-		ctx.Res.status = 200
-		ctx.Res.body = []byte("Hello")
-		ctx.Res.respond()
-
-		assert.Equal(ctx.Res.GetLen(), 5)
 		assert.Equal(true, ctx.Res.HeaderWrote())
 		assert.Equal(200, CtxResult(ctx).StatusCode)
+		assert.Equal("5", CtxResult(ctx).Header.Get(HeaderContentLength))
 		assert.Equal("Hello", CtxBody(ctx))
 	})
 
