@@ -34,7 +34,7 @@ type DefaultOnError struct{}
 
 // OnError implemented OnError interface.
 func (o *DefaultOnError) OnError(ctx *Context, err error) *Error {
-	code := ctx.Res.GetStatus()
+	code := ctx.Status()
 	if code < 400 {
 		code = 0
 	}
@@ -314,7 +314,7 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if isNil(err) {
 		// if context canceled abnormally...
 		if err = ctx.Err(); err != nil {
-			err = &Error{503, err.Error(), err}
+			err = &Error{http.StatusGatewayTimeout, err.Error(), err}
 		}
 	}
 

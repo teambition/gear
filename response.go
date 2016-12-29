@@ -40,16 +40,6 @@ func (r *Response) Set(key, value string) {
 	r.header.Set(key, value)
 }
 
-// Status sets status code to the response
-func (r *Response) Status(status int) {
-	r.status = status
-}
-
-// GetStatus returns status code of the response
-func (r *Response) GetStatus() int {
-	return r.status
-}
-
 // ResetHeader reset headers. If keepSubset is true,
 // header matching `(?i)^(accept|allow|retry-after|warning|access-control-allow-)` will be keep
 func (r *Response) ResetHeader(regs ...*regexp.Regexp) {
@@ -105,11 +95,13 @@ func (r *Response) WriteHeader(code int) {
 	}
 
 	// check status, r.status maybe changed in afterHooks
-	if r.status <= 0 {
+	if !IsStatusCode(r.status) {
 		if r.bodyLength > 0 {
 			r.status = http.StatusOK
 		} else {
-			r.status = 444 // 444 No Response (from Nginx)
+			// Misdirected request, http://tools.ietf.org/html/rfc7540#section-9.1.2
+			// The request was directed at a server that is not able to produce a response.
+			r.status = 421
 		}
 	}
 	r.res.WriteHeader(r.status)
@@ -133,4 +125,47 @@ func (r *Response) respond(status int, body []byte) (err error) {
 // HeaderWrote indecates that whether the reply header has been (logically) written.
 func (r *Response) HeaderWrote() bool {
 	return r.wroteHeader.isTrue()
+}
+
+// IsStatusCode returns true if status is HTTP status code.
+// https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+func IsStatusCode(status int) bool {
+	switch status {
+	case 100, 101, 102,
+		200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
+		300, 301, 302, 303, 304, 305, 306, 307, 308,
+		400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418,
+		421, 422, 423, 424, 426, 428, 429, 431, 440, 444, 449, 450, 451, 494, 495, 496, 497, 498, 499,
+		500, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 520, 521, 522, 523, 524, 525, 526, 527:
+		return true
+	default:
+		return false
+	}
+}
+
+func isRedirectStatus(status int) bool {
+	switch status {
+	case 300, 301, 302, 303, 305, 307, 308:
+		return true
+	default:
+		return false
+	}
+}
+
+func isEmptyStatus(status int) bool {
+	switch status {
+	case 204, 205, 304:
+		return true
+	default:
+		return false
+	}
+}
+
+func isRetryStatus(status int) bool {
+	switch status {
+	case 502, 503, 504:
+		return true
+	default:
+		return false
+	}
 }

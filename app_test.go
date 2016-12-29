@@ -189,7 +189,7 @@ type testOnError struct{}
 // OnError implemented OnError interface.
 func (o *testOnError) OnError(ctx *Context, err error) *Error {
 	ctx.Type(MIMETextHTMLCharsetUTF8)
-	return ParseError(err, 503)
+	return ParseError(err, 504)
 }
 
 func TestGearError(t *testing.T) {
@@ -215,10 +215,10 @@ func TestGearError(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(503, res.StatusCode)
+		assert.Equal(504, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
 		assert.Equal("Some error", PickRes(res.Text()).(string))
-		assert.Equal("TEST: {Code: 503, Msg: Some error, Meta: Some error}\n", buf.String())
+		assert.Equal("TEST: {Code: 504, Msg: Some error, Meta: Some error}\n", buf.String())
 		res.Body.Close()
 	})
 
@@ -232,7 +232,7 @@ func TestGearError(t *testing.T) {
 
 		app.Use(func(ctx *Context) error {
 			var err *Error
-			ctx.Res.Status(204)
+			ctx.Status(204)
 			return err
 		})
 		srv := app.Start()
@@ -254,7 +254,7 @@ func TestGearError(t *testing.T) {
 		app := New()
 		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
 		app.Use(func(ctx *Context) error {
-			ctx.Res.Status(400)
+			ctx.Status(400)
 			panic("Some error")
 		})
 		srv := app.Start()
@@ -422,7 +422,7 @@ func TestGearParseError(t *testing.T) {
 }
 
 func TestGearAppTimeout(t *testing.T) {
-	t.Run("respond 503 when timeout", func(t *testing.T) {
+	t.Run("respond 504 when timeout", func(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
@@ -444,12 +444,12 @@ func TestGearAppTimeout(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(503, res.StatusCode)
+		assert.Equal(504, res.StatusCode)
 		assert.Equal("context deadline exceeded", PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 
-	t.Run("respond 503 when cancel", func(t *testing.T) {
+	t.Run("respond 504 when cancel", func(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
@@ -469,7 +469,7 @@ func TestGearAppTimeout(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(503, res.StatusCode)
+		assert.Equal(504, res.StatusCode)
 		assert.Equal("context canceled", PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
@@ -517,7 +517,7 @@ func TestGearWrapHandler(t *testing.T) {
 		})
 		count++
 		assert.Equal(1, count)
-		ctx.Res.Status(400)
+		ctx.Status(400)
 		return nil
 	})
 
@@ -552,7 +552,7 @@ func TestGearWrapHandlerFunc(t *testing.T) {
 		})
 		count++
 		assert.Equal(1, count)
-		ctx.Res.Status(400)
+		ctx.Status(400)
 		return nil
 	})
 

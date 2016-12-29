@@ -248,6 +248,14 @@ func (ctx *Context) Set(key, value string) {
 	ctx.Res.Set(key, value)
 }
 
+// Status set a status code to response
+func (ctx *Context) Status(code ...int) int {
+	if len(code) > 0 && IsStatusCode(code[0]) {
+		ctx.Res.status = code[0]
+	}
+	return ctx.Res.status
+}
+
 // Type set a content type to response
 func (ctx *Context) Type(str string) {
 	if str == "" {
@@ -359,7 +367,7 @@ func (ctx *Context) Render(code int, name string, data interface{}) (err error) 
 // Note that this will not stop the current handler.
 func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error) {
 	if ctx.ended.swapTrue() {
-		ctx.Res.Status(code)
+		ctx.Status(code)
 		ctx.Type(contentType)
 		_, err = io.Copy(ctx.Res, r)
 	}
@@ -388,9 +396,12 @@ func (ctx *Context) Attachment(name string, content io.ReadSeeker, inline ...boo
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
-func (ctx *Context) Redirect(code int, url string) (err error) {
+func (ctx *Context) Redirect(url string) (err error) {
 	if ctx.ended.swapTrue() {
-		http.Redirect(ctx.Res, ctx.Req, url, code)
+		if !isRedirectStatus(ctx.Res.status) {
+			ctx.Res.status = http.StatusFound
+		}
+		http.Redirect(ctx.Res, ctx.Req, url, ctx.Res.status)
 	}
 	return
 }
@@ -405,7 +416,7 @@ func (ctx *Context) Error(e error) (err error) {
 		ctx.Type(MIMETextPlainCharsetUTF8)
 		return ctx.End(e.Status(), []byte(e.Error()))
 	}
-	return &Error{Code: 500, Msg: NewAppError("nil-error").Error()}
+	return &Error{Code: http.StatusInternalServerError, Msg: NewAppError("nil-error").Error()}
 }
 
 // End end the ctx with bytes and status code optionally.

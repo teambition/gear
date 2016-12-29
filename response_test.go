@@ -80,8 +80,8 @@ func TestGearResponse(t *testing.T) {
 		res.WriteHeader(0)
 
 		assert.Equal(true, res.HeaderWrote())
-		assert.Equal(444, res.status)
-		assert.Equal(444, CtxResult(ctx).StatusCode)
+		assert.Equal(421, res.status)
+		assert.Equal(421, CtxResult(ctx).StatusCode)
 		assert.Equal("", CtxBody(ctx))
 
 		ctx = CtxTest(app, "GET", "http://example.com/foo", nil)
@@ -157,4 +157,19 @@ func TestGearResponse(t *testing.T) {
 		assert.Equal(404, ctx.Res.status)
 		assert.Equal(404, ctx.Res.status)
 	})
+}
+
+func TestGearCheckStatus(t *testing.T) {
+	assert := assert.New(t)
+	assert.False(IsStatusCode(1))
+	assert.True(IsStatusCode(100))
+
+	assert.False(isRedirectStatus(200))
+	assert.True(isRedirectStatus(301))
+
+	assert.False(isEmptyStatus(200))
+	assert.True(isEmptyStatus(204))
+
+	assert.False(isRetryStatus(501))
+	assert.True(isRetryStatus(502))
 }

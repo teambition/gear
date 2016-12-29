@@ -275,7 +275,8 @@ func (r *Router) Serve(ctx *Context) error {
 			if method != "GET" {
 				code = 307
 			}
-			return ctx.Redirect(code, ctx.Req.URL.String())
+			ctx.Status(code)
+			return ctx.Redirect(ctx.Req.URL.String())
 		}
 
 		if r.otherwise == nil {
