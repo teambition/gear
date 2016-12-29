@@ -276,7 +276,6 @@ type serveHandler struct {
 }
 
 func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var err error
 	ctx := NewContext(h.app, w, r)
 
 	if compressWriter := ctx.handleCompress(); compressWriter != nil {
@@ -300,26 +299,26 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		<-ctx.Done()
-		// if context canceled abnormally...
-		if err := ctx.Err(); err != nil && !ctx.Res.wroteHeader.isTrue() {
-			ctx.ended.setTrue()
-			ctx.Res.ResetHeader()
-			if err := h.app.onerror.OnError(ctx, err); err != nil {
-				err.Code = 503
-				ctx.salvage(err)
-			}
-		}
+		ctx.ended.setTrue()
 	}()
 
 	// process app middleware
-	err = h.middleware.run(ctx)
+	err := h.middleware.run(ctx)
+	if ctx.Res.wroteHeader.isTrue() {
+		if !isNil(err) {
+			h.app.Error(err)
+		}
+		return
+	}
+
+	if isNil(err) {
+		// if context canceled abnormally...
+		if err = ctx.Err(); err != nil {
+			err = &Error{503, err.Error(), err}
+		}
+	}
 
 	if !isNil(err) {
-		if ctx.Res.wroteHeader.isTrue() {
-			h.app.Error(err)
-			return
-		}
-
 		ctx.ended.setTrue()
 		ctx.Res.ResetHeader()
 		// process middleware error with OnError
@@ -328,11 +327,8 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
 	// ensure respond
-	if !ctx.Res.wroteHeader.isTrue() {
-		ctx.Res.WriteHeader(0)
-	}
+	ctx.Res.WriteHeader(0)
 }
 
 // ServerListener is returned by a non-blocking app instance.

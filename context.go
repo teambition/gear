@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"sync"
 	"time"
 )
 
@@ -41,7 +40,6 @@ type Context struct {
 	ctx        context.Context
 	cancelCtx  context.CancelFunc
 	kv         map[interface{}]interface{}
-	mu         sync.RWMutex
 }
 
 // NewContext creates an instance of Context. Export for testing middleware.
@@ -155,9 +153,6 @@ func (ctx *Context) Timing(dt time.Duration, fn func() interface{}) (interface{}
 //
 func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
 	var ok bool
-	ctx.mu.Lock()
-	defer ctx.mu.Unlock()
-
 	if val, ok = ctx.kv[any]; !ok {
 		switch res := any.(type) {
 		case Any:
@@ -185,8 +180,6 @@ func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
 //  }
 //
 func (ctx *Context) SetAny(key, val interface{}) {
-	ctx.mu.Lock()
-	defer ctx.mu.Unlock()
 	ctx.kv[key] = val
 }
 
