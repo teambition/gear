@@ -90,26 +90,26 @@ func TestGearContextWithContext(t *testing.T) {
 
 		go func() {
 			<-c1.Done()
-			assert.True(ctx.isEnded())
+			assert.True(ctx.ended.isTrue())
 			atomic.AddInt32(&count, 1)
 		}()
 
 		go func() {
 			<-c2.Done()
-			assert.True(ctx.isEnded())
+			assert.True(ctx.ended.isTrue())
 			atomic.AddInt32(&count, 1)
 		}()
 
 		go func() {
 			<-c3.Done()
-			assert.True(ctx.isEnded())
+			assert.True(ctx.ended.isTrue())
 			atomic.AddInt32(&count, 1)
 		}()
 
-		ctx.Res.SetStatus(404)
+		ctx.Res.Status(404)
 		ctx.Cancel()
 
-		assert.True(ctx.isEnded())
+		assert.True(ctx.ended.isTrue())
 		time.Sleep(time.Millisecond)
 		return nil
 	})
@@ -473,18 +473,6 @@ func TestGearContextType(t *testing.T) {
 	assert.Equal("", ctx.Res.header.Get(HeaderContentType))
 }
 
-func TestGearContextString(t *testing.T) {
-	assert := assert.New(t)
-
-	app := New()
-	ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
-	ctx.String(400, "Some error")
-	assert.Equal(400, ctx.Res.GetStatus())
-	assert.Equal(MIMETextPlainCharsetUTF8, ctx.Res.header.Get(HeaderContentType))
-	assert.Equal("Some error", string(ctx.Res.body))
-	assert.False(ctx.ended)
-}
-
 func TestGearContextHTML(t *testing.T) {
 	assert := assert.New(t)
 
@@ -782,7 +770,7 @@ func TestGearContextStream(t *testing.T) {
 		assert.Equal(string(data), PickRes(res.Text()).(string))
 	})
 
-	t.Run("should log error if context ended", func(t *testing.T) {
+	t.Run("should not change if context ended", func(t *testing.T) {
 		assert := assert.New(t)
 
 		var buf bytes.Buffer
@@ -793,9 +781,11 @@ func TestGearContextStream(t *testing.T) {
 
 			file, err := os.Open("testdata/hello.html")
 			if err != nil {
-				return err
+				panic(err)
 			}
-			return ctx.Stream(200, MIMETextHTMLCharsetUTF8, file)
+			ctx.Stream(200, MIMETextHTMLCharsetUTF8, file)
+			assert.Equal(204, ctx.Res.GetStatus())
+			return nil
 		})
 
 		srv := app.Start()
@@ -804,7 +794,7 @@ func TestGearContextStream(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(204, res.StatusCode)
-		assert.Equal("TEST: {Code: 500, Msg: [App] context is ended, Meta: [App] context is ended}\n", buf.String())
+		assert.Equal("", buf.String())
 	})
 }
 
@@ -859,31 +849,6 @@ func TestGearContextAttachment(t *testing.T) {
 		assert.Equal(MIMETextPlainCharsetUTF8, res.Header.Get(HeaderContentType))
 		assert.Equal(string(data), PickRes(res.Text()).(string))
 	})
-
-	t.Run("should log error if context ended", func(t *testing.T) {
-		assert := assert.New(t)
-
-		var buf bytes.Buffer
-		app := New()
-		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
-		app.Use(func(ctx *Context) error {
-			ctx.End(204)
-
-			file, err := os.Open("testdata/README.md")
-			if err != nil {
-				return err
-			}
-			return ctx.Attachment("README.md", file)
-		})
-
-		srv := app.Start()
-		defer srv.Close()
-
-		res, err := RequestBy("GET", "http://"+srv.Addr().String())
-		assert.Nil(err)
-		assert.Equal(204, res.StatusCode)
-		assert.Equal("TEST: {Code: 500, Msg: [App] context is ended, Meta: [App] context is ended}\n", buf.String())
-	})
 }
 
 func TestGearContextRedirect(t *testing.T) {
@@ -908,33 +873,6 @@ func TestGearContextRedirect(t *testing.T) {
 		assert.True(redirected)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("OK", PickRes(res.Text()).(string))
-	})
-
-	t.Run("should log error if context ended", func(t *testing.T) {
-		assert := assert.New(t)
-
-		var buf bytes.Buffer
-		app := New()
-		redirected := false
-		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
-		app.Use(func(ctx *Context) error {
-			ctx.End(204)
-
-			if ctx.Path != "/ok" {
-				redirected = true
-				return ctx.Redirect(301, "/ok")
-			}
-			return ctx.HTML(200, "OK")
-		})
-
-		srv := app.Start()
-		defer srv.Close()
-
-		res, err := RequestBy("GET", "http://"+srv.Addr().String())
-		assert.Nil(err)
-		assert.True(redirected)
-		assert.Equal(204, res.StatusCode)
-		assert.Equal("TEST: {Code: 500, Msg: [App] context is ended, Meta: [App] context is ended}\n", buf.String())
 	})
 }
 
@@ -1014,7 +952,7 @@ func TestGearContextEnd(t *testing.T) {
 
 		app := New()
 		app.Use(func(ctx *Context) error {
-			ctx.Res.SetStatus(204)
+			ctx.Res.Status(204)
 			return ctx.End(0)
 		})
 
@@ -1031,9 +969,8 @@ func TestGearContextEnd(t *testing.T) {
 
 		app := New()
 		app.Use(func(ctx *Context) error {
-			ctx.Res.SetStatus(500)
-			ctx.Res.setBody([]byte("OK"))
-			return ctx.End(200)
+			ctx.Res.Status(500)
+			return ctx.End(200, []byte("OK"))
 		})
 
 		srv := app.Start()
@@ -1050,7 +987,7 @@ func TestGearContextEnd(t *testing.T) {
 
 		app := New()
 		app.Use(func(ctx *Context) error {
-			ctx.String(400, "some error")
+			ctx.Res.Status(400)
 			return ctx.End(200, []byte("OK"))
 		})
 
@@ -1063,12 +1000,12 @@ func TestGearContextEnd(t *testing.T) {
 		assert.Equal("OK", PickRes(res.Text()).(string))
 	})
 
-	t.Run("should error if ctx ended", func(t *testing.T) {
+	t.Run("should not change if ctx ended", func(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
 		app.Use(func(ctx *Context) error {
-			ctx.setEnd(false)
+			ctx.ended.setTrue()
 			return ctx.End(200, []byte("OK"))
 		})
 
@@ -1077,8 +1014,8 @@ func TestGearContextEnd(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(500, res.StatusCode)
-		assert.Equal("[App] context is ended", PickRes(res.Text()).(string))
+		assert.Equal(444, res.StatusCode)
+		assert.Equal("", PickRes(res.Text()).(string))
 	})
 }
 
@@ -1092,7 +1029,7 @@ func TestGearContextAfter(t *testing.T) {
 			ctx.After(func() {
 				count++
 				assert.Equal(4, count)
-				ctx.Res.SetStatus(204)
+				ctx.Res.Status(204)
 			})
 			ctx.After(func() {
 				count++
@@ -1132,8 +1069,8 @@ func TestGearContextAfter(t *testing.T) {
 
 			count++
 			assert.Equal(1, count)
-			ctx.Res.SetStatus(204)
-			ctx.setEnd(false)
+			ctx.Res.Status(204)
+			ctx.ended.setTrue()
 			assert.Panics(func() {
 				ctx.After(func() {})
 			})
@@ -1160,12 +1097,12 @@ func TestGearContextOnEnd(t *testing.T) {
 			ctx.OnEnd(func() {
 				count++
 				assert.Equal(4, count)
-				ctx.Res.SetStatus(500)
+				ctx.Res.Status(500)
 			})
 			ctx.After(func() {
 				count++
 				assert.Equal(2, count)
-				ctx.Res.SetStatus(204)
+				ctx.Res.Status(204)
 			})
 			ctx.OnEnd(func() {
 				count++
@@ -1209,8 +1146,8 @@ func TestGearContextOnEnd(t *testing.T) {
 
 			count++
 			assert.Equal(1, count)
-			ctx.Res.SetStatus(204)
-			ctx.setEnd(false)
+			ctx.Res.Status(204)
+			ctx.ended.setTrue()
 			assert.Panics(func() {
 				ctx.OnEnd(func() {})
 			})

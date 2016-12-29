@@ -145,9 +145,9 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 	// Add a "end hook" to flush logs.
 	ctx.OnEnd(func() {
 		log := l.FromCtx(ctx)
-		log["Length"] = ctx.Res.GetLen()
 		log["Status"] = ctx.Res.GetStatus()
 		log["Type"] = ctx.Res.Type
+		log["Length"] = ctx.Get(gear.HeaderContentLength)
 
 		// Don't block current process.
 		go l.consume(log, l)

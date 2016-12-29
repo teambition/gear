@@ -10,6 +10,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"sync/atomic"
 	"time"
 )
 
@@ -288,27 +289,21 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			err := &Error{
+			ctx.Res.ResetHeader()
+			ctx.salvage(&Error{
 				Code: 500,
 				Msg:  fmt.Sprintf("panic recovered: %v", err),
 				Meta: buf,
-			}
-
-			if ctx.Res.HeaderWrote() {
-				h.app.Error(err)
-			} else {
-				ctx.Res.ResetHeader(false)
-				ctx.salvage(err)
-			}
+			})
 		}
 	}()
 
 	go func() {
 		<-ctx.Done()
-		ctx.setEnd(false)
 		// if context canceled abnormally...
-		if err := ctx.Err(); err != nil && !ctx.Res.HeaderWrote() {
-			ctx.Res.ResetHeader(true)
+		if err := ctx.Err(); err != nil && !ctx.Res.wroteHeader.isTrue() {
+			ctx.ended.setTrue()
+			ctx.Res.ResetHeader()
 			if err := h.app.onerror.OnError(ctx, err); err != nil {
 				err.Code = 503
 				ctx.salvage(err)
@@ -317,16 +312,16 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// process app middleware
-	_, err = h.middleware.run(ctx)
+	err = h.middleware.run(ctx)
 
 	if !isNil(err) {
-		if ctx.Res.HeaderWrote() {
+		if ctx.Res.wroteHeader.isTrue() {
 			h.app.Error(err)
 			return
 		}
 
-		ctx.setEnd(false)
-		ctx.Res.ResetHeader(true)
+		ctx.ended.setTrue()
+		ctx.Res.ResetHeader()
 		// process middleware error with OnError
 		if err := h.app.onerror.OnError(ctx, err); err != nil {
 			ctx.salvage(err)
@@ -335,8 +330,8 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ensure respond
-	if err = ctx.Res.respond(); err != nil {
-		h.app.Error(err)
+	if !ctx.Res.wroteHeader.isTrue() {
+		ctx.Res.WriteHeader(0)
 	}
 }
 
@@ -394,11 +389,25 @@ func isNil(val interface{}) bool {
 
 type middlewares []Middleware
 
-func (m middlewares) run(ctx *Context) (ok bool, err error) {
+func (m middlewares) run(ctx *Context) (err error) {
 	for _, handle := range m {
-		if err = handle(ctx); !isNil(err) || ctx.isEnded() {
-			return false, err
+		if err = handle(ctx); !isNil(err) || ctx.ended.isTrue() {
+			return err
 		}
 	}
-	return true, nil
+	return nil
+}
+
+type atomicBool int32
+
+func (b *atomicBool) isTrue() bool {
+	return atomic.LoadInt32((*int32)(b)) == 1
+}
+
+func (b *atomicBool) swapTrue() bool {
+	return atomic.SwapInt32((*int32)(b), 1) == 0
+}
+
+func (b *atomicBool) setTrue() {
+	atomic.StoreInt32((*int32)(b), 1)
 }

@@ -305,10 +305,9 @@ func (r *Router) Serve(ctx *Context) error {
 }
 
 func (r *Router) run(ctx *Context, handlers middlewares) (err error) {
-	defer ctx.setEnd(false)
-	ok := false
-	if ok, err = r.middleware.run(ctx); ok {
-		_, err = handlers.run(ctx)
+	defer ctx.ended.setTrue()
+	if err = r.middleware.run(ctx); err == nil && !ctx.ended.isTrue() {
+		err = handlers.run(ctx)
 	}
 	return
 }

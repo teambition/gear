@@ -260,9 +260,7 @@ func defaultConsumeLog(log Log, l *Logger) {
 	status := log["Status"].(int)
 	FprintWithColor(l.Out, strconv.Itoa(status), colorStatus(status))
 	fmt.Fprintln(l.Out, fmt.Sprintf(
-		" %d - %.3f ms",
-		log["Length"].(int),
-		float64(time.Now().Sub(log["Start"].(time.Time)))/1e6))
+		" %s - %.3f ms", log["Length"], float64(time.Now().Sub(log["Start"].(time.Time)))/1e6))
 }
 
 // FromCtx retrieve the Log instance from the ctx with ctx.Any.
@@ -295,9 +293,9 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 	// Add a "end hook" to flush logs.
 	ctx.OnEnd(func() {
 		log := l.FromCtx(ctx)
-		log["Length"] = ctx.Res.GetLen()
 		log["Status"] = ctx.Res.GetStatus()
 		log["Type"] = ctx.Get(gear.HeaderContentType)
+		log["Length"] = ctx.Get(gear.HeaderContentLength)
 
 		// Don't block current process.
 		go l.consume(log, l)
