@@ -167,18 +167,7 @@ func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
 }
 
 // SetAny save a key, value pair on the ctx.
-// package logging used ctx.SetAny and ctx.Any to implement "logger.FromCtx":
-//
-//  func (l *Logger) FromCtx(ctx *gear.Context) Log {
-//  	if any, err := ctx.Any(l); err == nil {
-//  		return any.(Log)
-//  	}
-//  	log := Log{}
-//  	ctx.SetAny(l, log)
-//  	l.init(log, ctx)
-//  	return log
-//  }
-//
+// Then we can use ctx.Any(key) to retrieve the value from ctx.
 func (ctx *Context) SetAny(key, val interface{}) {
 	ctx.kv[key] = val
 }

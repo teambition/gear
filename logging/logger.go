@@ -263,23 +263,22 @@ func defaultConsumeLog(log Log, l *Logger) {
 		" %s - %.3f ms", log["Length"], float64(time.Now().Sub(log["Start"].(time.Time)))/1e6))
 }
 
-// FromCtx retrieve the Log instance from the ctx with ctx.Any.
-// if not exists, FromCtx will create one and save it to the ctx with ctx.SetAny.
+// New implements gear.Any interface,then we can use ctx.Any to retrieve a Log instance from ctx.
 // Here also some initialization work after created.
-func (l *Logger) FromCtx(ctx *gear.Context) Log {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	if any, err := ctx.Any(l); err == nil {
-		return any.(Log)
-	}
+func (l *Logger) New(ctx *gear.Context) (interface{}, error) {
 	log := Log{}
-	ctx.SetAny(l, log)
 	l.init(log, ctx)
-	return log
+	return log, nil
 }
 
-// Serve implemented gear.Handler interface, we can use logger as gear middleware
+// FromCtx retrieve the Log instance from the ctx with ctx.Any.
+// Logger.New and ctx.Any will guarantee it exists.
+func (l *Logger) FromCtx(ctx *gear.Context) Log {
+	any, _ := ctx.Any(l)
+	return any.(Log)
+}
+
+// Serve implements gear.Handler interface, we can use logger as gear middleware.
 //
 //  app := gear.New()
 //  app.UseHandler(logging.Default())
@@ -296,7 +295,6 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 		log["Status"] = ctx.Res.GetStatus()
 		log["Type"] = ctx.Get(gear.HeaderContentType)
 		log["Length"] = ctx.Get(gear.HeaderContentLength)
-
 		// Don't block current process.
 		go l.consume(log, l)
 	})
