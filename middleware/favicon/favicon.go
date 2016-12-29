@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/teambition/gear"
 )
@@ -47,7 +48,16 @@ func New(iconpath string) gear.Middleware {
 	if err != nil {
 		panic(gear.NewAppError(err.Error()))
 	}
+	return NewWithIco(file, info.ModTime())
+}
+
+// NewWithIco creates a favicon middleware with ico file and a optional modTime.
+func NewWithIco(file []byte, modTime ...time.Time) gear.Middleware {
 	reader := bytes.NewReader(file)
+	t := time.Now()
+	if len(modTime) > 0 {
+		t = modTime[0]
+	}
 
 	return func(ctx *gear.Context) (err error) {
 		if !strings.HasPrefix(ctx.Path, "/favicon.ico") {
@@ -62,7 +72,7 @@ func New(iconpath string) gear.Middleware {
 			return ctx.End(status)
 		}
 		ctx.Type("image/x-icon")
-		http.ServeContent(ctx.Res, ctx.Req, "favicon.ico", info.ModTime(), reader)
+		http.ServeContent(ctx.Res, ctx.Req, "favicon.ico", t, reader)
 		return
 	}
 }
