@@ -478,10 +478,10 @@ func TestGearContextType(t *testing.T) {
 
 	app := New()
 	ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+	assert.Equal("", ctx.Type())
 	ctx.Type(MIMEApplicationJSONCharsetUTF8)
 	assert.Equal(MIMEApplicationJSONCharsetUTF8, ctx.Res.header.Get(HeaderContentType))
-	ctx.Type("")
-	assert.Equal("", ctx.Res.header.Get(HeaderContentType))
+	assert.Equal(MIMEApplicationJSONCharsetUTF8, ctx.Type())
 }
 
 func TestGearContextHTML(t *testing.T) {

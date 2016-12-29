@@ -8,7 +8,7 @@ import (
 )
 
 // go test -bench=. -run BenchmarkGearAppHello
-// 10000	    353521 ns/op	   17469 B/op	     131 allocs/op
+// 10000	    334688 ns/op	   17453 B/op	     131 allocs/op
 //
 func BenchmarkGearAppHello(b *testing.B) {
 	app := gear.New()

@@ -271,16 +271,17 @@ func (r *Router) Serve(ctx *Context) error {
 				ctx.Req.URL.Path = r.root + ctx.Req.URL.Path
 			}
 
-			code := 301
+			code := http.StatusMovedPermanently
 			if method != "GET" {
-				code = 307
+				code = http.StatusTemporaryRedirect
 			}
 			ctx.Status(code)
 			return ctx.Redirect(ctx.Req.URL.String())
 		}
 
 		if r.otherwise == nil {
-			return &Error{Code: 501, Msg: fmt.Sprintf(`"%s" is not implemented`, ctx.Path)}
+			return &Error{Code: http.StatusNotImplemented,
+				Msg: fmt.Sprintf(`"%s" is not implemented`, ctx.Path)}
 		}
 		handlers = r.otherwise
 	} else {
@@ -289,13 +290,14 @@ func (r *Router) Serve(ctx *Context) error {
 			// OPTIONS support
 			if method == http.MethodOptions {
 				ctx.Set(HeaderAllow, matched.Node.GetAllow())
-				return ctx.End(204)
+				return ctx.End(http.StatusNoContent)
 			}
 
 			if r.otherwise == nil {
 				// If no route handler is returned, it's a 405 error
 				ctx.Set(HeaderAllow, matched.Node.GetAllow())
-				return &Error{Code: 405, Msg: fmt.Sprintf(`"%s" is not allowed in "%s"`, method, ctx.Path)}
+				return &Error{Code: http.StatusMethodNotAllowed,
+					Msg: fmt.Sprintf(`"%s" is not allowed in "%s"`, method, ctx.Path)}
 			}
 			handlers = r.otherwise
 		}

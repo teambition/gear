@@ -257,12 +257,11 @@ func (ctx *Context) Status(code ...int) int {
 }
 
 // Type set a content type to response
-func (ctx *Context) Type(str string) {
-	if str == "" {
-		ctx.Res.Del(HeaderContentType)
-	} else {
-		ctx.Res.Set(HeaderContentType, str)
+func (ctx *Context) Type(str ...string) string {
+	if len(str) > 0 {
+		ctx.Res.Set(HeaderContentType, str[0])
 	}
+	return ctx.Res.Get(HeaderContentType)
 }
 
 // HTML set an Html body with status code to response.

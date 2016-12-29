@@ -17,17 +17,12 @@ type Response struct {
 	header      http.Header
 	wroteHeader atomicBool
 	responded   atomicBool
-	bodyLength  int // number of bytes to write
+	bodyLength  int // number of bytes to write, ignore stream body.
 	status      int // response Status Code
 }
 
 func newResponse(ctx *Context, w http.ResponseWriter) *Response {
 	return &Response{ctx: ctx, res: w, header: w.Header()}
-}
-
-// Del deletes the values associated with key.
-func (r *Response) Del(key string) {
-	r.header.Del(key)
 }
 
 // Get gets the first value associated with the given key. If there are no values associated with the key, Get returns "". To access multiple values of a key, access the map directly with CanonicalHeaderKey.
@@ -42,10 +37,10 @@ func (r *Response) Set(key, value string) {
 
 // ResetHeader reset headers. If keepSubset is true,
 // header matching `(?i)^(accept|allow|retry-after|warning|access-control-allow-)` will be keep
-func (r *Response) ResetHeader(regs ...*regexp.Regexp) {
+func (r *Response) ResetHeader(keepReg ...*regexp.Regexp) {
 	reg := defaultErrorHeaderReg
-	if len(regs) > 0 {
-		reg = regs[0]
+	if len(keepReg) > 0 {
+		reg = keepReg[0]
 	}
 	for key := range r.header {
 		if !reg.MatchString(key) {

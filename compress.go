@@ -33,11 +33,11 @@ func (d *DefaultCompress) Compressible(contentType string, contentLength int) bo
 }
 
 type compressWriter struct {
-	compress Compressible
-	encoding string
-	writer   io.WriteCloser
-	res      http.ResponseWriter
-	response *Response
+	compress   Compressible
+	encoding   string
+	writer     io.WriteCloser
+	res        http.ResponseWriter
+	bodyLength *int
 }
 
 func newCompress(res *Response, c Compressible, acceptEncoding string) *compressWriter {
@@ -46,10 +46,10 @@ func newCompress(res *Response, c Compressible, acceptEncoding string) *compress
 	switch encoding {
 	case "gzip", "deflate":
 		return &compressWriter{
-			compress: c,
-			encoding: encoding,
-			res:      res.res,
-			response: res,
+			compress:   c,
+			encoding:   encoding,
+			res:        res.res,
+			bodyLength: &res.bodyLength,
 		}
 	default:
 		return nil
@@ -65,7 +65,7 @@ func (cw *compressWriter) WriteHeader(code int) {
 	}
 
 	header := cw.res.Header()
-	if cw.compress.Compressible(header.Get(HeaderContentType), cw.response.bodyLength) {
+	if cw.compress.Compressible(header.Get(HeaderContentType), *cw.bodyLength) {
 		var w io.WriteCloser
 
 		switch cw.encoding {
