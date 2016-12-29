@@ -15,6 +15,21 @@ import (
 // Log records key-value pairs for structured logging.
 type Log map[string]interface{}
 
+// Reset delete all key-value on the log. Empty log will not be consumed.
+//
+//  log := logger.FromCtx(ctx)
+//  if ctx.Path == "/" {
+//  	log.Reset() // reset log, don't logging for path "/"
+//  } else {
+//  	log["Data"] = someData
+//  }
+//
+func (l Log) Reset() {
+	for key := range l {
+		delete(l, key)
+	}
+}
+
 // Level represents logging level
 // https://tools.ietf.org/html/rfc5424
 // https://en.wikipedia.org/wiki/Syslog
@@ -54,8 +69,24 @@ func New(w io.Writer) *Logger {
 	logger.SetLevel(DebugLevel)
 	logger.SetTimeFormat("2006-01-02T15:04:05.999Z")
 	logger.SetLogFormat("%s %s %s")
-	logger.SetInitLog(defaultInitLog)
-	logger.SetConsumeLog(defaultConsumeLog)
+
+	logger.init = func(log Log, ctx *gear.Context) {
+		log["IP"] = ctx.IP()
+		log["Method"] = ctx.Method
+		log["URL"] = ctx.Req.URL.String()
+		log["Start"] = time.Now()
+	}
+
+	logger.consume = func(log Log, ctx *gear.Context) {
+		logger.mu.Lock() // don't need Lock usually, logger.Output do it for us.
+		defer logger.mu.Unlock()
+
+		fmt.Fprintf(logger.Out, "%s %s %s ", log["IP"].(net.IP), log["Method"].(string), log["URL"].(string))
+		status := log["Status"].(int)
+		FprintWithColor(logger.Out, strconv.Itoa(status), colorStatus(status))
+		fmt.Fprintln(logger.Out, fmt.Sprintf(
+			" %s - %.3f ms", log["Length"], float64(time.Now().Sub(log["Start"].(time.Time)))/1e6))
+	}
 	return logger
 }
 
@@ -70,14 +101,14 @@ func New(w io.Writer) *Logger {
 //
 //  logger := logging.New(os.Stdout)
 //  logger.SetLevel(logging.InfoLevel)
-//  logger.SetInitLog(func(log Log, ctx *gear.Context) {
+//  logger.SetLogInit(func(log Log, ctx *gear.Context) {
 //  	log["IP"] = ctx.IP()
 //  	log["Method"] = ctx.Method
 //  	log["URL"] = ctx.Req.URL.String()
 //  	log["Start"] = time.Now()
 //  	log["UserAgent"] = ctx.Get(gear.HeaderUserAgent)
 //  })
-//  logger.SetConsumeLog(func(log Log, _ *Logger) {
+//  logger.SetLogConsume(func(log Log, _ *gear.Context) {
 //  	end := time.Now()
 //  	log["Time"] = end.Sub(log["Start"].(time.Time)) / 1e6
 //  	delete(log, "Start")
@@ -101,11 +132,11 @@ type Logger struct {
 	// file, or `os.Stderr`. You can also set this to
 	// something more adventorous, such as logging to Kafka.
 	Out     io.Writer
-	l       Level                            // logging level
-	tf, lf  string                           // time format, log format
-	mu      sync.Mutex                       // ensures atomic writes; protects the following fields
-	init    func(log Log, ctx *gear.Context) // hook to initialize log with gear.Context
-	consume func(log Log, logger *Logger)    // hook to consume log
+	l       Level                    // logging level
+	tf, lf  string                   // time format, log format
+	mu      sync.Mutex               // ensures atomic writes; protects the following fields
+	init    func(Log, *gear.Context) // hook to initialize log with gear.Context
+	consume func(Log, *gear.Context) // hook to consume log
 }
 
 // Emerg produce a "Emergency" log
@@ -224,43 +255,25 @@ func (l *Logger) SetLogFormat(logFormat string) {
 	l.lf = logFormat
 }
 
-// SetInitLog set a log init handle to the logger.
+// SetLogInit set a log init handle to the logger.
 // It will be called when log created.
-func (l *Logger) SetInitLog(fn func(Log, *gear.Context)) {
+func (l *Logger) SetLogInit(fn func(Log, *gear.Context)) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.init = fn
 }
 
-func defaultInitLog(log Log, ctx *gear.Context) {
-	log["IP"] = ctx.IP()
-	log["Method"] = ctx.Method
-	log["URL"] = ctx.Req.URL.String()
-	log["Start"] = time.Now()
-}
-
-// SetConsumeLog set a log consumer handle to the logger.
+// SetLogConsume set a log consumer handle to the logger.
 // It will be called on a "end hook" and should write the log to underlayer logging system.
 // The default implements is for development, the output log format:
 //
 //   127.0.0.1 GET /text 200 6500 - 0.765 ms
 //
 // Please implements a WriteLog for your production.
-func (l *Logger) SetConsumeLog(fn func(Log, *Logger)) {
+func (l *Logger) SetLogConsume(fn func(Log, *gear.Context)) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.consume = fn
-}
-
-func defaultConsumeLog(log Log, l *Logger) {
-	l.mu.Lock() // don't need Lock usually, logger.Output do it for us.
-	defer l.mu.Unlock()
-
-	fmt.Fprintf(l.Out, "%s %s %s ", log["IP"].(net.IP), log["Method"].(string), log["URL"].(string))
-	status := log["Status"].(int)
-	FprintWithColor(l.Out, strconv.Itoa(status), colorStatus(status))
-	fmt.Fprintln(l.Out, fmt.Sprintf(
-		" %s - %.3f ms", log["Length"], float64(time.Now().Sub(log["Start"].(time.Time)))/1e6))
 }
 
 // New implements gear.Any interface,then we can use ctx.Any to retrieve a Log instance from ctx.
@@ -292,11 +305,15 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 	// Add a "end hook" to flush logs.
 	ctx.OnEnd(func() {
 		log := l.FromCtx(ctx)
+		// Ignore empty log
+		if len(log) == 0 {
+			return
+		}
 		log["Status"] = ctx.Status()
 		log["Type"] = ctx.Get(gear.HeaderContentType)
 		log["Length"] = ctx.Get(gear.HeaderContentLength)
 		// Don't block current process.
-		go l.consume(log, l)
+		go l.consume(log, ctx)
 	})
 	return nil
 }

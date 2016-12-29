@@ -234,7 +234,11 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		app.UseHandler(logger)
 		app.Use(func(ctx *gear.Context) error {
 			log := logger.FromCtx(ctx)
-			log["Data"] = []int{1, 2, 3}
+			if ctx.Path == "/reset" {
+				log.Reset()
+			} else {
+				log["Data"] = []int{1, 2, 3}
+			}
 			return ctx.HTML(200, "OK")
 		})
 		srv := app.Start()
@@ -246,11 +250,21 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		time.Sleep(10 * time.Millisecond)
 		logger.mu.Lock()
-		defer logger.mu.Unlock()
 		log := buf.String()
-
+		logger.mu.Unlock()
 		assert.Contains(log, "127.0.0.1 GET / ")
 		assert.Contains(log, "\x1b[32;1m200\x1b[39;22m")
+		res.Body.Close()
+
+		buf.Reset()
+		res, err = RequestBy("GET", "http://"+srv.Addr().String()+"/reset")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		time.Sleep(10 * time.Millisecond)
+		logger.mu.Lock()
+		assert.Equal(buf.String(), "")
+		logger.mu.Unlock()
 		res.Body.Close()
 	})
 
@@ -261,14 +275,14 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		app := gear.New()
 
 		logger := New(&buf)
-		logger.SetInitLog(func(log Log, ctx *gear.Context) {
+		logger.SetLogInit(func(log Log, ctx *gear.Context) {
 			log["IP"] = ctx.IP()
 			log["Method"] = ctx.Method
 			log["URL"] = ctx.Req.URL.String()
 			log["Start"] = time.Now()
 			log["UserAgent"] = ctx.Get(gear.HeaderUserAgent)
 		})
-		logger.SetConsumeLog(func(log Log, _ *Logger) {
+		logger.SetLogConsume(func(log Log, _ *gear.Context) {
 			end := time.Now()
 			log["Time"] = end.Sub(log["Start"].(time.Time)) / 1e6
 			delete(log, "Start")
@@ -316,14 +330,14 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		app.Set("AppLogger", log.New(&errbuf, "TEST: ", 0))
 
 		logger := New(&buf)
-		logger.SetInitLog(func(log Log, ctx *gear.Context) {
+		logger.SetLogInit(func(log Log, ctx *gear.Context) {
 			log["IP"] = ctx.IP()
 			log["Method"] = ctx.Method
 			log["URL"] = ctx.Req.URL.String()
 			log["Start"] = time.Now()
 			log["UserAgent"] = ctx.Get(gear.HeaderUserAgent)
 		})
-		logger.SetConsumeLog(func(log Log, _ *Logger) {
+		logger.SetLogConsume(func(log Log, _ *gear.Context) {
 			end := time.Now()
 			log["Time"] = end.Sub(log["Start"].(time.Time)) / 1e6
 			delete(log, "Start")
