@@ -223,6 +223,9 @@ func (l *Logger) Output(t time.Time, level Level, s string) (err error) {
 	defer l.mu.Unlock()
 	if level <= l.l {
 		_, err = fmt.Fprintf(l.Out, l.lf, t.UTC().Format(l.tf), levels[level], s)
+		if err == nil && s[len(s)-1] != '\n' {
+			l.Out.Write([]byte{'\n'})
+		}
 	}
 	return
 }
@@ -310,8 +313,8 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 			return
 		}
 		log["Status"] = ctx.Status()
-		log["Type"] = ctx.Get(gear.HeaderContentType)
-		log["Length"] = ctx.Get(gear.HeaderContentLength)
+		log["Type"] = ctx.Res.Get(gear.HeaderContentType)
+		log["Length"] = ctx.Res.Get(gear.HeaderContentLength)
 		// Don't block current process.
 		go l.consume(log, ctx)
 	})
