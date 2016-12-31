@@ -12,8 +12,6 @@ import (
 type Compressible interface {
 	// Compressible checks the response Content-Type and Content-Length to
 	// determine whether to compress.
-	// Recommend use mime database https://github.com/GitbookIO/mimedb to find
-	// which Content-Type is compressible.
 	// `length == 0` means response body maybe stream, or will be writed later.
 	Compressible(contentType string, contentLength int) bool
 }
@@ -25,6 +23,20 @@ type Compressible interface {
 type DefaultCompress struct{}
 
 // Compressible implemented Compress interface.
+// Recommend https://github.com/teambition/compressible-go.
+//
+//  import "github.com/teambition/compressible-go"
+//
+//  app := gear.New()
+//  app.Set("AppCompress", compressible.WithThreshold(1024))
+//
+//  // Add a static middleware
+//  app.Use(static.New(static.Options{
+//  	Root:   "./",
+//  	Prefix: "/",
+//  }))
+//  app.Error(app.Listen(":3000")) // http://127.0.0.1:3000/
+//
 func (d *DefaultCompress) Compressible(contentType string, contentLength int) bool {
 	if contentLength > 0 && contentLength <= 1024 {
 		return false

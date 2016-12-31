@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-var defaultErrorHeaderReg = regexp.MustCompile(
+var defaultHeaderFilterReg = regexp.MustCompile(
 	`(?i)^(accept|allow|retry-after|warning|access-control-allow-)`)
 
 // Response wraps an http.ResponseWriter and implements its interface to be used
@@ -37,10 +37,10 @@ func (r *Response) Set(key, value string) {
 
 // ResetHeader reset headers. If keepSubset is true,
 // header matching `(?i)^(accept|allow|retry-after|warning|access-control-allow-)` will be keep
-func (r *Response) ResetHeader(keepReg ...*regexp.Regexp) {
-	reg := defaultErrorHeaderReg
-	if len(keepReg) > 0 {
-		reg = keepReg[0]
+func (r *Response) ResetHeader(filterReg ...*regexp.Regexp) {
+	reg := defaultHeaderFilterReg
+	if len(filterReg) > 0 {
+		reg = filterReg[0]
 	}
 	for key := range r.header {
 		if !reg.MatchString(key) {
