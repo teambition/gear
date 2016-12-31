@@ -1,6 +1,8 @@
 package gear
 
 import (
+	"bufio"
+	"net"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -13,8 +15,8 @@ var defaultHeaderFilterReg = regexp.MustCompile(
 // by an HTTP handler to construct an HTTP response.
 type Response struct {
 	ctx         *Context
-	res         http.ResponseWriter
-	header      http.Header
+	res         http.ResponseWriter // the origin http.ResponseWriter, should not be override.
+	rw          http.ResponseWriter // maybe a http.ResponseWriter wrapper
 	wroteHeader atomicBool
 	responded   atomicBool
 	bodyLength  int // number of bytes to write, ignore stream body.
@@ -22,17 +24,17 @@ type Response struct {
 }
 
 func newResponse(ctx *Context, w http.ResponseWriter) *Response {
-	return &Response{ctx: ctx, res: w, header: w.Header()}
+	return &Response{ctx: ctx, res: w, rw: w}
 }
 
 // Get gets the first value associated with the given key. If there are no values associated with the key, Get returns "". To access multiple values of a key, access the map directly with CanonicalHeaderKey.
 func (r *Response) Get(key string) string {
-	return r.header.Get(key)
+	return r.Header().Get(key)
 }
 
 // Set sets the header entries associated with key to the single element value. It replaces any existing values associated with key.
 func (r *Response) Set(key, value string) {
-	r.header.Set(key, value)
+	r.Header().Set(key, value)
 }
 
 // ResetHeader reset headers. If keepSubset is true,
@@ -42,16 +44,17 @@ func (r *Response) ResetHeader(filterReg ...*regexp.Regexp) {
 	if len(filterReg) > 0 {
 		reg = filterReg[0]
 	}
-	for key := range r.header {
+	header := r.Header()
+	for key := range header {
 		if !reg.MatchString(key) {
-			delete(r.header, key)
+			delete(header, key)
 		}
 	}
 }
 
 // Header returns the header map that will be sent by WriteHeader.
 func (r *Response) Header() http.Header {
-	return r.header
+	return r.rw.Header()
 }
 
 // Write writes the data to the connection as part of an HTTP reply.
@@ -60,7 +63,7 @@ func (r *Response) Write(buf []byte) (int, error) {
 	if !r.wroteHeader.isTrue() {
 		r.WriteHeader(0)
 	}
-	return r.res.Write(buf)
+	return r.rw.Write(buf)
 }
 
 // WriteHeader sends an HTTP response header with status code.
@@ -85,8 +88,8 @@ func (r *Response) WriteHeader(code int) {
 	}
 
 	// check Body and Content Length
-	if r.bodyLength > 0 && r.header.Get(HeaderContentLength) == "" {
-		r.header.Set(HeaderContentLength, strconv.Itoa(r.bodyLength))
+	if r.bodyLength > 0 && r.Get(HeaderContentLength) == "" {
+		r.Set(HeaderContentLength, strconv.Itoa(r.bodyLength))
 	}
 
 	// check status, r.status maybe changed in afterHooks
@@ -99,11 +102,39 @@ func (r *Response) WriteHeader(code int) {
 			r.status = 421
 		}
 	}
-	r.res.WriteHeader(r.status)
+	r.rw.WriteHeader(r.status)
 	// execute "end hooks" in LIFO order after Response.WriteHeader
 	for i := len(r.ctx.endHooks) - 1; i >= 0; i-- {
 		r.ctx.endHooks[i]()
 	}
+}
+
+// Flush implements the http.Flusher interface to allow an HTTP handler to flush
+// buffered data to the client.
+// See [http.Flusher](https://golang.org/pkg/net/http/#Flusher)
+func (r *Response) Flush() {
+	r.res.(http.Flusher).Flush()
+}
+
+// Hijack implements the http.Hijacker interface to allow an HTTP handler to
+// take over the connection.
+// See [http.Hijacker](https://golang.org/pkg/net/http/#Hijacker)
+func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return r.res.(http.Hijacker).Hijack()
+}
+
+// CloseNotify implements the http.CloseNotifier interface to allow detecting
+// when the underlying connection has gone away.
+// This mechanism can be used to cancel long operations on the server if the
+// client has disconnected before the response is ready.
+// See [http.CloseNotifier](https://golang.org/pkg/net/http/#CloseNotifier)
+func (r *Response) CloseNotify() <-chan bool {
+	return r.res.(http.CloseNotifier).CloseNotify()
+}
+
+// HeaderWrote indecates that whether the reply header has been (logically) written.
+func (r *Response) HeaderWrote() bool {
+	return r.wroteHeader.isTrue()
 }
 
 func (r *Response) respond(status int, body []byte) (err error) {
@@ -115,11 +146,6 @@ func (r *Response) respond(status int, body []byte) (err error) {
 		}
 	}
 	return
-}
-
-// HeaderWrote indecates that whether the reply header has been (logically) written.
-func (r *Response) HeaderWrote() bool {
-	return r.wroteHeader.isTrue()
 }
 
 // IsStatusCode returns true if status is HTTP status code.

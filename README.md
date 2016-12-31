@@ -150,7 +150,7 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 		log["Length"] = ctx.Res.Get(gear.HeaderContentLength)
 
 		// Don't block current process.
-		go l.consume(log, l)
+		go l.consume(log, ctx)
 	})
 	return nil
 }

@@ -28,7 +28,7 @@ func CtxTest(app *App, method, url string, body io.Reader) *Context {
 }
 
 func CtxResult(ctx *Context) *http.Response {
-	res := ctx.Res.res.(*httptest.ResponseRecorder)
+	res := ctx.Res.rw.(*httptest.ResponseRecorder)
 	return res.Result()
 }
 
@@ -480,7 +480,7 @@ func TestGearContextType(t *testing.T) {
 	ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
 	assert.Equal("", ctx.Type())
 	ctx.Type(MIMEApplicationJSONCharsetUTF8)
-	assert.Equal(MIMEApplicationJSONCharsetUTF8, ctx.Res.header.Get(HeaderContentType))
+	assert.Equal(MIMEApplicationJSONCharsetUTF8, ctx.Res.Get(HeaderContentType))
 	assert.Equal(MIMEApplicationJSONCharsetUTF8, ctx.Type())
 }
 

@@ -44,11 +44,12 @@ func (d *DefaultCompress) Compressible(contentType string, contentLength int) bo
 	return contentType != ""
 }
 
+// http.ResponseWriter wrapper
 type compressWriter struct {
 	compress   Compressible
 	encoding   string
 	writer     io.WriteCloser
-	res        http.ResponseWriter
+	rw         http.ResponseWriter
 	bodyLength *int
 }
 
@@ -59,8 +60,8 @@ func newCompress(res *Response, c Compressible, acceptEncoding string) *compress
 	case "gzip", "deflate":
 		return &compressWriter{
 			compress:   c,
+			rw:         res.rw,
 			encoding:   encoding,
-			res:        res.res,
 			bodyLength: &res.bodyLength,
 		}
 	default:
@@ -69,22 +70,22 @@ func newCompress(res *Response, c Compressible, acceptEncoding string) *compress
 }
 
 func (cw *compressWriter) WriteHeader(code int) {
-	defer cw.res.WriteHeader(code)
+	defer cw.rw.WriteHeader(code)
 
 	switch code {
 	case http.StatusNoContent, http.StatusResetContent, http.StatusNotModified:
 		return
 	}
 
-	header := cw.res.Header()
+	header := cw.Header()
 	if cw.compress.Compressible(header.Get(HeaderContentType), *cw.bodyLength) {
 		var w io.WriteCloser
 
 		switch cw.encoding {
 		case "gzip":
-			w, _ = gzip.NewWriterLevel(cw.res, gzip.DefaultCompression)
+			w, _ = gzip.NewWriterLevel(cw.rw, gzip.DefaultCompression)
 		case "deflate":
-			w, _ = flate.NewWriter(cw.res, flate.DefaultCompression)
+			w, _ = flate.NewWriter(cw.rw, flate.DefaultCompression)
 		}
 
 		if w != nil {
@@ -97,14 +98,14 @@ func (cw *compressWriter) WriteHeader(code int) {
 }
 
 func (cw *compressWriter) Header() http.Header {
-	return cw.res.Header()
+	return cw.rw.Header()
 }
 
 func (cw *compressWriter) Write(b []byte) (int, error) {
 	if cw.writer != nil {
 		return cw.writer.Write(b)
 	}
-	return cw.res.Write(b)
+	return cw.rw.Write(b)
 }
 
 func (cw *compressWriter) Close() error {

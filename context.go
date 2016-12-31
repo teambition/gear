@@ -467,7 +467,7 @@ func (ctx *Context) salvage(err *Error) {
 func (ctx *Context) handleCompress() (cw *compressWriter) {
 	if ctx.app.compress != nil && ctx.Method != http.MethodHead && ctx.Method != http.MethodOptions {
 		if cw = newCompress(ctx.Res, ctx.app.compress, ctx.Get(HeaderAcceptEncoding)); cw != nil {
-			ctx.Res.res = cw
+			ctx.Res.rw = cw // override with http.ResponseWriter wrapper.
 		}
 	}
 	return

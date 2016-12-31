@@ -59,7 +59,7 @@ func TestGearResponseCompress(t *testing.T) {
 
 		r := NewRouter()
 		r.Get("/full", func(ctx *Context) error {
-			EqualPtr(t, ctx.Res.Header(), ctx.Res.res.Header())
+			EqualPtr(t, ctx.Res.Header(), ctx.Res.rw.Header())
 
 			ctx.Type(MIMETextPlainCharsetUTF8)
 			return ctx.End(http.StatusOK, body)

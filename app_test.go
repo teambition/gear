@@ -575,15 +575,15 @@ func TestGearWrapHandlerFunc(t *testing.T) {
 }
 
 type WriterTest struct {
-	res http.ResponseWriter
+	rw http.ResponseWriter
 }
 
 func (wt *WriterTest) WriteHeader(code int) {
-	wt.res.WriteHeader(code)
+	wt.rw.WriteHeader(code)
 }
 
 func (wt *WriterTest) Header() http.Header {
-	return wt.res.Header()
+	return wt.rw.Header()
 }
 
 func (wt *WriterTest) Write(b []byte) (int, error) {
@@ -597,7 +597,10 @@ func TestGearWrapResponseWriter(t *testing.T) {
 	var buf bytes.Buffer
 	app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
 	app.Use(func(ctx *Context) error {
-		ctx.Res.res = &WriterTest{ctx.Res.res}
+		ctx.Res.rw = &WriterTest{ctx.Res.rw}
+
+		ch := ctx.Res.CloseNotify()
+		assert.NotNil(ch)
 		return ctx.End(200, []byte("OK"))
 	})
 

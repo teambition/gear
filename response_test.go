@@ -156,6 +156,69 @@ func TestGearResponse(t *testing.T) {
 	})
 }
 
+func TestGearResponseFlusher(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	app.Use(func(ctx *Context) error {
+		ctx.End(200, []byte("OK"))
+		ctx.Res.Flush()
+		return nil
+	})
+
+	srv := app.Start()
+	defer srv.Close()
+
+	res, err := RequestBy("GET", "http://"+srv.Addr().String())
+	assert.Nil(err)
+	assert.Equal(200, res.StatusCode)
+	res.Body.Close()
+}
+
+func TestGearResponseHijacker(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	app.Use(func(ctx *Context) error {
+		ctx.End(204)
+
+		conn, rw, err := ctx.Res.Hijack()
+		assert.NotNil(conn)
+		assert.NotNil(rw)
+		assert.Nil(err)
+		conn.Close()
+		return nil
+	})
+
+	srv := app.Start()
+	defer srv.Close()
+
+	res, err := RequestBy("GET", "http://"+srv.Addr().String())
+	assert.Nil(err)
+	assert.Equal(204, res.StatusCode)
+	res.Body.Close()
+}
+
+func TestGearResponseCloseNotifier(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	app.Use(func(ctx *Context) error {
+		ctx.End(204)
+		ch := ctx.Res.CloseNotify()
+		assert.NotNil(ch)
+		return nil
+	})
+
+	srv := app.Start()
+	defer srv.Close()
+
+	res, err := RequestBy("GET", "http://"+srv.Addr().String())
+	assert.Nil(err)
+	assert.Equal(204, res.StatusCode)
+	res.Body.Close()
+}
+
 func TestGearCheckStatus(t *testing.T) {
 	assert := assert.New(t)
 	assert.False(IsStatusCode(1))
