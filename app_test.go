@@ -218,7 +218,7 @@ func TestGearError(t *testing.T) {
 		assert.Equal(504, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
 		assert.Equal("Some error", PickRes(res.Text()).(string))
-		assert.Equal("TEST: {Code: 504, Msg: Some error, Meta: Some error}\n", buf.String())
+		assert.Equal("TEST: {Code:504, Msg:Some error}\n", buf.String())
 		res.Body.Close()
 	})
 
@@ -364,37 +364,47 @@ func TestGearParseError(t *testing.T) {
 	})
 
 	t.Run("textproto.Error", func(t *testing.T) {
+		assert := assert.New(t)
+
 		err1 := &textproto.Error{Code: 400, Msg: "test"}
 		err := ParseError(err1)
-		EqualPtr(t, err1, err.Meta)
+		assert.Equal(err.Code, 400)
+		assert.Nil(err.Meta)
 
 		err2 := func() error {
 			return &textproto.Error{Code: 400, Msg: "test"}
 		}()
 		err = ParseError(err2)
-		EqualPtr(t, err2, err.Meta)
+		assert.Equal(err.Code, 400)
+		assert.Nil(err.Meta)
 	})
 
 	t.Run("custom HTTPError", func(t *testing.T) {
+		assert := assert.New(t)
+
 		err1 := &testHTTPError1{c: 400, m: "test"}
 		err := ParseError(err1)
-		EqualPtr(t, err1, err.Meta)
+		assert.Equal(err.Code, 400)
+		assert.Nil(err.Meta)
 
 		err2 := func() error {
 			return &testHTTPError1{c: 400, m: "test"}
 		}()
 		err = ParseError(err2)
-		EqualPtr(t, err2, err.Meta)
+		assert.Equal(err.Code, 400)
+		assert.Nil(err.Meta)
 
 		err3 := &testHTTPError2{c: 400, m: "test"}
 		err = ParseError(err3)
-		EqualPtr(t, err3, err.Meta)
+		assert.Equal(err.Code, 400)
+		assert.Nil(err.Meta)
 
 		err4 := func() error {
 			return &testHTTPError2{c: 400, m: "test"}
 		}()
 		err = ParseError(err4)
-		EqualPtr(t, err4, err.Meta)
+		assert.Equal(err.Code, 400)
+		assert.Nil(err.Meta)
 	})
 
 	t.Run("error", func(t *testing.T) {
@@ -402,21 +412,21 @@ func TestGearParseError(t *testing.T) {
 
 		err1 := errors.New("test")
 		err := ParseError(err1)
-		EqualPtr(t, err1, err.Meta)
+		assert.Nil(err.Meta)
 		assert.Equal(err.Code, 500)
 
 		err2 := func() error {
 			return errors.New("test")
 		}()
 		err = ParseError(err2, 0)
-		EqualPtr(t, err2, err.Meta)
+		assert.Nil(err.Meta)
 		assert.Equal(err.Code, 500)
 
 		err3 := func() error {
 			return errors.New("test")
 		}()
 		err = ParseError(err3, 400)
-		EqualPtr(t, err3, err.Meta)
+		assert.Nil(err.Meta)
 		assert.Equal(err.Code, 400)
 	})
 }

@@ -69,12 +69,14 @@ func (err *Error) Error() string {
 
 // String implemented fmt.Stringer interface.
 func (err *Error) String() string {
-	meta := err.Meta
-	switch meta.(type) {
-	case []byte:
-		meta = string(meta.([]byte))
+	if meta := err.Meta; meta != nil {
+		switch meta.(type) {
+		case []byte:
+			meta = string(meta.([]byte))
+		}
+		return fmt.Sprintf("{Code:%3d, Msg:%s, Meta:%v}", err.Code, err.Msg, meta)
 	}
-	return fmt.Sprintf("{Code: %3d, Msg: %s, Meta: %v}", err.Code, err.Msg, meta)
+	return fmt.Sprintf("{Code:%3d, Msg:%s}", err.Code, err.Msg)
 }
 
 // Middleware defines a function to process as middleware.
@@ -94,12 +96,12 @@ func ParseError(e error, code ...int) *Error {
 			err = e.(*Error)
 		case *textproto.Error:
 			_e := e.(*textproto.Error)
-			err = &Error{_e.Code, _e.Msg, e}
+			err = &Error{_e.Code, _e.Msg, nil}
 		case HTTPError:
 			_e := e.(HTTPError)
-			err = &Error{_e.Status(), _e.Error(), e}
+			err = &Error{_e.Status(), _e.Error(), nil}
 		default:
-			err = &Error{500, e.Error(), e}
+			err = &Error{500, e.Error(), nil}
 			if len(code) > 0 && code[0] > 0 {
 				err.Code = code[0]
 			}
@@ -314,7 +316,7 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if isNil(err) {
 		// if context canceled abnormally...
 		if err = ctx.Err(); err != nil {
-			err = &Error{http.StatusGatewayTimeout, err.Error(), err}
+			err = &Error{http.StatusGatewayTimeout, err.Error(), nil}
 		}
 	}
 
