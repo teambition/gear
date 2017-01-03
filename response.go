@@ -87,11 +87,6 @@ func (r *Response) WriteHeader(code int) {
 		r.ctx.afterHooks[i]()
 	}
 
-	// check Body and Content Length
-	if r.bodyLength > 0 && r.Get(HeaderContentLength) == "" {
-		r.Set(HeaderContentLength, strconv.Itoa(r.bodyLength))
-	}
-
 	// check status, r.status maybe changed in afterHooks
 	if !IsStatusCode(r.status) {
 		if r.bodyLength > 0 {
@@ -101,6 +96,13 @@ func (r *Response) WriteHeader(code int) {
 			// The request was directed at a server that is not able to produce a response.
 			r.status = 421
 		}
+	} else if isEmptyStatus(r.status) {
+		r.bodyLength = 0
+	}
+
+	// check and set Content-Length
+	if r.bodyLength > 0 && r.Get(HeaderContentLength) == "" {
+		r.Set(HeaderContentLength, strconv.Itoa(r.bodyLength))
 	}
 	r.rw.WriteHeader(r.status)
 	// execute "end hooks" in LIFO order after Response.WriteHeader
@@ -141,6 +143,7 @@ func (r *Response) respond(status int, body []byte) (err error) {
 	if r.responded.swapTrue() && !r.wroteHeader.isTrue() {
 		r.bodyLength = len(body)
 		r.WriteHeader(status)
+		// bodyLength will reset to 0 with empty status
 		if r.bodyLength > 0 {
 			_, err = r.Write(body)
 		}
@@ -176,15 +179,6 @@ func isRedirectStatus(status int) bool {
 func isEmptyStatus(status int) bool {
 	switch status {
 	case 204, 205, 304:
-		return true
-	default:
-		return false
-	}
-}
-
-func isRetryStatus(status int) bool {
-	switch status {
-	case 502, 503, 504:
 		return true
 	default:
 		return false

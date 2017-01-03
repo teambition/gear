@@ -109,6 +109,19 @@ func TestGearResponse(t *testing.T) {
 		assert.Equal("Hello", CtxBody(ctx))
 	})
 
+	t.Run("respond with empty status", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+		ctx.Res.respond(204, []byte("Hello"))
+
+		assert.Equal(true, ctx.Res.HeaderWrote())
+		assert.Equal(204, ctx.Status())
+		assert.Equal(204, CtxResult(ctx).StatusCode)
+		assert.Equal("", CtxResult(ctx).Header.Get(HeaderContentLength))
+		assert.Equal("", CtxBody(ctx))
+	})
+
 	t.Run("WriteHeader should only run once", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -229,7 +242,4 @@ func TestGearCheckStatus(t *testing.T) {
 
 	assert.False(isEmptyStatus(200))
 	assert.True(isEmptyStatus(204))
-
-	assert.False(isRetryStatus(501))
-	assert.True(isRetryStatus(502))
 }
