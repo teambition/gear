@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"io"
 	"net/http"
-	"strings"
 )
 
 // Compressible interface is use to enable compress response context.
@@ -54,15 +53,7 @@ type compressWriter struct {
 }
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding
-func newCompress(res *Response, c Compressible, acceptEncoding string) *compressWriter {
-	// should improve with content negotiation
-	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
-	encoding := ""
-	if strings.Contains(acceptEncoding, "gzip") {
-		encoding = "gzip"
-	} else if strings.Contains(acceptEncoding, "deflate") {
-		encoding = "deflate"
-	}
+func newCompress(res *Response, c Compressible, encoding string) *compressWriter {
 	switch encoding {
 	case "gzip", "deflate":
 		return &compressWriter{

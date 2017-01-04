@@ -97,4 +97,4 @@ Learn more at https://github.com/teambition/gear
 package gear
 
 // Version is Gear's version
-const Version = "v0.20.2"
+const Version = "v0.21.0"

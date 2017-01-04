@@ -152,6 +152,28 @@ func TestGearContextTiming(t *testing.T) {
 		assert.Equal(`["hello"]`, PickRes(res.Text()).(string))
 	})
 
+	t.Run("when fn panic", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			res, err := ctx.Timing(time.Millisecond*15, func() interface{} {
+				panic("some error")
+			})
+			assert.NotNil(err)
+			assert.Nil(res)
+			return err
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal(`Timing panic: "some error"`, PickRes(res.Text()).(string))
+	})
+
 	t.Run("when timeout", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -350,6 +372,49 @@ func TestGearContextIP(t *testing.T) {
 	res, err = DefaultClientDo(req)
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
+}
+
+func TestGearContextAccept(t *testing.T) {
+	t.Run("ctx.AcceptType", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+		ctx.Req.Header.Set(HeaderAccept, "application/*;q=0.2, image/jpeg;q=0.8, text/html, text/plain")
+		assert.Equal("text/html", ctx.AcceptType())
+		assert.Equal("text/plain", ctx.AcceptType("text/plain", "application/json"))
+		assert.Equal("", ctx.AcceptType("image/png", "image/tiff"))
+	})
+
+	t.Run("ctx.AcceptLanguage", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+		ctx.Req.Header.Set(HeaderAcceptLanguage, "en;q=0.8, es, pt")
+		assert.Equal("es", ctx.AcceptLanguage())
+		assert.Equal("pt", ctx.AcceptLanguage("en", "pt"))
+	})
+
+	t.Run("ctx.AcceptEncoding", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+		ctx.Req.Header.Set(HeaderAcceptEncoding, "gzip, compress;q=0.2")
+		assert.Equal("gzip", ctx.AcceptEncoding())
+		assert.Equal("compress", ctx.AcceptEncoding("deflate", "compress"))
+	})
+
+	t.Run("ctx.AcceptCharset", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+		ctx.Req.Header.Set(HeaderAcceptCharset, "utf-8, iso-8859-1;q=0.2, utf-7;q=0.5")
+		assert.Equal("utf-8", ctx.AcceptCharset())
+		assert.Equal("utf-8", ctx.AcceptCharset("iso-8859-1", "utf-8"))
+	})
 }
 
 func TestGearContextParam(t *testing.T) {

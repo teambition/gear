@@ -117,11 +117,11 @@ func TestGearResponseCompress(t *testing.T) {
 			assert.Equal(body, content)
 		})
 
-		t.Run("when no Accept-Encoding", func(t *testing.T) {
+		t.Run("when Non-support Accept-Encoding", func(t *testing.T) {
 			assert := assert.New(t)
 
 			req, _ := NewRequst("GET", host+"/full")
-			req.Header.Set("Accept-Encoding", "")
+			req.Header.Set("Accept-Encoding", "compress, br")
 
 			res, err := DefaultClientDo(req)
 			assert.Nil(err)

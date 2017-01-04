@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/go-http-utils/negotiator"
 )
 
 type contextKey int
@@ -116,18 +118,27 @@ func (ctx *Context) WithValue(key, val interface{}) context.Context {
 
 // Timing runs fn with the given time limit. If a call runs for longer than its time limit,
 // it will return context.DeadlineExceeded as error, otherwise return fn's result.
-func (ctx *Context) Timing(dt time.Duration, fn func() interface{}) (interface{}, error) {
+func (ctx *Context) Timing(dt time.Duration, fn func() interface{}) (res interface{}, err error) {
 	ct, cancel := ctx.WithTimeout(dt)
 	defer cancel()
 
-	ch := make(chan interface{}, 1)
-	go func() { ch <- fn() }()
+	ch := make(chan interface{})
+	go func() {
+		// recover the fn call
+		defer func() {
+			if e := recover(); e != nil {
+				err = fmt.Errorf("Timing panic: %#v", e)
+			}
+			close(ch)
+		}()
+		ch <- fn()
+	}()
 	select {
 	case <-ct.Done():
-		return nil, ct.Err()
-	case res := <-ch:
-		return res, nil
+		err = ct.Err()
+	case res = <-ch:
 	}
+	return
 }
 
 // Any returns the value on this ctx by key. If key is instance of Any and
@@ -199,6 +210,30 @@ func (ctx *Context) IP() net.IP {
 	return net.ParseIP(ra)
 }
 
+// AcceptType returns the most preferred content type from the HTTP Accept header.
+// If nothing accepted, then empty string is returned.
+func (ctx *Context) AcceptType(preferred ...string) string {
+	return negotiator.New(ctx.Req.Header).Type(preferred...)
+}
+
+// AcceptLanguage returns the most preferred language from the HTTP Accept-Language header.
+// If nothing accepted, then empty string is returned.
+func (ctx *Context) AcceptLanguage(preferred ...string) string {
+	return negotiator.New(ctx.Req.Header).Language(preferred...)
+}
+
+// AcceptEncoding returns the most preferred encoding from the HTTP Accept-Encoding header.
+// If nothing accepted, then empty string is returned.
+func (ctx *Context) AcceptEncoding(preferred ...string) string {
+	return negotiator.New(ctx.Req.Header).Encoding(preferred...)
+}
+
+// AcceptCharset returns the most preferred charset from the HTTP Accept-Charset header.
+// If nothing accepted, then empty string is returned.
+func (ctx *Context) AcceptCharset(preferred ...string) string {
+	return negotiator.New(ctx.Req.Header).Charset(preferred...)
+}
+
 // Param returns path parameter by name.
 func (ctx *Context) Param(key string) (val string) {
 	if res, _ := ctx.Any(paramsKey); res != nil {
@@ -248,7 +283,7 @@ func (ctx *Context) Set(key, value string) {
 	ctx.Res.Set(key, value)
 }
 
-// Status set a status code to response
+// Status set a status code (optional) to the response, returns the new status code.
 func (ctx *Context) Status(code ...int) int {
 	if len(code) > 0 && IsStatusCode(code[0]) {
 		ctx.Res.status = code[0]
@@ -256,7 +291,7 @@ func (ctx *Context) Status(code ...int) int {
 	return ctx.Res.status
 }
 
-// Type set a content type to response
+// Type set a content type (optional) to the response, returns the new content type.
 func (ctx *Context) Type(str ...string) string {
 	if len(str) > 0 {
 		ctx.Res.Set(HeaderContentType, str[0])
@@ -466,7 +501,7 @@ func (ctx *Context) salvage(err *Error) {
 
 func (ctx *Context) handleCompress() (cw *compressWriter) {
 	if ctx.app.compress != nil && ctx.Method != http.MethodHead && ctx.Method != http.MethodOptions {
-		if cw = newCompress(ctx.Res, ctx.app.compress, ctx.Get(HeaderAcceptEncoding)); cw != nil {
+		if cw = newCompress(ctx.Res, ctx.app.compress, ctx.AcceptEncoding("gzip", "deflate")); cw != nil {
 			ctx.Res.rw = cw // override with http.ResponseWriter wrapper.
 		}
 	}
