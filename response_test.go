@@ -3,6 +3,7 @@ package gear
 import (
 	"net/http"
 	"regexp"
+	"strings"
 	"sync"
 	"testing"
 
@@ -21,6 +22,21 @@ func TestGearResponse(t *testing.T) {
 
 		res.Set("Set-Cookie", "foo=bar; Path=/; HttpOnly")
 		assert.Equal(res.Get("Set-Cookie"), header.Get("Set-Cookie"))
+
+		res.Del("Set-Cookie")
+		assert.Equal("", res.Get("Set-Cookie"))
+
+		assert.Equal("", res.Get("Vary"))
+		res.Vary("Accept-Encoding")
+		assert.Equal("Accept-Encoding", res.Get("Vary"))
+
+		res.Vary("Accept-Language")
+		assert.Equal("Accept-Encoding, Accept-Language", strings.Join(res.Header()["Vary"], ", "))
+
+		res.Vary("*")
+		assert.Equal("*", res.Get("Vary"))
+		res.Vary("Accept-Language")
+		assert.Equal("*", strings.Join(res.Header()["Vary"], ", "))
 	})
 
 	t.Run("ResetHeader", func(t *testing.T) {

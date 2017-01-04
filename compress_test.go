@@ -101,7 +101,7 @@ func TestGearResponseCompress(t *testing.T) {
 			assert := assert.New(t)
 
 			req, _ := NewRequst("GET", host+"/full")
-			req.Header.Set("Accept-Encoding", "deflate,gzip")
+			req.Header.Set("Accept-Encoding", "deflate;q=1.0, br;q=0.8, *;q=0.1")
 			res, err := DefaultClientDo(req)
 			assert.Nil(err)
 			assert.True(res.OK())

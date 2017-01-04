@@ -46,23 +46,30 @@ func (d *DefaultCompress) Compressible(contentType string, contentLength int) bo
 
 // http.ResponseWriter wrapper
 type compressWriter struct {
-	compress   Compressible
-	encoding   string
-	writer     io.WriteCloser
-	rw         http.ResponseWriter
-	bodyLength *int
+	compress Compressible
+	encoding string
+	writer   io.WriteCloser
+	res      *Response
+	rw       http.ResponseWriter // underlying http.ResponseWriter
 }
 
+// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding
 func newCompress(res *Response, c Compressible, acceptEncoding string) *compressWriter {
-	encodings := strings.Split(acceptEncoding, ",")
-	encoding := strings.TrimSpace(encodings[0])
+	// should improve with content negotiation
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
+	encoding := ""
+	if strings.Contains(acceptEncoding, "gzip") {
+		encoding = "gzip"
+	} else if strings.Contains(acceptEncoding, "deflate") {
+		encoding = "deflate"
+	}
 	switch encoding {
 	case "gzip", "deflate":
 		return &compressWriter{
-			compress:   c,
-			rw:         res.rw,
-			encoding:   encoding,
-			bodyLength: &res.bodyLength,
+			compress: c,
+			res:      res,
+			rw:       res.rw,
+			encoding: encoding,
 		}
 	default:
 		return nil
@@ -72,13 +79,8 @@ func newCompress(res *Response, c Compressible, acceptEncoding string) *compress
 func (cw *compressWriter) WriteHeader(code int) {
 	defer cw.rw.WriteHeader(code)
 
-	switch code {
-	case http.StatusNoContent, http.StatusResetContent, http.StatusNotModified:
-		return
-	}
-
-	header := cw.Header()
-	if cw.compress.Compressible(header.Get(HeaderContentType), *cw.bodyLength) {
+	if !isEmptyStatus(code) &&
+		cw.compress.Compressible(cw.res.Get(HeaderContentType), cw.res.bodyLength) {
 		var w io.WriteCloser
 
 		switch cw.encoding {
@@ -90,9 +92,9 @@ func (cw *compressWriter) WriteHeader(code int) {
 
 		if w != nil {
 			cw.writer = w
-			header.Set(HeaderVary, HeaderAcceptEncoding)
-			header.Set(HeaderContentEncoding, cw.encoding)
-			header.Del(HeaderContentLength)
+			cw.res.Del(HeaderContentLength)
+			cw.res.Set(HeaderContentEncoding, cw.encoding)
+			cw.res.Vary(HeaderAcceptEncoding)
 		}
 	}
 }

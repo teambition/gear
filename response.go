@@ -37,6 +37,23 @@ func (r *Response) Set(key, value string) {
 	r.Header().Set(key, value)
 }
 
+// Del deletes the header entries associated with key.
+func (r *Response) Del(key string) {
+	r.Header().Del(key)
+}
+
+// Vary manipulate the HTTP Vary header.
+// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Vary
+func (r *Response) Vary(field string) {
+	if field != "" && r.Get(HeaderVary) != "*" {
+		if field == "*" {
+			r.Header().Set(HeaderVary, field)
+		} else {
+			r.Header().Add(HeaderVary, field)
+		}
+	}
+}
+
 // ResetHeader reset headers. If keepSubset is true,
 // header matching `(?i)^(accept|allow|retry-after|warning|access-control-allow-)` will be keep
 func (r *Response) ResetHeader(filterReg ...*regexp.Regexp) {

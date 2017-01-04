@@ -64,6 +64,11 @@ func TestGearLog(t *testing.T) {
 
 		log := Log{"value": 1}
 		assert.Equal(`Log{value:1}`, log.String())
+
+		log = Log{"key": "test", "value": 1}
+		assert.True(strings.Contains(log.String(), `key:"test"`))
+		assert.True(strings.Contains(log.String(), `value:1`))
+		assert.True(strings.Contains(log.String(), `, `))
 	})
 }
 
