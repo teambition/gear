@@ -1,6 +1,8 @@
 package logging
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -14,6 +16,29 @@ import (
 
 // Log records key-value pairs for structured logging.
 type Log map[string]interface{}
+
+// JSON try to marshal the structured log with json.Marshal.
+func (l Log) JSON() (string, error) {
+	res, err := json.Marshal(l)
+	if err == nil {
+		return string(res), nil
+	}
+	return "", err
+}
+
+// String implemented fmt.Stringer interface, returns a Go-syntax string.
+func (l Log) String() string {
+	count := len(l)
+	buf := bytes.NewBufferString("Log{")
+	for key, value := range l {
+		if count--; count == 0 {
+			fmt.Fprintf(buf, "%s:%#v}", key, value)
+		} else {
+			fmt.Fprintf(buf, "%s:%#v, ", key, value)
+		}
+	}
+	return buf.String()
+}
 
 // Reset delete all key-value on the log. Empty log will not be consumed.
 //
@@ -112,12 +137,11 @@ func New(w io.Writer) *Logger {
 //  	end := time.Now()
 //  	log["Time"] = end.Sub(log["Start"].(time.Time)) / 1e6
 //  	delete(log, "Start")
-//  	switch res, err := json.Marshal(log); err == nil {
-//  	case true:
-//  		logger.Output(end, InfoLevel, string(res))
-//  	default:
-//  		logger.Output(end, WarningLevel, err.Error())
-//  	}
+// 		if res, err := log.JSON(); err == nil {
+// 			logger.Output(end, InfoLevel, res)
+// 		} else {
+// 			logger.Output(end, WarningLevel, log.String())
+// 		}
 //  })
 //
 //  app.UseHandler(logger)

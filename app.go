@@ -67,24 +67,24 @@ func (err *Error) Error() string {
 	return err.Msg
 }
 
-// String implemented fmt.Stringer interface.
+// String implemented fmt.Stringer interface, returns a Go-syntax string.
 func (err *Error) String() string {
 	if meta := err.Meta; meta != nil {
 		switch meta.(type) {
 		case []byte:
 			meta = string(meta.([]byte))
 		}
-		return fmt.Sprintf("{Code:%3d, Msg:%s, Meta:%v}", err.Code, err.Msg, meta)
+		return fmt.Sprintf(`Error{Code:%3d, Msg:"%s", Meta:%#v}`, err.Code, err.Msg, meta)
 	}
-	return fmt.Sprintf("{Code:%3d, Msg:%s}", err.Code, err.Msg)
+	return fmt.Sprintf(`Error{Code:%3d, Msg:"%s"}`, err.Code, err.Msg)
 }
 
 // Middleware defines a function to process as middleware.
 type Middleware func(*Context) error
 
-// NewAppError create a error instance with "[App] " prefix.
+// NewAppError create a error instance with "Gear: " prefix.
 func NewAppError(err string) error {
-	return fmt.Errorf("[App] %s", err)
+	return fmt.Errorf("Gear: %s", err)
 }
 
 // ParseError parse a error, textproto.Error or HTTPError to *Error
@@ -188,37 +188,37 @@ func (app *App) Set(setting string, val interface{}) {
 	switch setting {
 	case "AppOnError":
 		if onerror, ok := val.(OnError); !ok {
-			panic("AppOnError setting must implemented gear.OnError interface")
+			panic(NewAppError("AppOnError setting must implemented gear.OnError interface"))
 		} else {
 			app.onerror = onerror
 		}
 	case "AppRenderer":
 		if renderer, ok := val.(Renderer); !ok {
-			panic("AppRenderer setting must implemented gear.Renderer interface")
+			panic(NewAppError("AppRenderer setting must implemented gear.Renderer interface"))
 		} else {
 			app.renderer = renderer
 		}
 	case "AppLogger":
 		if logger, ok := val.(*log.Logger); !ok {
-			panic("AppLogger setting must be *log.Logger instance")
+			panic(NewAppError("AppLogger setting must be *log.Logger instance"))
 		} else {
 			app.logger = logger
 		}
 	case "AppCompress":
 		if compress, ok := val.(Compressible); !ok {
-			panic("AppCompress setting must implemented gear.Compressible interface")
+			panic(NewAppError("AppCompress setting must implemented gear.Compressible interface"))
 		} else {
 			app.compress = compress
 		}
 	case "AppTimeout":
 		if timeout, ok := val.(time.Duration); !ok {
-			panic("AppTimeout setting must be time.Duration instance")
+			panic(NewAppError("AppTimeout setting must be time.Duration instance"))
 		} else {
 			app.timeout = timeout
 		}
 	case "AppEnv":
 		if _, ok := val.(string); !ok {
-			panic("AppEnv setting must be string")
+			panic(NewAppError("AppEnv setting must be string"))
 		}
 	}
 	app.settings[setting] = val

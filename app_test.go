@@ -218,7 +218,7 @@ func TestGearError(t *testing.T) {
 		assert.Equal(504, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
 		assert.Equal("Some error", PickRes(res.Text()).(string))
-		assert.Equal("TEST: {Code:504, Msg:Some error}\n", buf.String())
+		assert.Equal("TEST: Error{Code:504, Msg:\"Some error\"}\n", buf.String())
 		res.Body.Close()
 	})
 

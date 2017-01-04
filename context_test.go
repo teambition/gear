@@ -270,7 +270,7 @@ func TestGearContextAny(t *testing.T) {
 		ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
 		val, err := ctx.Any(struct{}{})
 		assert.Nil(val)
-		assert.Equal("[App] non-existent key", err.Error())
+		assert.Equal("Gear: non-existent key", err.Error())
 
 		ctx.SetAny(struct{}{}, true)
 		val, err = ctx.Any(struct{}{})
@@ -706,7 +706,7 @@ func TestGearContextRender(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.True(strings.Contains(PickRes(res.Text()).(string), "[App] renderer not registered"))
+		assert.True(strings.Contains(PickRes(res.Text()).(string), "Gear: renderer not registered"))
 	})
 
 	t.Run("should work", func(t *testing.T) {
@@ -983,7 +983,7 @@ func TestGearContextError(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(0, count)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal("[App] nil-error", PickRes(res.Text()).(string))
+		assert.Equal("Gear: nil-error", PickRes(res.Text()).(string))
 	})
 }
 

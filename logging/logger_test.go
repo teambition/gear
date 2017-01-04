@@ -2,7 +2,6 @@ package logging
 
 import (
 	"bytes"
-	"encoding/json"
 	"log"
 	"net/http"
 	"reflect"
@@ -11,6 +10,8 @@ import (
 	"time"
 
 	"strings"
+
+	"math"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/teambition/gear"
@@ -41,6 +42,29 @@ func NewRequst(method, url string) (*http.Request, error) {
 func DefaultClientDo(req *http.Request) (*GearResponse, error) {
 	res, err := DefaultClient.Do(req)
 	return &GearResponse{res}, err
+}
+
+func TestGearLog(t *testing.T) {
+	t.Run("Log.JSON()", func(t *testing.T) {
+		assert := assert.New(t)
+
+		log := Log{"value": 1}
+		str, err := log.JSON()
+		assert.Nil(err)
+		assert.Equal(`{"value":1}`, str)
+
+		log = Log{"value": math.NaN}
+		str, err = log.JSON()
+		assert.NotNil(err)
+		assert.Equal("", str)
+	})
+
+	t.Run("Log.String()", func(t *testing.T) {
+		assert := assert.New(t)
+
+		log := Log{"value": 1}
+		assert.Equal(`Log{value:1}`, log.String())
+	})
 }
 
 func TestGearLogger(t *testing.T) {
@@ -286,11 +310,10 @@ func TestGearLoggerMiddleware(t *testing.T) {
 			end := time.Now()
 			log["Time"] = end.Sub(log["Start"].(time.Time)) / 1e6
 			delete(log, "Start")
-			switch res, err := json.Marshal(log); err == nil {
-			case true:
-				logger.Output(end, InfoLevel, string(res))
-			default:
-				logger.Output(end, WarningLevel, err.Error())
+			if res, err := log.JSON(); err == nil {
+				logger.Output(end, InfoLevel, res)
+			} else {
+				logger.Output(end, WarningLevel, log.String())
 			}
 		})
 
@@ -344,11 +367,10 @@ func TestGearLoggerMiddleware(t *testing.T) {
 			end := time.Now()
 			log["Time"] = end.Sub(log["Start"].(time.Time)) / 1e6
 			delete(log, "Start")
-			switch res, err := json.Marshal(log); err == nil {
-			case true:
-				logger.Output(end, InfoLevel, string(res))
-			default:
-				logger.Output(end, WarningLevel, err.Error())
+			if res, err := log.JSON(); err == nil {
+				logger.Output(end, InfoLevel, res)
+			} else {
+				logger.Output(end, WarningLevel, log.String())
 			}
 		})
 
