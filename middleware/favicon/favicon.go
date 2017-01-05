@@ -60,7 +60,7 @@ func NewWithIco(file []byte, modTime ...time.Time) gear.Middleware {
 	}
 
 	return func(ctx *gear.Context) (err error) {
-		if !strings.HasPrefix(ctx.Path, "/favicon.ico") {
+		if ctx.Path != "/favicon.ico" {
 			return
 		}
 		if ctx.Method != http.MethodGet && ctx.Method != http.MethodHead {
