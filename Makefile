@@ -3,6 +3,7 @@ test:
 	go test --race ./logging
 	go test --race ./middleware/favicon
 	go test --race ./middleware/static
+	go test --race ./middleware/cors
 
 bench:
 	go test -bench=.
@@ -13,6 +14,7 @@ cover:
 	go test -coverprofile=logging.coverprofile ./logging
 	go test -coverprofile=favicon.coverprofile ./middleware/favicon
 	go test -coverprofile=static.coverprofile ./middleware/static
+	go test -coverprofile=cors.coverprofile ./middleware/cors
 	gover
 	go tool cover -html=gover.coverprofile
 
