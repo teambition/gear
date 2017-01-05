@@ -118,7 +118,7 @@ func (ctx *Context) WithValue(key, val interface{}) context.Context {
 
 // Timing runs fn with the given time limit. If a call runs for longer than its time limit,
 // it will return context.DeadlineExceeded as error, otherwise return fn's result.
-func (ctx *Context) Timing(dt time.Duration, fn func() interface{}) (res interface{}, err error) {
+func (ctx *Context) Timing(dt time.Duration, fn func(context.Context) interface{}) (res interface{}, err error) {
 	ct, cancel := ctx.WithTimeout(dt)
 	defer cancel()
 
@@ -131,7 +131,7 @@ func (ctx *Context) Timing(dt time.Duration, fn func() interface{}) (res interfa
 			}
 			close(ch)
 		}()
-		ch <- fn()
+		ch <- fn(ct)
 	}()
 	select {
 	case <-ct.Done():

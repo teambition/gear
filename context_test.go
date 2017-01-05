@@ -134,7 +134,11 @@ func TestGearContextTiming(t *testing.T) {
 
 		app := New()
 		app.Use(func(ctx *Context) error {
-			res, err := ctx.Timing(time.Millisecond*15, func() interface{} {
+			res, err := ctx.Timing(time.Millisecond*15, func(c context.Context) interface{} {
+				go func() {
+					<-c.Done()
+					assert.Equal(context.Canceled, c.Err())
+				}()
 				time.Sleep(time.Millisecond * 10)
 				return data
 			})
@@ -157,7 +161,11 @@ func TestGearContextTiming(t *testing.T) {
 
 		app := New()
 		app.Use(func(ctx *Context) error {
-			res, err := ctx.Timing(time.Millisecond*15, func() interface{} {
+			res, err := ctx.Timing(time.Millisecond*15, func(c context.Context) interface{} {
+				go func() {
+					<-c.Done()
+					assert.Equal(context.Canceled, c.Err())
+				}()
 				panic("some error")
 			})
 			assert.NotNil(err)
@@ -179,7 +187,11 @@ func TestGearContextTiming(t *testing.T) {
 
 		app := New()
 		app.Use(func(ctx *Context) error {
-			res, err := ctx.Timing(time.Millisecond*10, func() interface{} {
+			res, err := ctx.Timing(time.Millisecond*10, func(c context.Context) interface{} {
+				go func() {
+					<-c.Done()
+					assert.Equal(context.DeadlineExceeded, c.Err())
+				}()
 				time.Sleep(time.Millisecond * 15)
 				return data
 			})
@@ -204,7 +216,11 @@ func TestGearContextTiming(t *testing.T) {
 
 		app.Set("AppTimeout", time.Millisecond*10)
 		app.Use(func(ctx *Context) error {
-			res, err := ctx.Timing(time.Millisecond*20, func() interface{} {
+			res, err := ctx.Timing(time.Millisecond*20, func(c context.Context) interface{} {
+				go func() {
+					<-c.Done()
+					assert.Equal(context.DeadlineExceeded, c.Err())
+				}()
 				time.Sleep(time.Millisecond * 15)
 				return data
 			})
