@@ -1,9 +1,9 @@
 test:
 	go test --race
 	go test --race ./logging
+	go test --race ./middleware/cors
 	go test --race ./middleware/favicon
 	go test --race ./middleware/static
-	go test --race ./middleware/cors
 
 bench:
 	go test -bench=.
@@ -12,9 +12,9 @@ cover:
 	rm -f *.coverprofile
 	go test -coverprofile=gear.coverprofile
 	go test -coverprofile=logging.coverprofile ./logging
+	go test -coverprofile=cors.coverprofile ./middleware/cors
 	go test -coverprofile=favicon.coverprofile ./middleware/favicon
 	go test -coverprofile=static.coverprofile ./middleware/static
-	go test -coverprofile=cors.coverprofile ./middleware/cors
 	gover
 	go tool cover -html=gover.coverprofile
 

@@ -591,7 +591,8 @@ func TestGearRouter(t *testing.T) {
 
 		ctx := CtxTest(app, "GET", "/abc//efg", nil)
 		err = r.Serve(ctx)
-		assert.Equal(501, err.(HTTPError).Status())
+		assert.Nil(err)
+		assert.Equal(501, ctx.Res.status)
 	})
 
 	t.Run("router with TrailingSlashRedirect = true (defalut)", func(t *testing.T) {
@@ -736,7 +737,8 @@ func TestGearRouter(t *testing.T) {
 
 		ctx := CtxTest(app, "GET", "/abc/efg/", nil)
 		err = r.Serve(ctx)
-		assert.Equal(501, err.(HTTPError).Status())
+		assert.Nil(err)
+		assert.Equal(501, ctx.Res.status)
 
 		res, err = RequestBy("PUT", host+"/abc/xyz/")
 		assert.Nil(err)
@@ -749,8 +751,8 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 
 		ctx = CtxTest(app, "PUT", "/abc/xyz", nil)
-		err = r.Serve(ctx)
-		assert.Equal(501, err.(HTTPError).Status())
+		assert.Nil(r.Serve(ctx))
+		assert.Equal(501, ctx.Res.status)
 	})
 
 	t.Run("when router middleware ended early", func(t *testing.T) {

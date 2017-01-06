@@ -24,7 +24,7 @@ type Renderer interface {
 	Render(ctx *Context, w io.Writer, name string, data interface{}) error
 }
 
-// OnError interface is use to deal with ctx error.
+// OnError interface is use to deal with errors returned by middlewares.
 type OnError interface {
 	OnError(ctx *Context, err error) *Error
 }

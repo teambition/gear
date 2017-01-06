@@ -426,7 +426,8 @@ func (ctx *Context) Attachment(name string, content io.ReadSeeker, inline ...boo
 	return
 }
 
-// Redirect redirects the request with status code. It is a wrap of http.Redirect.
+// Redirect redirects the request with status code 302.
+// You can use other status code with ctx.Status method, It is a wrap of http.Redirect.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
@@ -441,13 +442,15 @@ func (ctx *Context) Redirect(url string) (err error) {
 }
 
 // Error send a error message with status code to response.
+// It will not reset response headers and not use app.OnError hook
 // It will end the ctx. The middlewares after current middleware and "after hooks" will not run.
 // "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) Error(e error) (err error) {
 	ctx.cleanAfterHooks() // clear afterHooks when any error
 	if e := ParseError(e); e != nil {
-		ctx.Type(MIMETextPlainCharsetUTF8)
+		ctx.Set(HeaderContentType, MIMETextPlainCharsetUTF8)
+		ctx.Set(HeaderXContentTypeOptions, "nosniff")
 		return ctx.End(e.Status(), []byte(e.Error()))
 	}
 	return &Error{Code: http.StatusInternalServerError, Msg: NewAppError("nil-error").Error()}

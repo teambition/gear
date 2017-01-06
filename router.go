@@ -280,8 +280,8 @@ func (r *Router) Serve(ctx *Context) error {
 		}
 
 		if r.otherwise == nil {
-			return &Error{Code: http.StatusNotImplemented,
-				Msg: fmt.Sprintf(`"%s" is not implemented`, ctx.Path)}
+			return ctx.Error(&Error{Code: http.StatusNotImplemented,
+				Msg: fmt.Sprintf(`"%s" is not implemented`, ctx.Path)})
 		}
 		handlers = r.otherwise
 	} else {
@@ -296,8 +296,8 @@ func (r *Router) Serve(ctx *Context) error {
 			if r.otherwise == nil {
 				// If no route handler is returned, it's a 405 error
 				ctx.Set(HeaderAllow, matched.Node.GetAllow())
-				return &Error{Code: http.StatusMethodNotAllowed,
-					Msg: fmt.Sprintf(`"%s" is not allowed in "%s"`, method, ctx.Path)}
+				return ctx.Error(&Error{Code: http.StatusMethodNotAllowed,
+					Msg: fmt.Sprintf(`"%s" is not allowed in "%s"`, method, ctx.Path)})
 			}
 			handlers = r.otherwise
 		}
