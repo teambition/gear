@@ -118,11 +118,15 @@ There are three build-in middlewares currently: https://godoc.org/github.com/tea
 
 ```go
 // package middleware
-import "github.com/teambition/gear/middleware"
+import (
+	"github.com/teambition/gear/middleware/cors"
+	"github.com/teambition/gear/middleware/favicon"
+	"github.com/teambition/gear/middleware/static"
+)
 ```
-
-1. [Favicon middleware](https://godoc.org/github.com/teambition/gear/middleware#NewFavicon) Use to serve favicon.ico.
-2. [Static server middleware](https://godoc.org/github.com/teambition/gear/middleware#NewStatic) Use to serve static files.
+1. [CORS middleware](https://godoc.org/github.com/teambition/gear/middleware/cors#New) Use to serve CORS request.
+2. [Favicon middleware](https://godoc.org/github.com/teambition/gear/middleware/favicon#New) Use to serve favicon.ico.
+3. [Static server middleware](https://godoc.org/github.com/teambition/gear/middleware/static#New) Use to serve static files.
 
 All this middlewares can be use in app layer, router layer or middleware layer.
 
