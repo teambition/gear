@@ -1064,7 +1064,48 @@ func TestGearContextError(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(0, count)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal("Gear: nil-error", PickRes(res.Text()).(string))
+		assert.Equal("Gear: nil error", PickRes(res.Text()).(string))
+	})
+}
+
+func TestGearContextErrorStatus(t *testing.T) {
+	t.Run("should work", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		count := 0
+		app.Use(func(ctx *Context) error {
+			ctx.After(func() {
+				count++
+			})
+			return ctx.ErrorStatus(401)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(0, count)
+		assert.Equal(401, res.StatusCode)
+		assert.Equal("Unauthorized", PickRes(res.Text()).(string))
+	})
+
+	t.Run("should 500 with invalid status", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			return ctx.ErrorStatus(301)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal("Gear: invalid status", PickRes(res.Text()).(string))
 	})
 }
 

@@ -441,19 +441,36 @@ func (ctx *Context) Redirect(url string) (err error) {
 	return
 }
 
-// Error send a error message with status code to response.
+// Error send a error to response.
 // It will not reset response headers and not use app.OnError hook
 // It will end the ctx. The middlewares after current middleware and "after hooks" will not run.
 // "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) Error(e error) (err error) {
-	ctx.cleanAfterHooks() // clear afterHooks when any error
 	if e := ParseError(e); e != nil {
-		ctx.Set(HeaderContentType, MIMETextPlainCharsetUTF8)
+		ctx.cleanAfterHooks() // clear afterHooks when any error
 		ctx.Set(HeaderXContentTypeOptions, "nosniff")
+		if ctx.Res.Get(HeaderContentType) == "" {
+			ctx.Set(HeaderContentType, MIMETextPlainCharsetUTF8)
+		}
 		return ctx.End(e.Status(), []byte(e.Error()))
 	}
-	return &Error{Code: http.StatusInternalServerError, Msg: NewAppError("nil-error").Error()}
+	return &Error{Code: http.StatusInternalServerError, Msg: NewAppError("nil error").Error()}
+}
+
+// ErrorStatus send a error by status code to response. The status should be 4xx or 5xx code.
+// It will not reset response headers and not use app.OnError hook
+// It will end the ctx. The middlewares after current middleware and "after hooks" will not run.
+// "end hooks" will run normally.
+// Note that this will not stop the current handler.
+func (ctx *Context) ErrorStatus(status int) (err error) {
+	if status >= 400 && status < 600 {
+		if msg := http.StatusText(status); msg != "" {
+			ctx.Set(HeaderContentType, MIMETextPlainCharsetUTF8)
+			return ctx.Error(&Error{Code: status, Msg: msg})
+		}
+	}
+	return &Error{Code: http.StatusInternalServerError, Msg: NewAppError("invalid status").Error()}
 }
 
 // End end the ctx with bytes and status code optionally.
