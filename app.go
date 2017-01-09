@@ -1,6 +1,8 @@
 package gear
 
 import (
+	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"log"
@@ -22,6 +24,38 @@ type Handler interface {
 // Renderer interface is used by ctx.Render.
 type Renderer interface {
 	Render(ctx *Context, w io.Writer, name string, data interface{}) error
+}
+
+// BodyParser interface is used by ctx.ParseBody.
+type BodyParser interface {
+	MaxBytes() int64
+	Parse(contentType string, buf []byte, body interface{}) error
+}
+
+// DefaultBodyParser is default BodyParser type.
+// "AppBodyParser" used 1MB as default:
+//
+//  app.Set("AppBodyParser", DefaultBodyParser(1<<20))
+//
+type DefaultBodyParser int64
+
+// MaxBytes implemented BodyParser interface.
+func (d DefaultBodyParser) MaxBytes() int64 {
+	return int64(d)
+}
+
+// Parse implemented BodyParser interface.
+func (d DefaultBodyParser) Parse(contentType string, buf []byte, body interface{}) error {
+	if len(buf) == 0 {
+		return &Error{Code: http.StatusBadRequest, Msg: "Request entity empty"}
+	}
+	switch contentType {
+	case MIMEApplicationJSON:
+		return json.Unmarshal(buf, body)
+	case MIMEApplicationXML:
+		return xml.Unmarshal(buf, body)
+	}
+	return &Error{Code: http.StatusUnsupportedMediaType, Msg: "Unsupported media type"}
 }
 
 // OnError interface is use to deal with errors returned by middlewares.
@@ -130,8 +164,9 @@ type App struct {
 	middleware middlewares
 	settings   map[string]interface{}
 
-	onerror  OnError
-	renderer Renderer
+	onerror    OnError
+	renderer   Renderer
+	bodyParser BodyParser
 	// Default to nil, do not compress response content.
 	compress Compressible
 	// Default to 0
@@ -152,6 +187,7 @@ func New() *App {
 
 	app.Set("AppEnv", "development")
 	app.Set("AppOnError", &DefaultOnError{})
+	app.Set("AppBodyParser", DefaultBodyParser(1<<20))
 	app.Set("AppLogger", log.New(os.Stderr, "", log.LstdFlags))
 
 	return app
@@ -177,12 +213,13 @@ func (app *App) UseHandler(h Handler) {
 // Set add app settings. The settings can be retrieved by ctx.Setting.
 // There are 4 build-in app settings:
 //
-//  app.Set("AppOnError", val gear.OnError)      // Default to gear.DefaultOnError
-//  app.Set("AppRenderer", val gear.Renderer)    // No default
-//  app.Set("AppLogger", val *log.Logger)        // No default
-//  app.Set("AppTimeout", val time.Duration)     // Default to 0, no timeout
-//  app.Set("AppCompress", val gear.Compress)    // Enable to compress response content.
-//  app.Set("AppEnv", val string)                // Default to "development"
+//  app.Set("AppOnError", val gear.OnError)       // Default to gear.DefaultOnError
+//  app.Set("AppRenderer", val gear.Renderer)     // No default
+//  app.Set("AppLogger", val *log.Logger)         // No default
+//  app.Set("AppBodyParser", val gear.BodyParser) // Default to gear.DefaultBodyParser
+//  app.Set("AppTimeout", val time.Duration)      // Default to 0, no timeout
+//  app.Set("AppCompress", val gear.Compress)     // Enable to compress response content.
+//  app.Set("AppEnv", val string)                 // Default to "development"
 //
 func (app *App) Set(setting string, val interface{}) {
 	switch setting {
@@ -203,6 +240,12 @@ func (app *App) Set(setting string, val interface{}) {
 			panic(NewAppError("AppLogger setting must be *log.Logger instance"))
 		} else {
 			app.logger = logger
+		}
+	case "AppBodyParser":
+		if bodyParser, ok := val.(BodyParser); !ok {
+			panic(NewAppError("AppBodyParser setting must implemented gear.BodyParser interface"))
+		} else {
+			app.bodyParser = bodyParser
 		}
 	case "AppCompress":
 		if compress, ok := val.(Compressible); !ok {

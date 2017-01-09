@@ -531,6 +531,149 @@ func TestGearContextCookie(t *testing.T) {
 	assert.Equal("/test", c.Path)
 }
 
+type jsonBodyTemplate struct {
+	ID   string `json:"id"`
+	Pass string `json:"pass"`
+}
+
+func (b *jsonBodyTemplate) Validate() error {
+	if len(b.ID) < 3 || len(b.Pass) < 6 {
+		return &Error{Code: 400, Msg: "invalid id or pass"}
+	}
+	return nil
+}
+
+type xmlBodyTemplate struct {
+	ID   string `xml:"id,attr"`
+	Pass string `xml:"pass,attr"`
+}
+
+func (b *xmlBodyTemplate) Validate() error {
+	if len(b.ID) < 3 || len(b.Pass) < 6 {
+		return &Error{Code: 400, Msg: "invalid id or pass"}
+	}
+	return nil
+}
+
+func TestGearContextParseBody(t *testing.T) {
+	app := New()
+	assert.Panics(t, func() {
+		app.Set("AppBodyParser", 123)
+	})
+
+	t.Run("should parse JSON content", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo",
+			bytes.NewBuffer([]byte(`{"id":"admin","pass":"password"}`)))
+		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+
+		body := &jsonBodyTemplate{}
+		assert.Nil(ctx.ParseBody(body))
+		assert.Equal("admin", body.ID)
+		assert.Equal("password", body.Pass)
+	})
+
+	t.Run("should parse XML content", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo",
+			bytes.NewBuffer([]byte(`<body id="admin" pass="password"></body>`)))
+		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationXML)
+
+		body := &xmlBodyTemplate{}
+		assert.Nil(ctx.ParseBody(body))
+		assert.Equal("admin", body.ID)
+		assert.Equal("password", body.Pass)
+	})
+
+	t.Run("should 400 error when validate error", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo",
+			bytes.NewBuffer([]byte(`{"id":"admin","pass":"pass"}`)))
+		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+
+		body := &jsonBodyTemplate{}
+		err := ctx.ParseBody(body)
+		assert.Equal(400, err.(*Error).Code)
+	})
+
+	t.Run("should 415 error with invalid content type", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo",
+			bytes.NewBuffer([]byte(`{"id":"admin","pass":"password"}`)))
+		ctx.Req.Header.Set(HeaderContentType, "invalid type")
+
+		body := &jsonBodyTemplate{}
+		err := ctx.ParseBody(body)
+		assert.Equal(415, err.(*Error).Code)
+	})
+
+	t.Run("should 415 error with empty content type", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo",
+			bytes.NewBuffer([]byte(`{"id":"admin","pass":"password"}`)))
+
+		body := &jsonBodyTemplate{}
+		err := ctx.ParseBody(body)
+		assert.Equal(415, err.(*Error).Code)
+	})
+
+	t.Run("should 400 error with empty content", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
+		body := &jsonBodyTemplate{}
+		err := ctx.ParseBody(body)
+		assert.Equal(400, err.(*Error).Code)
+	})
+
+	t.Run("should 413 error when content too large", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Set("AppBodyParser", DefaultBodyParser(100))
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo",
+			bytes.NewBufferString(strings.Repeat("t", 101)))
+		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+		body := &jsonBodyTemplate{}
+		err := ctx.ParseBody(body)
+		assert.Equal(413, err.(*Error).Code)
+	})
+
+	t.Run("should error when bodyParser not exists", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.bodyParser = nil
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo",
+			bytes.NewBuffer([]byte(`{"id":"admin","pass":"pass"}`)))
+		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+		body := &jsonBodyTemplate{}
+		err := ctx.ParseBody(body)
+		assert.Equal("Gear: bodyParser not registered", err.Error())
+	})
+
+	t.Run("should error when req.Body not exists", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo",
+			bytes.NewBuffer([]byte(`{"id":"admin","pass":"pass"}`)))
+		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+		ctx.Req.Body = nil
+		body := &jsonBodyTemplate{}
+		err := ctx.ParseBody(body)
+		assert.Equal("Gear: missing request body", err.Error())
+	})
+}
+
 func TestGearContextGetSet(t *testing.T) {
 	assert := assert.New(t)
 

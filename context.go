@@ -7,6 +7,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"mime"
 	"net"
 	"net/http"
 	"net/url"
@@ -22,6 +24,11 @@ const paramsKey contextKey = 0
 // Any interface is used by ctx.Any.
 type Any interface {
 	New(ctx *Context) (interface{}, error)
+}
+
+// BodyTemplate interface is used by ctx.Any.
+type BodyTemplate interface {
+	Validate() error
 }
 
 // Context represents the context of the current HTTP request. It holds request and
@@ -271,6 +278,58 @@ func (ctx *Context) SetCookie(cookie *http.Cookie) {
 // Cookies returns the HTTP cookies sent with the request.
 func (ctx *Context) Cookies() []*http.Cookie {
 	return ctx.Req.Cookies()
+}
+
+// ParseBody parses request content with BodyParser, DefaultBodyParser support JSON and XML.
+// stores the result in the value pointed to by BodyTemplate body, and validate it.
+//
+// Defaine a BodyTemplate type in some API:
+//  type jsonBodyTemplate struct {
+//  	ID   string `json:"id"`
+//  	Pass string `json:"pass"`
+//  }
+//
+//  func (b *jsonBodyTemplate) Validate() error {
+//  	if len(b.ID) < 3 || len(b.Pass) < 6 {
+//  		return &Error{Code: 400, Msg: "invalid id or pass"}
+//  	}
+//  	return nil
+//  }
+//
+// Use it in middleware:
+//  body := &jsonBodyTemplate{}
+//  if err := ctx.ParseBody(body) {
+//  	return err
+//  }
+//
+func (ctx *Context) ParseBody(body BodyTemplate) error {
+	if ctx.app.bodyParser == nil {
+		return NewAppError("bodyParser not registered")
+	}
+	if ctx.Req.Body == nil {
+		return NewAppError("missing request body")
+	}
+
+	var err error
+	var ct string
+	var buf []byte
+	if ct = ctx.Get(HeaderContentType); ct == "" {
+		// RFC 2616, section 7.2.1 - empty type SHOULD be treated as application/octet-stream
+		ct = MIMEOctetStream
+	}
+	if ct, _, err = mime.ParseMediaType(ct); err != nil {
+		return &Error{Code: http.StatusUnsupportedMediaType, Msg: err.Error()}
+	}
+
+	reader := http.MaxBytesReader(ctx.Res, ctx.Req.Body, ctx.app.bodyParser.MaxBytes())
+	if buf, err = ioutil.ReadAll(reader); err != nil {
+		// err may not be 413 Request entity too large, just make it to 413
+		return &Error{Code: http.StatusRequestEntityTooLarge, Msg: err.Error()}
+	}
+	if err = ctx.app.bodyParser.Parse(ct, buf, body); err != nil {
+		return err
+	}
+	return body.Validate()
 }
 
 // Get retrieves data from the request Header.
