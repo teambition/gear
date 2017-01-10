@@ -72,15 +72,12 @@ var (
 // }))
 //
 func Default() gear.Middleware {
-	return func(ctx *gear.Context) (err error) {
+	return func(ctx *gear.Context) error {
 		for _, middleware := range defualtMiddleWares {
-			if err := middleware(ctx); err != nil {
-				// For now there are not any middleware that will return error.
-				return err
-			}
+			middleware(ctx) // no error will be returned form secure middlewares
 		}
 
-		return
+		return nil
 	}
 }
 
@@ -88,14 +85,14 @@ func Default() gear.Middleware {
 // privacy implications, it should be disabled.
 // See https://developer.mozilla.org/en-US/docs/Web/HTTP/Controlling_DNS_prefetching .
 func DNSPrefetchControl(allow bool) gear.Middleware {
-	return func(ctx *gear.Context) (err error) {
+	return func(ctx *gear.Context) error {
 		if allow {
 			ctx.Set(gear.HeaderXDNSPrefetchControl, "on")
 		} else {
 			ctx.Set(gear.HeaderXDNSPrefetchControl, "off")
 		}
 
-		return
+		return nil
 	}
 }
 
@@ -109,7 +106,7 @@ func FrameGuard(action FrameGuardAction, domains ...string) gear.Middleware {
 		panic("secure: 'X-Frame-Options: ALLOW-FROM' only support one domain")
 	}
 
-	return func(ctx *gear.Context) (err error) {
+	return func(ctx *gear.Context) error {
 		switch action {
 		case FrameGuardActionDeny:
 			ctx.Set(gear.HeaderXFrameOptions, "DENY")
@@ -119,19 +116,19 @@ func FrameGuard(action FrameGuardAction, domains ...string) gear.Middleware {
 			ctx.Set(gear.HeaderXFrameOptions, "ALLOW-FROM "+domains[0])
 		}
 
-		return
+		return nil
 	}
 }
 
 // HidePoweredBy removes the X-Powered-By header to make it slightly harder for
 // attackers to see what potentially-vulnerable technology powers your site.
 func HidePoweredBy() gear.Middleware {
-	return func(ctx *gear.Context) (err error) {
+	return func(ctx *gear.Context) error {
 		ctx.After(func() {
 			ctx.Res.Header().Del(gear.HeaderXPoweredBy)
 		})
 
-		return
+		return nil
 	}
 }
 
@@ -152,21 +149,17 @@ func PublicKeyPinning(options PublicKeyPinningOptions) gear.Middleware {
 		panic(fmt.Errorf("secure: empty Public-Key-Pins sha256s"))
 	}
 
-	return func(ctx *gear.Context) (err error) {
+	return func(ctx *gear.Context) error {
 		publicKeyPins := ""
-
 		for _, sha256 := range options.Sha256s {
 			publicKeyPins += fmt.Sprintf(`pin-sha256="%v";`, sha256)
 		}
-
 		if options.MaxAge != 0 {
 			publicKeyPins += fmt.Sprintf("max-age=%.f;", options.MaxAge.Seconds())
 		}
-
 		if options.IncludeSubdomains {
 			publicKeyPins += "includeSubDomains;"
 		}
-
 		if options.ReportURI != "" {
 			publicKeyPins += fmt.Sprintf(`report-uri="%v"`, options.ReportURI)
 		}
@@ -177,7 +170,7 @@ func PublicKeyPinning(options PublicKeyPinningOptions) gear.Middleware {
 			ctx.Set(gear.HeaderPublicKeyPins, publicKeyPins)
 		}
 
-		return
+		return nil
 	}
 }
 
@@ -193,20 +186,18 @@ type StrictTransportSecurityOptions struct {
 // your users on HTTPS.
 // See https://developer.mozilla.org/en-US/docs/Web/Security/HTTP_strict_transport_security .
 func StrictTransportSecurity(options StrictTransportSecurityOptions) gear.Middleware {
-	return func(ctx *gear.Context) (err error) {
+	return func(ctx *gear.Context) error {
 		val := fmt.Sprintf("max-age=%.f;", options.MaxAge.Seconds())
-
 		if options.IncludeSubDomains {
 			val += "includeSubDomains;"
 		}
-
 		if options.Preload {
 			val += "preload;"
 		}
 
 		ctx.Set(gear.HeaderStrictTransportSecurity, val)
 
-		return
+		return nil
 	}
 }
 
@@ -214,10 +205,10 @@ func StrictTransportSecurity(options StrictTransportSecurityOptions) gear.Middle
 // executing downloads in your site’s context.
 // See https://blogs.msdn.microsoft.com/ie/2008/07/02/ie8-security-part-v-comprehensive-protection/ .
 func IENoOpen() gear.Middleware {
-	return func(ctx *gear.Context) (err error) {
+	return func(ctx *gear.Context) error {
 		ctx.Set(gear.HeaderXDownloadOptions, "noopen")
 
-		return
+		return nil
 	}
 }
 
@@ -226,10 +217,10 @@ func IENoOpen() gear.Middleware {
 // X-Content-Type-Options header to nosniff.
 // See https://blog.fox-it.com/2012/05/08/mime-sniffing-feature-or-vulnerability/ .
 func NoSniff() gear.Middleware {
-	return func(ctx *gear.Context) (err error) {
+	return func(ctx *gear.Context) error {
 		ctx.Set(gear.HeaderXContentTypeOptions, "nosniff")
 
-		return
+		return nil
 	}
 }
 
@@ -237,10 +228,10 @@ func NoSniff() gear.Middleware {
 // Referrer-Policy header.
 // See https://www.w3.org/TR/referrer-policy/#referrer-policy-header .
 func SetReferrerPolicy(policy ReferrerPolicy) gear.Middleware {
-	return func(ctx *gear.Context) (err error) {
+	return func(ctx *gear.Context) error {
 		ctx.Set(gear.HeaderRefererPolicy, string(policy))
 
-		return
+		return nil
 	}
 }
 
@@ -252,7 +243,6 @@ func SetReferrerPolicy(policy ReferrerPolicy) gear.Middleware {
 func XSSFilter() gear.Middleware {
 	return func(ctx *gear.Context) error {
 		ieVersion, err := getIEVersionFromUA(ctx.Get(gear.HeaderUserAgent))
-
 		if err == nil && ieVersion < 9 {
 			ctx.Set(gear.HeaderXXSSProtection, "0")
 		} else {
@@ -265,7 +255,6 @@ func XSSFilter() gear.Middleware {
 
 func getIEVersionFromUA(ua string) (float64, error) {
 	matches := oldIERegex.FindStringSubmatch(ua)
-
 	if len(matches) <= 1 {
 		return 0, errors.New("secure: Not IE UserAgent")
 	}
@@ -299,18 +288,16 @@ type CSPDirectives struct {
 // and more.
 // See https://content-security-policy.com .
 func ContentSecurityPolicy(directives CSPDirectives) gear.Middleware {
-	return func(ctx *gear.Context) (err error) {
-		elems := reflect.ValueOf(&directives).Elem()
+	return func(ctx *gear.Context) error {
 		csp := ""
+		elems := reflect.ValueOf(&directives).Elem()
 
 		for i := 0; i < elems.NumField(); i++ {
 			val := elems.Field(i)
 			typ := elems.Type().Field(i)
-
 			if val.Kind() != reflect.Slice || val.Len() == 0 {
 				continue
 			}
-
 			csp += (typ.Tag.Get("csp") + " " + strings.Join(val.Interface().([]string), " ") + ";")
 		}
 
@@ -324,6 +311,6 @@ func ContentSecurityPolicy(directives CSPDirectives) gear.Middleware {
 			ctx.Set(gear.HeaderContentSecurityPolicy, csp)
 		}
 
-		return
+		return nil
 	}
 }
