@@ -82,19 +82,25 @@ const (
 	HeaderUpgrade                       = "Upgrade"                          // Responses
 	HeaderVary                          = "Vary"                             // Responses
 	HeaderWWWAuthenticate               = "WWW-Authenticate"                 // Responses
+	HeaderPublicKeyPins                 = "Public-Key-Pins"                  // Responses
+	HeaderPublicKeyPinsReportOnly       = "Public-Key-Pins-Report-Only"      // Responses
+	HeaderRefererPolicy                 = "Referrer-Policy"                  // Responses
 
 	// Common Non-Standard Response Headers
-	HeaderXFrameOptions          = "X-Frame-Options"           // Responses
-	HeaderXXSSProtection         = "X-XSS-Protection"          // Responses
-	HeaderContentSecurityPolicy  = "Content-Security-Policy"   // Responses
-	HeaderXContentSecurityPolicy = "X-Content-Security-Policy" // Responses
-	HeaderXWebKitCSP             = "X-WebKit-CSP"              // Responses
-	HeaderXContentTypeOptions    = "X-Content-Type-Options"    // Responses
-	HeaderXPoweredBy             = "X-Powered-By"              // Responses
-	HeaderXUACompatible          = "X-UA-Compatible"           // Responses
-	HeaderXForwardedProto        = "X-Forwarded-Proto"         // Responses
-	HeaderXHTTPMethodOverride    = "X-HTTP-Method-Override"    // Responses
-	HeaderXForwardedFor          = "X-Forwarded-For"           // Responses
-	HeaderXRealIP                = "X-Real-IP"                 // Responses
-	HeaderXCSRFToken             = "X-CSRF-Token"              // Responses
+	HeaderXFrameOptions                   = "X-Frame-Options"                     // Responses
+	HeaderXXSSProtection                  = "X-XSS-Protection"                    // Responses
+	HeaderContentSecurityPolicy           = "Content-Security-Policy"             // Responses
+	HeaderContentSecurityPolicyReportOnly = "Content-Security-Policy-Report-Only" // Responses
+	HeaderXContentSecurityPolicy          = "X-Content-Security-Policy"           // Responses
+	HeaderXWebKitCSP                      = "X-WebKit-CSP"                        // Responses
+	HeaderXContentTypeOptions             = "X-Content-Type-Options"              // Responses
+	HeaderXPoweredBy                      = "X-Powered-By"                        // Responses
+	HeaderXUACompatible                   = "X-UA-Compatible"                     // Responses
+	HeaderXForwardedProto                 = "X-Forwarded-Proto"                   // Responses
+	HeaderXHTTPMethodOverride             = "X-HTTP-Method-Override"              // Responses
+	HeaderXForwardedFor                   = "X-Forwarded-For"                     // Responses
+	HeaderXRealIP                         = "X-Real-IP"                           // Responses
+	HeaderXCSRFToken                      = "X-CSRF-Token"                        // Responses
+	HeaderXDNSPrefetchControl             = "X-DNS-Prefetch-Control"              // Responses
+	HeaderXDownloadOptions                = "X-Download-Options"                  // Responses
 )

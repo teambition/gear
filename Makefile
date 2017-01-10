@@ -4,6 +4,7 @@ test:
 	go test --race ./middleware/cors
 	go test --race ./middleware/favicon
 	go test --race ./middleware/static
+	go test --race ./middleware/secure
 
 bench:
 	go test -bench=.
@@ -15,8 +16,10 @@ cover:
 	go test -coverprofile=cors.coverprofile ./middleware/cors
 	go test -coverprofile=favicon.coverprofile ./middleware/favicon
 	go test -coverprofile=static.coverprofile ./middleware/static
+	go test -coverprofile=secure.coverprofile ./middleware/secure
 	gover
 	go tool cover -html=gover.coverprofile
+	rm -f *.coverprofile
 
 doc:
 	godoc -http=:6060
