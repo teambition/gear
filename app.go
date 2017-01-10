@@ -29,7 +29,7 @@ type Renderer interface {
 // BodyParser interface is used by ctx.ParseBody.
 type BodyParser interface {
 	MaxBytes() int64
-	Parse(contentType string, buf []byte, body interface{}) error
+	Parse(buf []byte, body interface{}, mediaType, charset string) error
 }
 
 // DefaultBodyParser is default BodyParser type.
@@ -45,11 +45,11 @@ func (d DefaultBodyParser) MaxBytes() int64 {
 }
 
 // Parse implemented BodyParser interface.
-func (d DefaultBodyParser) Parse(contentType string, buf []byte, body interface{}) error {
+func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charset string) error {
 	if len(buf) == 0 {
 		return &Error{Code: http.StatusBadRequest, Msg: "Request entity empty"}
 	}
-	switch contentType {
+	switch mediaType {
 	case MIMEApplicationJSON:
 		return json.Unmarshal(buf, body)
 	case MIMEApplicationXML:

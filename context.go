@@ -311,13 +311,14 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 	}
 
 	var err error
-	var ct string
 	var buf []byte
-	if ct = ctx.Get(HeaderContentType); ct == "" {
+	var mediaType string
+	var params map[string]string
+	if mediaType = ctx.Get(HeaderContentType); mediaType == "" {
 		// RFC 2616, section 7.2.1 - empty type SHOULD be treated as application/octet-stream
-		ct = MIMEOctetStream
+		mediaType = MIMEOctetStream
 	}
-	if ct, _, err = mime.ParseMediaType(ct); err != nil {
+	if mediaType, params, err = mime.ParseMediaType(mediaType); err != nil {
 		return &Error{Code: http.StatusUnsupportedMediaType, Msg: err.Error()}
 	}
 
@@ -326,7 +327,7 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 		// err may not be 413 Request entity too large, just make it to 413
 		return &Error{Code: http.StatusRequestEntityTooLarge, Msg: err.Error()}
 	}
-	if err = ctx.app.bodyParser.Parse(ct, buf, body); err != nil {
+	if err = ctx.app.bodyParser.Parse(buf, body, mediaType, params["charset"]); err != nil {
 		return err
 	}
 	return body.Validate()
