@@ -472,14 +472,14 @@ func TestGearContextQuery(t *testing.T) {
 	r.Get("/api", func(ctx *Context) error {
 		assert.Equal("user", ctx.Query("type"))
 		assert.Equal("123", ctx.Query("id"))
-		assert.Equal([]string{"123"}, ctx.QueryValues("id"))
+		assert.Equal([]string{"123"}, ctx.QueryAll("id"))
 		assert.Equal("", ctx.Query("other"))
 		return ctx.End(http.StatusNoContent)
 	})
 	r.Get("/view", func(ctx *Context) error {
-		assert.Nil(ctx.QueryValues("other"))
+		assert.Nil(ctx.QueryAll("other"))
 		assert.Equal("123", ctx.Query("id"))
-		assert.Equal([]string{"123", "abc"}, ctx.QueryValues("id"))
+		assert.Equal([]string{"123", "abc"}, ctx.QueryAll("id"))
 		return ctx.End(http.StatusNoContent)
 	})
 	app.UseHandler(r)

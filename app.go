@@ -28,6 +28,7 @@ type Renderer interface {
 
 // BodyParser interface is used by ctx.ParseBody.
 type BodyParser interface {
+	// Maximum allowed size for a request body
 	MaxBytes() int64
 	Parse(buf []byte, body interface{}, mediaType, charset string) error
 }

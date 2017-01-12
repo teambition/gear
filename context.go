@@ -257,8 +257,8 @@ func (ctx *Context) Query(name string) string {
 	return ctx.query.Get(name)
 }
 
-// QueryValues returns all query params for the provided name.
-func (ctx *Context) QueryValues(name string) []string {
+// QueryAll returns all query params for the provided name.
+func (ctx *Context) QueryAll(name string) []string {
 	if ctx.query == nil {
 		ctx.query = ctx.Req.URL.Query()
 	}
