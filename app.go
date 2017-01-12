@@ -12,6 +12,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -87,9 +88,33 @@ type HTTPError interface {
 
 // Error represents a numeric error with optional meta. It can be used in middleware as a return result.
 type Error struct {
-	Code int
-	Msg  string
-	Meta interface{}
+	Code  int
+	Msg   string
+	Stack string
+	Meta  interface{}
+}
+
+// ErrorWithStack create a error with stacktrace
+func ErrorWithStack(v interface{}, skip ...int) *Error {
+	var err *Error
+	switch tmp := v.(type) {
+	case error:
+		err = ParseError(tmp)
+	case string:
+		err = &Error{500, tmp, "", nil}
+	default:
+		err = &Error{500, fmt.Sprintf("%#v", tmp), "", nil}
+	}
+	if err.Stack == "" {
+		buf := make([]byte, 1024)
+		buf = buf[:runtime.Stack(buf, false)]
+		s := 1
+		if len(skip) != 0 {
+			s = skip[0]
+		}
+		err.Stack = pruneStack(buf, s)
+	}
+	return err
 }
 
 // Status implemented HTTPError interface.
@@ -104,14 +129,14 @@ func (err *Error) Error() string {
 
 // String implemented fmt.Stringer interface, returns a Go-syntax string.
 func (err *Error) String() string {
-	if meta := err.Meta; meta != nil {
-		switch meta.(type) {
+	meta := ""
+	if err.Meta != nil {
+		switch err.Meta.(type) {
 		case []byte:
-			meta = string(meta.([]byte))
+			meta = string(err.Meta.([]byte))
 		}
-		return fmt.Sprintf(`Error{Code:%3d, Msg:"%s", Meta:%#v}`, err.Code, err.Msg, meta)
 	}
-	return fmt.Sprintf(`Error{Code:%3d, Msg:"%s"}`, err.Code, err.Msg)
+	return fmt.Sprintf(`Error{Code:%3d, Msg:"%s", Stack:"%s", Meta:%#v}`, err.Code, err.Msg, err.Stack, meta)
 }
 
 // Middleware defines a function to process as middleware.
@@ -131,12 +156,12 @@ func ParseError(e error, code ...int) *Error {
 			err = e.(*Error)
 		case *textproto.Error:
 			_e := e.(*textproto.Error)
-			err = &Error{_e.Code, _e.Msg, nil}
+			err = &Error{_e.Code, _e.Msg, "", nil}
 		case HTTPError:
 			_e := e.(HTTPError)
-			err = &Error{_e.Status(), _e.Error(), nil}
+			err = &Error{_e.Status(), _e.Error(), "", nil}
 		default:
-			err = &Error{500, e.Error(), nil}
+			err = &Error{500, e.Error(), "", nil}
 			if len(code) > 0 && code[0] > 0 {
 				err.Code = code[0]
 			}
@@ -331,15 +356,8 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// recover panic error
 	defer func() {
 		if err := recover(); err != nil {
-			const size = 64 << 10
-			buf := make([]byte, size)
-			buf = buf[:runtime.Stack(buf, false)]
 			ctx.Res.ResetHeader()
-			ctx.salvage(&Error{
-				Code: 500,
-				Msg:  fmt.Sprintf("panic recovered: %v", err),
-				Meta: buf,
-			})
+			ctx.salvage(ErrorWithStack(err))
 		}
 	}()
 
@@ -360,7 +378,7 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if isNil(err) {
 		// if context canceled abnormally...
 		if err = ctx.Err(); err != nil {
-			err = &Error{http.StatusGatewayTimeout, err.Error(), nil}
+			err = &Error{http.StatusGatewayTimeout, err.Error(), "", nil}
 		}
 	}
 
@@ -452,4 +470,60 @@ func (b *atomicBool) swapTrue() bool {
 
 func (b *atomicBool) setTrue() {
 	atomic.StoreInt32((*int32)(b), 1)
+}
+
+// pruneStack make a thin conversion for stack information
+// limit the count of lines to 5
+// src:
+// ```
+// goroutine 9 [running]:
+// runtime/debug.Stack(0x6, 0x6, 0xc42003c898)
+//     /usr/local/Cellar/go/1.7.4_2/libexec/src/runtime/debug/stack.go:24 +0x79
+// github.com/teambition/gear/logging.(*Logger).OutputWithStack(0xc420012a50, 0xed0092215, 0x573fdbb, 0x471f20, 0x0, 0xc42000dc1a, 0x6, 0xc42000dc01, 0xc42000dca0)
+//     /Users/xus/go/src/github.com/teambition/gear/logging/logger.go:267 +0x4e
+// github.com/teambition/gear/logging.(*Logger).Emerg(0xc420012a50, 0x2a9cc0, 0xc42000dca0)
+//     /Users/xus/go/src/github.com/teambition/gear/logging/logger.go:171 +0xd3
+// github.com/teambition/gear/logging.TestGearLogger.func2(0xc420018600)
+//     /Users/xus/go/src/github.com/teambition/gear/logging/logger_test.go:90 +0x3c1
+// testing.tRunner(0xc420018600, 0x33d240)
+//     /usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:610 +0x81
+// created by testing.(*T).Run
+//     /usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:646 +0x2ec
+// ```
+// dst:
+// ```
+// Stack:
+//     /usr/local/Cellar/go/1.7.4_2/libexec/src/runtime/debug/stack.go:24
+//     /Users/xus/go/src/github.com/teambition/gear/logging/logger.go:283
+//     /Users/xus/go/src/github.com/teambition/gear/logging/logger.go:171
+//     /Users/xus/go/src/github.com/teambition/gear/logging/logger_test.go:90
+//     /usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:610
+//     /usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:646
+// ```
+func pruneStack(stack []byte, skip int) string {
+	// remove first line
+	// `goroutine 1 [running]:`
+	lines := strings.Split(string(stack), "\n")[1:]
+	newLines := make([]string, 0, len(lines)/2)
+
+	num := 0
+	for idx, line := range lines {
+		if idx%2 == 0 {
+			continue
+		}
+		skip -= 1
+		if skip >= 0 {
+			continue
+		}
+		num += 1
+
+		loc := strings.Split(line, " ")[0]
+		loc = strings.Replace(loc, "\t", "\\t", -1)
+		// only need odd line
+		newLines = append(newLines, loc)
+		if num == 5 {
+			break
+		}
+	}
+	return strings.Join(newLines, "\\n")
 }

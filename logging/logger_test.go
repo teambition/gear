@@ -87,35 +87,35 @@ func TestGearLogger(t *testing.T) {
 
 		logger.Out = &buf
 		logger.Emerg("Hello")
-		assert.True(strings.HasSuffix(buf.String(), " EMERG Hello\n"))
+		assert.True(strings.Index(buf.String(), "EMERG Error") > 0)
 		buf.Reset()
 
 		Emerg("Hello1")
-		assert.True(strings.HasSuffix(buf.String(), " EMERG Hello1\n"))
+		assert.True(strings.Index(buf.String(), "EMERG Error") > 0)
 		buf.Reset()
 
 		logger.Alert("Hello")
-		assert.True(strings.HasSuffix(buf.String(), " ALERT Hello\n"))
+		assert.True(strings.Index(buf.String(), "ALERT Error") > 0)
 		buf.Reset()
 
 		Alert("Hello1")
-		assert.True(strings.HasSuffix(buf.String(), " ALERT Hello1\n"))
+		assert.True(strings.Index(buf.String(), "ALERT Error") > 0)
 		buf.Reset()
 
 		logger.Crit("Hello")
-		assert.True(strings.HasSuffix(buf.String(), " CRIT Hello\n"))
+		assert.True(strings.Index(buf.String(), "CRIT Error") > 0)
 		buf.Reset()
 
 		Crit("Hello1")
-		assert.True(strings.HasSuffix(buf.String(), " CRIT Hello1\n"))
+		assert.True(strings.Index(buf.String(), "CRIT Error") > 0)
 		buf.Reset()
 
 		logger.Err("Hello")
-		assert.True(strings.HasSuffix(buf.String(), " ERR Hello\n"))
+		assert.True(strings.Index(buf.String(), "ERR Error") > 0)
 		buf.Reset()
 
 		Err("Hello1")
-		assert.True(strings.HasSuffix(buf.String(), " ERR Hello1\n"))
+		assert.True(strings.Index(buf.String(), "ERR Error") > 0)
 		buf.Reset()
 
 		logger.Warning("Hello")
@@ -153,21 +153,21 @@ func TestGearLogger(t *testing.T) {
 		assert.Panics(func() {
 			logger.Panic("Hello")
 		})
-		assert.True(strings.HasSuffix(buf.String(), " EMERG Hello\n"))
+		assert.True(strings.Index(buf.String(), "EMERG Error") > 0)
 		buf.Reset()
 
 		assert.Panics(func() {
 			Panic("Hello1")
 		})
-		assert.True(strings.HasSuffix(buf.String(), " EMERG Hello1\n"))
+		assert.True(strings.Index(buf.String(), "EMERG Error") > 0)
 		buf.Reset()
 
 		logger.Fatal("Hello")
-		assert.True(strings.HasSuffix(buf.String(), " EMERG Hello\n"))
+		assert.True(strings.Index(buf.String(), "EMERG Error") > 0)
 		buf.Reset()
 
 		Fatal("Hello1")
-		assert.True(strings.HasSuffix(buf.String(), " EMERG Hello1\n"))
+		assert.True(strings.Index(buf.String(), "EMERG Error") > 0)
 		buf.Reset()
 
 		logger.Print("Hello")

@@ -910,7 +910,7 @@ type RenderTest struct {
 
 func (t *RenderTest) Render(ctx *Context, w io.Writer, name string, data interface{}) (err error) {
 	if err = t.tpl.ExecuteTemplate(w, name, data); err != nil {
-		err = &Error{404, err.Error(), err}
+		err = &Error{404, err.Error(), "", err}
 	}
 	return
 }

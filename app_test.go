@@ -218,7 +218,7 @@ func TestGearError(t *testing.T) {
 		assert.Equal(504, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
 		assert.Equal("Some error", PickRes(res.Text()).(string))
-		assert.Equal("TEST: Error{Code:504, Msg:\"Some error\"}\n", buf.String())
+		assert.Equal("TEST: Error{Code:504, Msg:\"Some error\", Stack:\"\", Meta:\"\"}\n", buf.String())
 		res.Body.Close()
 	})
 
@@ -263,10 +263,9 @@ func TestGearError(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal("panic recovered: Some error", PickRes(res.Text()).(string))
+		assert.Equal("Some error", PickRes(res.Text()).(string))
 
 		log := buf.String()
-		assert.True(strings.Contains(log, "panic recovered"))
 		assert.True(strings.Contains(log, "github.com/teambition/gear"))
 		res.Body.Close()
 	})
@@ -624,4 +623,31 @@ func TestGearWrapResponseWriter(t *testing.T) {
 
 	log := buf.String()
 	assert.True(strings.Contains(log, "can't write"))
+}
+
+func TestErrorWithStack(t *testing.T) {
+	assert := assert.New(t)
+
+	// *Error type test
+	err := &Error{500, "hello", "", nil}
+	assert.NotZero(ErrorWithStack(err).Stack)
+	// string type test
+	str := "Some thing"
+	assert.NotZero(ErrorWithStack(str).Stack)
+	// other type
+	v := struct {
+		a string
+	}{
+		a: "Some thing",
+	}
+	assert.NotZero(ErrorWithStack(v).Stack)
+	// test skip
+	errSkip := &Error{500, "hello", "", nil}
+	assert.True(strings.Index(ErrorWithStack(errSkip, 0).Stack, "app.go") > 0)
+}
+
+func TestErrorString(t *testing.T) {
+	assert := assert.New(t)
+	err := &Error{500, "Some error", "", []byte("meta data")}
+	assert.True(strings.Index(err.String(), "meta data") > 0)
 }
