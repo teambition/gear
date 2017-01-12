@@ -165,42 +165,42 @@ type Logger struct {
 
 // Emerg produce a "Emergency" log
 func (l *Logger) Emerg(v interface{}) {
-	l.Output(time.Now(), EmergLevel, fmt.Sprintln(v))
+	l.Output(time.Now(), EmergLevel, fmt.Sprint(v))
 }
 
 // Alert produce a "Alert" log
 func (l *Logger) Alert(v interface{}) {
-	l.Output(time.Now(), AlertLevel, fmt.Sprintln(v))
+	l.Output(time.Now(), AlertLevel, fmt.Sprint(v))
 }
 
 // Crit produce a "Critical" log
 func (l *Logger) Crit(v interface{}) {
-	l.Output(time.Now(), CritiLevel, fmt.Sprintln(v))
+	l.Output(time.Now(), CritiLevel, fmt.Sprint(v))
 }
 
 // Err produce a "Error" log
 func (l *Logger) Err(v interface{}) {
-	l.Output(time.Now(), ErrLevel, fmt.Sprintln(v))
+	l.Output(time.Now(), ErrLevel, fmt.Sprint(v))
 }
 
 // Warning produce a "Warning" log
 func (l *Logger) Warning(v interface{}) {
-	l.Output(time.Now(), WarningLevel, fmt.Sprintln(v))
+	l.Output(time.Now(), WarningLevel, fmt.Sprint(v))
 }
 
 // Notice produce a "Notice" log
 func (l *Logger) Notice(v interface{}) {
-	l.Output(time.Now(), NoticeLevel, fmt.Sprintln(v))
+	l.Output(time.Now(), NoticeLevel, fmt.Sprint(v))
 }
 
 // Info produce a "Informational" log
 func (l *Logger) Info(v interface{}) {
-	l.Output(time.Now(), InfoLevel, fmt.Sprintln(v))
+	l.Output(time.Now(), InfoLevel, fmt.Sprint(v))
 }
 
 // Debug produce a "Debug" log
 func (l *Logger) Debug(v interface{}) {
-	l.Output(time.Now(), DebugLevel, fmt.Sprintln(v))
+	l.Output(time.Now(), DebugLevel, fmt.Sprint(v))
 }
 
 // Panic produce a "Emergency" log and then calls panic with the message
@@ -246,6 +246,9 @@ func (l *Logger) Output(t time.Time, level Level, s string) (err error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if level <= l.l {
+		if level < 4 {
+			s = gear.ErrorWithStack(s, 3).String()
+		}
 		_, err = fmt.Fprintf(l.Out, l.lf, t.UTC().Format(l.tf), levels[level], s)
 		if err == nil && s[len(s)-1] != '\n' {
 			l.Out.Write([]byte{'\n'})
