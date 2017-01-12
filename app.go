@@ -112,7 +112,7 @@ func ErrorWithStack(v interface{}, skip ...int) *Error {
 		if len(skip) != 0 {
 			s = skip[0]
 		}
-		err.Stack = shortStack(buf, s)
+		err.Stack = pruneStack(buf, s)
 	}
 	return err
 }
@@ -472,7 +472,7 @@ func (b *atomicBool) setTrue() {
 	atomic.StoreInt32((*int32)(b), 1)
 }
 
-// shortStack make a thin conversion for stack information
+// pruneStack make a thin conversion for stack information
 // limit the count of lines to 5
 // src:
 // ```
@@ -500,7 +500,7 @@ func (b *atomicBool) setTrue() {
 //     /usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:610
 //     /usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:646
 // ```
-func shortStack(stack []byte, skip int) string {
+func pruneStack(stack []byte, skip int) string {
 	// remove first line
 	// `goroutine 1 [running]:`
 	lines := strings.Split(string(stack), "\n")[1:]

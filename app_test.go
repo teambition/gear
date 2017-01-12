@@ -645,3 +645,9 @@ func TestErrorWithStack(t *testing.T) {
 	errSkip := &Error{500, "hello", "", nil}
 	assert.True(strings.Index(ErrorWithStack(errSkip, 0).Stack, "app.go") > 0)
 }
+
+func TestErrorString(t *testing.T) {
+	assert := assert.New(t)
+	err := &Error{500, "Some error", "", []byte("meta data")}
+	assert.True(strings.Index(err.String(), "meta data") > 0)
+}
