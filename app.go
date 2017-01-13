@@ -106,7 +106,7 @@ func ErrorWithStack(v interface{}, skip ...int) *Error {
 		err = &Error{500, fmt.Sprintf("%#v", tmp), "", nil}
 	}
 	if err.Stack == "" {
-		buf := make([]byte, 1024)
+		buf := make([]byte, 2048)
 		buf = buf[:runtime.Stack(buf, false)]
 		s := 1
 		if len(skip) != 0 {
@@ -332,7 +332,7 @@ func (app *App) Start(addr ...string) *ServerListener {
 	return &ServerListener{l, c}
 }
 
-// Error writes error to underlayer logging system (ErrorLog).
+// Error writes error to underlayer logging system.
 func (app *App) Error(err error) {
 	if err := ParseError(err); err != nil {
 		if err.Code == 500 || err.Code > 501 || err.Code < 400 {
@@ -511,17 +511,17 @@ func pruneStack(stack []byte, skip int) string {
 		if idx%2 == 0 {
 			continue
 		}
-		skip -= 1
+		skip--
 		if skip >= 0 {
 			continue
 		}
-		num += 1
+		num++
 
 		loc := strings.Split(line, " ")[0]
 		loc = strings.Replace(loc, "\t", "\\t", -1)
 		// only need odd line
 		newLines = append(newLines, loc)
-		if num == 5 {
+		if num == 10 {
 			break
 		}
 	}
