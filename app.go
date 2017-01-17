@@ -211,11 +211,14 @@ func New() *App {
 	app.middleware = make(middlewares, 0)
 	app.settings = make(map[string]interface{})
 
-	app.Set("AppEnv", "development")
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "development"
+	}
+	app.Set("AppEnv", env)
 	app.Set("AppOnError", &DefaultOnError{})
 	app.Set("AppBodyParser", DefaultBodyParser(1<<20))
 	app.Set("AppLogger", log.New(os.Stderr, "", log.LstdFlags))
-
 	return app
 }
 
@@ -245,7 +248,7 @@ func (app *App) UseHandler(h Handler) {
 //  app.Set("AppBodyParser", val gear.BodyParser) // Default to gear.DefaultBodyParser
 //  app.Set("AppTimeout", val time.Duration)      // Default to 0, no timeout
 //  app.Set("AppCompress", val gear.Compress)     // Enable to compress response content.
-//  app.Set("AppEnv", val string)                 // Default to "development"
+//  app.Set("AppEnv", val string) // It will read os env with key `APP_ENV` Default to "development"
 //
 func (app *App) Set(setting string, val interface{}) {
 	switch setting {

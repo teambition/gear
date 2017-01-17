@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"strconv"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -626,28 +628,43 @@ func TestGearWrapResponseWriter(t *testing.T) {
 }
 
 func TestErrorWithStack(t *testing.T) {
-	assert := assert.New(t)
+	t.Run("ErrorWithStack", func(t *testing.T) {
+		assert := assert.New(t)
 
-	// *Error type test
-	err := &Error{500, "hello", "", nil}
-	assert.NotZero(ErrorWithStack(err).Stack)
-	// string type test
-	str := "Some thing"
-	assert.NotZero(ErrorWithStack(str).Stack)
-	// other type
-	v := struct {
-		a string
-	}{
-		a: "Some thing",
-	}
-	assert.NotZero(ErrorWithStack(v).Stack)
-	// test skip
-	errSkip := &Error{500, "hello", "", nil}
-	assert.True(strings.Index(ErrorWithStack(errSkip, 0).Stack, "app.go") > 0)
-}
+		// *Error type test
+		err := &Error{500, "hello", "", nil}
+		assert.NotZero(ErrorWithStack(err).Stack)
+		// string type test
+		str := "Some thing"
+		assert.NotZero(ErrorWithStack(str).Stack)
+		// other type
+		v := struct {
+			a string
+		}{
+			a: "Some thing",
+		}
+		assert.NotZero(ErrorWithStack(v).Stack)
+		// test skip
+		errSkip := &Error{500, "hello", "", nil}
+		assert.True(strings.Index(ErrorWithStack(errSkip, 0).Stack, "app.go") > 0)
+	})
 
-func TestErrorString(t *testing.T) {
-	assert := assert.New(t)
-	err := &Error{500, "Some error", "", []byte("meta data")}
-	assert.True(strings.Index(err.String(), "meta data") > 0)
+	t.Run("Error string", func(t *testing.T) {
+		assert := assert.New(t)
+
+		err := &Error{500, "Some error", "", []byte("meta data")}
+		assert.True(strings.Index(err.String(), "meta data") > 0)
+	})
+
+	t.Run("pruneStack", func(t *testing.T) {
+		assert := assert.New(t)
+
+		buf := []byte("head line\n")
+		for i := 0; i < 100; i++ {
+			buf = append(buf, []byte(strconv.Itoa(i)+"\n")...)
+		}
+
+		assert.Equal(`1\n3\n5\n7\n9\n11\n13\n15\n17\n19`, pruneStack(buf, 0))
+		assert.Equal(`3\n5\n7\n9\n11\n13\n15\n17\n19\n21`, pruneStack(buf, 1))
+	})
 }

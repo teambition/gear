@@ -321,6 +321,10 @@ func TestGearContextAny(t *testing.T) {
 
 		ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
 		assert.Equal("development", ctx.Setting("AppEnv").(string))
+
+		app.Set("AppEnv", "test")
+		ctx = CtxTest(app, "POST", "http://example.com/foo", nil)
+		assert.Equal("test", ctx.Setting("AppEnv").(string))
 	})
 }
 
