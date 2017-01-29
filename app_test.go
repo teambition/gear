@@ -168,10 +168,6 @@ func TestGearAppHello(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		assert.Panics(func() {
-			app.toServeHandler()
-		})
-
 		app.Use(func(ctx *Context) error {
 			return ctx.End(200, []byte("<h1>Hello!</h1>"))
 		})

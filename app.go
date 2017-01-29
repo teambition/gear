@@ -187,6 +187,7 @@ func ParseError(e error, code ...int) *Error {
 //  }
 //
 type App struct {
+	Server     *http.Server
 	middleware middlewares
 	settings   map[string]interface{}
 
@@ -197,11 +198,8 @@ type App struct {
 	compress Compressible
 	// Default to 0
 	timeout time.Duration
-
 	// ErrorLog specifies an optional logger for app's errors. Default to nil.
 	logger *log.Logger
-
-	Server *http.Server
 }
 
 // New creates an instance of App.
@@ -220,13 +218,6 @@ func New() *App {
 	app.Set("AppBodyParser", DefaultBodyParser(1<<20))
 	app.Set("AppLogger", log.New(os.Stderr, "", log.LstdFlags))
 	return app
-}
-
-func (app *App) toServeHandler() *serveHandler {
-	if len(app.middleware) == 0 {
-		panic(NewAppError("no middleware"))
-	}
-	return &serveHandler{app, app.middleware[:]}
 }
 
 // Use uses the given middleware `handle`.
@@ -300,7 +291,7 @@ func (app *App) Set(setting string, val interface{}) {
 func (app *App) Listen(addr string) error {
 	app.Server.Addr = addr
 	app.Server.ErrorLog = app.logger
-	app.Server.Handler = app.toServeHandler()
+	app.Server.Handler = app
 	return app.Server.ListenAndServe()
 }
 
@@ -308,7 +299,7 @@ func (app *App) Listen(addr string) error {
 func (app *App) ListenTLS(addr, certFile, keyFile string) error {
 	app.Server.Addr = addr
 	app.Server.ErrorLog = app.logger
-	app.Server.Handler = app.toServeHandler()
+	app.Server.Handler = app
 	return app.Server.ListenAndServeTLS(certFile, keyFile)
 }
 
@@ -321,7 +312,7 @@ func (app *App) Start(addr ...string) *ServerListener {
 		laddr = addr[0]
 	}
 	app.Server.ErrorLog = app.logger
-	app.Server.Handler = app.toServeHandler()
+	app.Server.Handler = app
 
 	l, err := net.Listen("tcp", laddr)
 	if err != nil {
@@ -344,13 +335,8 @@ func (app *App) Error(err error) {
 	}
 }
 
-type serveHandler struct {
-	app        *App
-	middleware middlewares
-}
-
-func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := NewContext(h.app, w, r)
+func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := NewContext(app, w, r)
 
 	if compressWriter := ctx.handleCompress(); compressWriter != nil {
 		defer compressWriter.Close()
@@ -370,10 +356,10 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// process app middleware
-	err := h.middleware.run(ctx)
+	err := app.middleware.run(ctx)
 	if ctx.Res.wroteHeader.isTrue() {
 		if !isNil(err) {
-			h.app.Error(err)
+			app.Error(err)
 		}
 		return
 	}
@@ -389,7 +375,7 @@ func (h *serveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx.ended.setTrue()
 		ctx.Res.ResetHeader()
 		// process middleware error with OnError
-		if err := h.app.onerror.OnError(ctx, err); err != nil {
+		if err := app.onerror.OnError(ctx, err); err != nil {
 			ctx.salvage(err)
 			return
 		}

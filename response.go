@@ -15,7 +15,7 @@ var defaultHeaderFilterReg = regexp.MustCompile(
 // by an HTTP handler to construct an HTTP response.
 type Response struct {
 	ctx         *Context
-	res         http.ResponseWriter // the origin http.ResponseWriter, should not be override.
+	w           http.ResponseWriter // the origin http.ResponseWriter, should not be override.
 	rw          http.ResponseWriter // maybe a http.ResponseWriter wrapper
 	wroteHeader atomicBool
 	responded   atomicBool
@@ -24,7 +24,7 @@ type Response struct {
 }
 
 func newResponse(ctx *Context, w http.ResponseWriter) *Response {
-	return &Response{ctx: ctx, res: w, rw: w}
+	return &Response{ctx: ctx, w: w, rw: w}
 }
 
 // Get gets the first value associated with the given key. If there are no values associated with the key, Get returns "". To access multiple values of a key, access the map directly with CanonicalHeaderKey.
@@ -132,14 +132,14 @@ func (r *Response) WriteHeader(code int) {
 // buffered data to the client.
 // See [http.Flusher](https://golang.org/pkg/net/http/#Flusher)
 func (r *Response) Flush() {
-	r.res.(http.Flusher).Flush()
+	r.w.(http.Flusher).Flush()
 }
 
 // Hijack implements the http.Hijacker interface to allow an HTTP handler to
 // take over the connection.
 // See [http.Hijacker](https://golang.org/pkg/net/http/#Hijacker)
 func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return r.res.(http.Hijacker).Hijack()
+	return r.w.(http.Hijacker).Hijack()
 }
 
 // CloseNotify implements the http.CloseNotifier interface to allow detecting
@@ -148,7 +148,7 @@ func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 // client has disconnected before the response is ready.
 // See [http.CloseNotifier](https://golang.org/pkg/net/http/#CloseNotifier)
 func (r *Response) CloseNotify() <-chan bool {
-	return r.res.(http.CloseNotifier).CloseNotify()
+	return r.w.(http.CloseNotifier).CloseNotify()
 }
 
 // HeaderWrote indecates that whether the reply header has been (logically) written.
