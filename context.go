@@ -52,18 +52,22 @@ type Context struct {
 }
 
 // NewContext creates an instance of Context. Export for testing middleware.
-func NewContext(app *App, w http.ResponseWriter, req *http.Request) *Context {
-	ctx := &Context{app: app, Req: req}
+func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
+	ctx := &Context{app: app, Req: r}
 	ctx.Res = newResponse(ctx, w)
 
-	ctx.Host = req.Host
-	ctx.Method = req.Method
-	ctx.Path = req.URL.Path
+	ctx.Host = r.Host
+	ctx.Method = r.Method
+	ctx.Path = r.URL.Path
 	ctx.kv = make(map[interface{}]interface{})
-	if app.timeout == 0 {
-		ctx.ctx, ctx.cancelCtx = context.WithCancel(req.Context())
+
+	if app.timeout <= 0 {
+		ctx.ctx, ctx.cancelCtx = context.WithCancel(r.Context())
 	} else {
-		ctx.ctx, ctx.cancelCtx = context.WithTimeout(req.Context(), app.timeout)
+		ctx.ctx, ctx.cancelCtx = context.WithTimeout(r.Context(), app.timeout)
+	}
+	if app.withContext != nil {
+		ctx.ctx = app.withContext(ctx.ctx)
 	}
 	return ctx
 }

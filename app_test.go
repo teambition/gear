@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
+	"context"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -505,6 +506,36 @@ func TestGearAppTimeout(t *testing.T) {
 		res.Body.Close()
 
 		time.Sleep(time.Millisecond * 500)
+	})
+}
+
+func TestGearAppWithContext(t *testing.T) {
+	t.Run("respond 200", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		assert.Panics(func() {
+			app.Set("AppWithContext", func() {})
+		})
+
+		key := struct{}{}
+		app.Set("AppWithContext", func(ctx context.Context) context.Context {
+			return context.WithValue(ctx, key, "Hello Context")
+		})
+
+		app.Use(func(ctx *Context) error {
+			value := ctx.Value(key).(string)
+			return ctx.End(200, []byte(value))
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("Hello Context", PickRes(res.Text()).(string))
+		res.Body.Close()
 	})
 }
 

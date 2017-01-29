@@ -1,6 +1,7 @@
 package gear
 
 import (
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -27,7 +28,9 @@ type Renderer interface {
 	Render(ctx *Context, w io.Writer, name string, data interface{}) error
 }
 
-// BodyParser interface is used by ctx.ParseBody.
+// BodyParser interface is used by ctx.ParseBody. Default to:
+//  app.Set("AppBodyParser", DefaultBodyParser(1<<20))
+//
 type BodyParser interface {
 	// Maximum allowed size for a request body
 	MaxBytes() int64
@@ -60,7 +63,9 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 	return &Error{Code: http.StatusUnsupportedMediaType, Msg: "Unsupported media type"}
 }
 
-// OnError interface is use to deal with errors returned by middlewares.
+// OnError interface is use to deal with errors returned by middlewares. Default to:
+//  app.Set("AppOnError", &DefaultOnError{})
+//
 type OnError interface {
 	OnError(ctx *Context, err error) *Error
 }
@@ -198,6 +203,8 @@ type App struct {
 	compress Compressible
 	// Default to 0
 	timeout time.Duration
+
+	withContext func(context.Context) context.Context
 	// ErrorLog specifies an optional logger for app's errors. Default to nil.
 	logger *log.Logger
 }
@@ -237,8 +244,9 @@ func (app *App) UseHandler(h Handler) {
 //  app.Set("AppRenderer", val gear.Renderer)     // No default
 //  app.Set("AppLogger", val *log.Logger)         // No default
 //  app.Set("AppBodyParser", val gear.BodyParser) // Default to gear.DefaultBodyParser
-//  app.Set("AppTimeout", val time.Duration)      // Default to 0, no timeout
 //  app.Set("AppCompress", val gear.Compress)     // Enable to compress response content.
+//  app.Set("AppTimeout", val time.Duration)      // Default to 0, no timeout
+//  app.Set("AppWithContext", val func(context.Context) context.Context) // No default
 //  app.Set("AppEnv", val string) // It will read os env with key `APP_ENV` Default to "development"
 //
 func (app *App) Set(setting string, val interface{}) {
@@ -278,6 +286,12 @@ func (app *App) Set(setting string, val interface{}) {
 			panic(NewAppError("AppTimeout setting must be time.Duration instance"))
 		} else {
 			app.timeout = timeout
+		}
+	case "AppWithContext":
+		if withContext, ok := val.(func(context.Context) context.Context); !ok {
+			panic(NewAppError("AppWithContext setting must be func instance"))
+		} else {
+			app.withContext = withContext
 		}
 	case "AppEnv":
 		if _, ok := val.(string); !ok {
