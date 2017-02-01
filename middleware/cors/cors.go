@@ -70,6 +70,9 @@ func New(opts Options) gear.Middleware {
 	}
 
 	return func(ctx *gear.Context) (err error) {
+		// Always set Vary, see https://github.com/rs/cors/issues/10
+		ctx.Res.Vary(gear.HeaderOrigin)
+
 		origin := ctx.Get(gear.HeaderOrigin)
 		// not a CORS request.
 		if origin == "" {
@@ -79,23 +82,22 @@ func New(opts Options) gear.Middleware {
 		allowOrigin := opts.AllowOriginsValidator(origin, ctx)
 		// If the request Origin header is not allowed. Just terminate the following steps.
 		if allowOrigin == "" {
-			ctx.Res.Vary(gear.HeaderOrigin)
 			return ctx.Error(&gear.Error{Code: http.StatusForbidden,
 				Msg: fmt.Sprintf("Origin: %v is not allowed", origin)})
 		}
-		if allowOrigin != "*" {
-			ctx.Res.Vary(gear.HeaderOrigin)
-			if opts.Credentials {
-				// when responding to a credentialed request, server must specify a
-				// domain, and cannot use wild carding.
-				// See *important note* in https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Requests_with_credentials .
-				ctx.Set(gear.HeaderAccessControlAllowCredentials, "true")
-			}
+		if allowOrigin != "*" && opts.Credentials {
+			// when responding to a credentialed request, server must specify a
+			// domain, and cannot use wild carding.
+			// See *important note* in https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Requests_with_credentials .
+			ctx.Set(gear.HeaderAccessControlAllowCredentials, "true")
 		}
 		ctx.Set(gear.HeaderAccessControlAllowOrigin, allowOrigin)
 
 		// Handle preflighted requests (https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Preflighted_requests) .
 		if ctx.Method == http.MethodOptions {
+			ctx.Res.Vary(gear.HeaderAccessControlRequestMethod)
+			ctx.Res.Vary(gear.HeaderAccessControlRequestHeaders)
+
 			requestMethod := ctx.Get(gear.HeaderAccessControlRequestMethod)
 			// If there is no "Access-Control-Request-Method" request header. We just
 			// treat this request as an invalid preflighted request, so terminate the
@@ -107,12 +109,12 @@ func New(opts Options) gear.Middleware {
 					Msg: "Invalid preflighted request, missing Access-Control-Request-Method header"})
 			}
 			if len(opts.AllowMethods) > 0 {
-				ctx.Set(gear.HeaderAccessControlAllowMethods, joinWithComma(opts.AllowMethods))
+				ctx.Set(gear.HeaderAccessControlAllowMethods, strings.Join(opts.AllowMethods, ", "))
 			}
 
 			var allowHeaders string
 			if len(opts.AllowHeaders) > 0 {
-				allowHeaders = joinWithComma(opts.AllowHeaders)
+				allowHeaders = strings.Join(opts.AllowHeaders, ", ")
 			} else {
 				allowHeaders = ctx.Get(gear.HeaderAccessControlRequestHeaders)
 			}
@@ -127,12 +129,8 @@ func New(opts Options) gear.Middleware {
 		}
 
 		if len(opts.ExposeHeaders) > 0 {
-			ctx.Set(gear.HeaderAccessControlExposeHeaders, joinWithComma(opts.ExposeHeaders))
+			ctx.Set(gear.HeaderAccessControlExposeHeaders, strings.Join(opts.ExposeHeaders, ", "))
 		}
 		return
 	}
-}
-
-func joinWithComma(s []string) string {
-	return strings.Join(s, ", ")
 }

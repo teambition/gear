@@ -2,6 +2,7 @@ package cors
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -36,6 +37,7 @@ func TestGearMiddlewareCORS(t *testing.T) {
 		res, err := DefaultClient.Do(req)
 
 		assert.Nil(err)
+		assert.Equal("Origin", res.Header.Get(gear.HeaderVary))
 		assert.Equal("", res.Header.Get(gear.HeaderAccessControlAllowOrigin))
 		assert.Equal(http.StatusOK, res.StatusCode)
 	})
@@ -133,10 +135,10 @@ func TestGearMiddlewareCORS(t *testing.T) {
 			res, err := DefaultClient.Do(req)
 
 			assert.Nil(err)
-			assert.Equal("", res.Header.Get(gear.HeaderVary))
+			assert.Equal("Origin", res.Header.Get(gear.HeaderVary))
 			assert.Equal("*", res.Header.Get(gear.HeaderAccessControlAllowOrigin))
 			assert.Equal("", res.Header.Get(gear.HeaderAccessControlAllowCredentials))
-			assert.Equal(joinWithComma(defaultAllowMethods),
+			assert.Equal(strings.Join(defaultAllowMethods, ", "),
 				res.Header.Get(gear.HeaderAccessControlAllowMethods))
 		})
 	})
