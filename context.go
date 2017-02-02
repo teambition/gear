@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/go-http-utils/cookie"
 	"github.com/go-http-utils/negotiator"
 )
 
@@ -34,9 +35,10 @@ type BodyTemplate interface {
 // Context represents the context of the current HTTP request. It holds request and
 // response objects, path, path parameters, data, registered handler and content.Context.
 type Context struct {
-	app *App
-	Req *http.Request
-	Res *Response
+	app     *App
+	Req     *http.Request
+	Res     *Response
+	Cookies *cookie.Cookies // https://github.com/go-http-utils/cookie
 
 	Host   string
 	Method string
@@ -55,6 +57,7 @@ type Context struct {
 func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	ctx := &Context{app: app, Req: r}
 	ctx.Res = newResponse(ctx, w)
+	ctx.Cookies = cookie.New(w, r, app.keygrip)
 
 	ctx.Host = r.Host
 	ctx.Method = r.Method
@@ -267,21 +270,6 @@ func (ctx *Context) QueryAll(name string) []string {
 		ctx.query = ctx.Req.URL.Query()
 	}
 	return ctx.query[name]
-}
-
-// Cookie returns the named cookie provided in the request.
-func (ctx *Context) Cookie(name string) (*http.Cookie, error) {
-	return ctx.Req.Cookie(name)
-}
-
-// SetCookie adds a `Set-Cookie` header in HTTP response.
-func (ctx *Context) SetCookie(cookie *http.Cookie) {
-	http.SetCookie(ctx.Res, cookie)
-}
-
-// Cookies returns the HTTP cookies sent with the request.
-func (ctx *Context) Cookies() []*http.Cookie {
-	return ctx.Req.Cookies()
 }
 
 // ParseBody parses request content with BodyParser, DefaultBodyParser support JSON and XML.

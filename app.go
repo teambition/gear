@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/go-http-utils/cookie"
 )
 
 // Handler interface is used by app.UseHandler as a middleware.
@@ -199,6 +201,7 @@ type App struct {
 	onerror    OnError
 	renderer   Renderer
 	bodyParser BodyParser
+	keygrip    *cookie.Keygrip
 	// Default to nil, do not compress response content.
 	compress Compressible
 	// Default to 0
@@ -245,6 +248,7 @@ func (app *App) UseHandler(h Handler) {
 //  app.Set("AppLogger", val *log.Logger)         // No default
 //  app.Set("AppBodyParser", val gear.BodyParser) // Default to gear.DefaultBodyParser
 //  app.Set("AppCompress", val gear.Compress)     // Enable to compress response content.
+//  app.Set("AppKeys", val []string)         // Enable to Get or Set singed cookies with ctx.Cookies.
 //  app.Set("AppTimeout", val time.Duration)      // Default to 0, no timeout
 //  app.Set("AppWithContext", val func(context.Context) context.Context) // No default
 //  app.Set("AppEnv", val string) // It will read os env with key `APP_ENV` Default to "development"
@@ -281,6 +285,12 @@ func (app *App) Set(setting string, val interface{}) {
 		} else {
 			app.compress = compress
 		}
+	case "AppKeys":
+		if keys, ok := val.([]string); !ok {
+			panic(NewAppError("AppKeys setting must be []string"))
+		} else {
+			app.keygrip = cookie.NewKeygrip(keys)
+		}
 	case "AppTimeout":
 		if timeout, ok := val.(time.Duration); !ok {
 			panic(NewAppError("AppTimeout setting must be time.Duration instance"))
@@ -297,8 +307,10 @@ func (app *App) Set(setting string, val interface{}) {
 		if _, ok := val.(string); !ok {
 			panic(NewAppError("AppEnv setting must be string"))
 		}
+		fallthrough
+	default:
+		app.settings[setting] = val
 	}
-	app.settings[setting] = val
 }
 
 // Listen starts the HTTP server.

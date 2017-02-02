@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-http-utils/cookie"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -501,38 +502,71 @@ func TestGearContextQuery(t *testing.T) {
 	assert.Equal(204, res.StatusCode)
 }
 
-func TestGearContextCookie(t *testing.T) {
-	assert := assert.New(t)
+func TestGearContextCookies(t *testing.T) {
+	t.Run("without keys", func(t *testing.T) {
+		assert := assert.New(t)
 
-	app := New()
-	r := NewRouter()
-	r.Get("/", func(ctx *Context) error {
-		c1, _ := ctx.Cookie("Gear")
-		c2, _ := ctx.Cookie("Gear.sig")
+		app := New()
+		app.Use(func(ctx *Context) error {
+			val, err := ctx.Cookies.Get("Gear")
+			assert.Nil(err)
+			assert.Equal("test", val)
 
-		assert.Equal("test", c1.Value)
-		assert.Equal("abc123", c2.Value)
-		assert.Equal(2, len(ctx.Cookies()))
+			ctx.Cookies.Set("Gear", "Hello")
+			return ctx.End(http.StatusNoContent)
+		})
 
-		c1.Value = "Hello"
-		c1.Path = "/test"
-		ctx.SetCookie(c1)
-		return ctx.End(http.StatusNoContent)
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req, _ := NewRequst("GET", host)
+		res, err := DefaultClientDoWithCookies(req, map[string]string{"Gear": "test"})
+		assert.Nil(err)
+		assert.Equal(204, res.StatusCode)
+		c := res.Cookies()[0]
+		assert.Equal("Gear", c.Name)
+		assert.Equal("Hello", c.Value)
 	})
-	app.UseHandler(r)
 
-	srv := app.Start()
-	defer srv.Close()
+	t.Run("with keys", func(t *testing.T) {
+		assert := assert.New(t)
 
-	host := "http://" + srv.Addr().String()
-	req, _ := NewRequst("GET", host)
-	res, err := DefaultClientDoWithCookies(req, map[string]string{"Gear": "test", "Gear.sig": "abc123"})
-	assert.Nil(err)
-	assert.Equal(204, res.StatusCode)
-	c := res.Cookies()[0]
-	assert.Equal("Gear", c.Name)
-	assert.Equal("Hello", c.Value)
-	assert.Equal("/test", c.Path)
+		app := New()
+		assert.Panics(func() {
+			app.Set("AppKeys", "some key")
+		})
+		assert.Panics(func() {
+			app.Set("AppKeys", []string{})
+		})
+		app.Set("AppKeys", []string{"some key"})
+		app.Use(func(ctx *Context) error {
+			val, err := ctx.Cookies.Get("cookieKey", true)
+			assert.Nil(err)
+			assert.Equal("cookie value", val)
+
+			ctx.Cookies.Set("Gear", "Hello", &cookie.Options{Signed: true})
+			return ctx.End(http.StatusNoContent)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		host := "http://" + srv.Addr().String()
+		req, _ := NewRequst("GET", host)
+		res, err := DefaultClientDoWithCookies(req, map[string]string{
+			"cookieKey":     "cookie value",
+			"cookieKey.sig": "JROAKAAIUzC3_akvMb7PKF4l5h4",
+		})
+		assert.Nil(err)
+		assert.Equal(204, res.StatusCode)
+		c := res.Cookies()[0]
+		assert.Equal("Gear", c.Name)
+		assert.Equal("Hello", c.Value)
+		sig := res.Cookies()[1]
+		assert.Equal("Gear.sig", sig.Name)
+		assert.Equal(app.keygrip.Sign("Gear=Hello"), sig.Value)
+	})
 }
 
 type jsonBodyTemplate struct {
