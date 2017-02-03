@@ -16,8 +16,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
-
-	"github.com/go-http-utils/cookie"
 )
 
 // Handler interface is used by app.UseHandler as a middleware.
@@ -201,7 +199,7 @@ type App struct {
 	onerror    OnError
 	renderer   Renderer
 	bodyParser BodyParser
-	keygrip    *cookie.Keygrip
+	keys       []string
 	// Default to nil, do not compress response content.
 	compress Compressible
 	// Default to 0
@@ -289,7 +287,7 @@ func (app *App) Set(setting string, val interface{}) {
 		if keys, ok := val.([]string); !ok {
 			panic(NewAppError("AppKeys setting must be []string"))
 		} else {
-			app.keygrip = cookie.NewKeygrip(keys)
+			app.keys = keys
 		}
 	case "AppTimeout":
 		if timeout, ok := val.(time.Duration); !ok {

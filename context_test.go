@@ -536,9 +536,6 @@ func TestGearContextCookies(t *testing.T) {
 		assert.Panics(func() {
 			app.Set("AppKeys", "some key")
 		})
-		assert.Panics(func() {
-			app.Set("AppKeys", []string{})
-		})
 		app.Set("AppKeys", []string{"some key"})
 		app.Use(func(ctx *Context) error {
 			val, err := ctx.Cookies.Get("cookieKey", true)
@@ -565,7 +562,6 @@ func TestGearContextCookies(t *testing.T) {
 		assert.Equal("Hello", c.Value)
 		sig := res.Cookies()[1]
 		assert.Equal("Gear.sig", sig.Name)
-		assert.Equal(app.keygrip.Sign("Gear=Hello"), sig.Value)
 	})
 }
 

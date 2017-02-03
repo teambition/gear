@@ -57,7 +57,7 @@ type Context struct {
 func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	ctx := &Context{app: app, Req: r}
 	ctx.Res = newResponse(ctx, w)
-	ctx.Cookies = cookie.New(w, r, app.keygrip)
+	ctx.Cookies = cookie.New(w, r, app.keys)
 
 	ctx.Host = r.Host
 	ctx.Method = r.Method
@@ -69,6 +69,7 @@ func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	} else {
 		ctx.ctx, ctx.cancelCtx = context.WithTimeout(r.Context(), app.timeout)
 	}
+
 	if app.withContext != nil {
 		ctx.ctx = app.withContext(ctx.ctx)
 	}
