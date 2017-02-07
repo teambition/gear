@@ -29,7 +29,7 @@ type Renderer interface {
 }
 
 // BodyParser interface is used by ctx.ParseBody. Default to:
-//  app.Set("AppBodyParser", DefaultBodyParser(1<<20))
+//  app.Set(gear.SetBodyParser, DefaultBodyParser(1<<20))
 //
 type BodyParser interface {
 	// Maximum allowed size for a request body
@@ -38,9 +38,9 @@ type BodyParser interface {
 }
 
 // DefaultBodyParser is default BodyParser type.
-// "AppBodyParser" used 1MB as default:
+// SetBodyParser used 1MB as default:
 //
-//  app.Set("AppBodyParser", DefaultBodyParser(1<<20))
+//  app.Set(gear.SetBodyParser, DefaultBodyParser(1<<20))
 //
 type DefaultBodyParser int64
 
@@ -64,7 +64,7 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 }
 
 // OnError interface is use to deal with errors returned by middlewares. Default to:
-//  app.Set("AppOnError", &DefaultOnError{})
+//  app.Set("SetOnError", &DefaultOnError{})
 //
 type OnError interface {
 	OnError(ctx *Context, err error) *Error
@@ -194,7 +194,7 @@ func ParseError(e error, code ...int) *Error {
 type App struct {
 	Server     *http.Server
 	middleware middlewares
-	settings   map[string]interface{}
+	settings   map[interface{}]interface{}
 
 	onerror    OnError
 	renderer   Renderer
@@ -215,16 +215,16 @@ func New() *App {
 	app := new(App)
 	app.Server = new(http.Server)
 	app.middleware = make(middlewares, 0)
-	app.settings = make(map[string]interface{})
+	app.settings = make(map[interface{}]interface{})
 
 	env := os.Getenv("APP_ENV")
 	if env == "" {
 		env = "development"
 	}
-	app.Set("AppEnv", env)
-	app.Set("AppOnError", &DefaultOnError{})
-	app.Set("AppBodyParser", DefaultBodyParser(1<<20))
-	app.Set("AppLogger", log.New(os.Stderr, "", log.LstdFlags))
+	app.Set(SetEnv, env)
+	app.Set(SetOnError, &DefaultOnError{})
+	app.Set(SetBodyParser, DefaultBodyParser(1<<20))
+	app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
 	return app
 }
 
@@ -238,77 +238,124 @@ func (app *App) UseHandler(h Handler) {
 	app.middleware = append(app.middleware, h.Serve)
 }
 
-// Set add app settings. The settings can be retrieved by ctx.Setting.
-// There are 4 build-in app settings:
-//
-//  app.Set("AppOnError", val gear.OnError)       // Default to gear.DefaultOnError
-//  app.Set("AppRenderer", val gear.Renderer)     // No default
-//  app.Set("AppLogger", val *log.Logger)         // No default
-//  app.Set("AppBodyParser", val gear.BodyParser) // Default to gear.DefaultBodyParser
-//  app.Set("AppCompress", val gear.Compress)     // Enable to compress response content.
-//  app.Set("AppKeys", val []string)         // Enable to Get or Set singed cookies with ctx.Cookies.
-//  app.Set("AppTimeout", val time.Duration)      // Default to 0, no timeout
-//  app.Set("AppWithContext", val func(context.Context) context.Context) // No default
-//  app.Set("AppEnv", val string) // It will read os env with key `APP_ENV` Default to "development"
-//
-func (app *App) Set(setting string, val interface{}) {
-	switch setting {
-	case "AppOnError":
-		if onerror, ok := val.(OnError); !ok {
-			panic(NewAppError("AppOnError setting must implemented gear.OnError interface"))
-		} else {
-			app.onerror = onerror
+type appSetting uint8
+
+// Build-in app settings
+const (
+	// It will be used by `ctx.ParseBody`, value should implements `gear.BodyParser` interface, default to:
+	//
+	//   app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
+	//
+	SetBodyParser appSetting = iota
+
+	// Enable compress for response, value should implements `gear.Compressible` interface, no default value.
+	// Example:
+	//  import "github.com/teambition/compressible-go"
+	//
+	//  app := gear.New()
+	//  app.Set(gear.SetCompress, compressible.WithThreshold(1024))
+	//
+	SetCompress
+
+	// Set secret keys for signed cookies, it will be used by `ctx.Cookies`, value should be `[]string` type,
+	// no default value. More document https://github.com/go-http-utils/cookie, Example:
+	//
+	//  app.Set(gear.SetKeys, []string{"some key2", "some key1"})
+	//
+	SetKeys
+
+	// Set a logger to app, value should be `*log.Logger` instance, default to:
+	//
+	//   app.Set(gear.SetLogger, log.New(os.Stderr, "", log.LstdFlags))
+	//
+	SetLogger
+
+	// Set a on-error hook to app, value should implements `gear.OnError` interface, default to:
+	//
+	//   app.Set(gear.SetOnError, &gear.DefaultOnError{})
+	//
+	SetOnError
+
+	// Set a renderer to app, it will be used by `ctx.Render`, value should implements `gear.Renderer` interface,
+	// no default value.
+	SetRenderer
+
+	// Set a timeout to for the middleware process, value should be `time.Duration`. No default.
+	// Example:
+	//
+	//  app.Set(gear.SetTimeout, 3*time.Second)
+	//
+	SetTimeout
+
+	// Set a function that Wrap the gear.Context' underlayer context.Context. No default.
+	SetWithContext
+
+	// Set a app env string to app, it can be retrieved by `ctx.Setting(gear.SetEnv)`.
+	// Default to os process "APP_ENV" or "development".
+	SetEnv
+)
+
+// Set add key/value settings to app. The settings can be retrieved by `ctx.Setting(key)`.
+func (app *App) Set(key, val interface{}) {
+	if k, ok := key.(appSetting); ok {
+		switch key {
+		case SetBodyParser:
+			if bodyParser, ok := val.(BodyParser); !ok {
+				panic(NewAppError("SetBodyParser setting must implemented gear.BodyParser interface"))
+			} else {
+				app.bodyParser = bodyParser
+			}
+		case SetCompress:
+			if compress, ok := val.(Compressible); !ok {
+				panic(NewAppError("SetCompress setting must implemented gear.Compressible interface"))
+			} else {
+				app.compress = compress
+			}
+		case SetKeys:
+			if keys, ok := val.([]string); !ok {
+				panic(NewAppError("SetKeys setting must be []string"))
+			} else {
+				app.keys = keys
+			}
+		case SetLogger:
+			if logger, ok := val.(*log.Logger); !ok {
+				panic(NewAppError("SetLogger setting must be *log.Logger instance"))
+			} else {
+				app.logger = logger
+			}
+		case SetOnError:
+			if onerror, ok := val.(OnError); !ok {
+				panic(NewAppError("SetOnError setting must implemented gear.OnError interface"))
+			} else {
+				app.onerror = onerror
+			}
+		case SetRenderer:
+			if renderer, ok := val.(Renderer); !ok {
+				panic(NewAppError("SetRenderer setting must implemented gear.Renderer interface"))
+			} else {
+				app.renderer = renderer
+			}
+		case SetTimeout:
+			if timeout, ok := val.(time.Duration); !ok {
+				panic(NewAppError("SetTimeout setting must be time.Duration instance"))
+			} else {
+				app.timeout = timeout
+			}
+		case SetWithContext:
+			if withContext, ok := val.(func(context.Context) context.Context); !ok {
+				panic(NewAppError("SetWithContext setting must be func instance"))
+			} else {
+				app.withContext = withContext
+			}
+		case SetEnv:
+			if _, ok := val.(string); !ok {
+				panic(NewAppError("SetEnv setting must be string"))
+			}
 		}
-	case "AppRenderer":
-		if renderer, ok := val.(Renderer); !ok {
-			panic(NewAppError("AppRenderer setting must implemented gear.Renderer interface"))
-		} else {
-			app.renderer = renderer
-		}
-	case "AppLogger":
-		if logger, ok := val.(*log.Logger); !ok {
-			panic(NewAppError("AppLogger setting must be *log.Logger instance"))
-		} else {
-			app.logger = logger
-		}
-	case "AppBodyParser":
-		if bodyParser, ok := val.(BodyParser); !ok {
-			panic(NewAppError("AppBodyParser setting must implemented gear.BodyParser interface"))
-		} else {
-			app.bodyParser = bodyParser
-		}
-	case "AppCompress":
-		if compress, ok := val.(Compressible); !ok {
-			panic(NewAppError("AppCompress setting must implemented gear.Compressible interface"))
-		} else {
-			app.compress = compress
-		}
-	case "AppKeys":
-		if keys, ok := val.([]string); !ok {
-			panic(NewAppError("AppKeys setting must be []string"))
-		} else {
-			app.keys = keys
-		}
-	case "AppTimeout":
-		if timeout, ok := val.(time.Duration); !ok {
-			panic(NewAppError("AppTimeout setting must be time.Duration instance"))
-		} else {
-			app.timeout = timeout
-		}
-	case "AppWithContext":
-		if withContext, ok := val.(func(context.Context) context.Context); !ok {
-			panic(NewAppError("AppWithContext setting must be func instance"))
-		} else {
-			app.withContext = withContext
-		}
-	case "AppEnv":
-		if _, ok := val.(string); !ok {
-			panic(NewAppError("AppEnv setting must be string"))
-		}
-		fallthrough
-	default:
-		app.settings[setting] = val
+		app.settings[k] = val
+		return
 	}
+	app.settings[key] = val
 }
 
 // Listen starts the HTTP server.

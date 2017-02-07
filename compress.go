@@ -17,7 +17,7 @@ type Compressible interface {
 
 // DefaultCompress is defalut Compress implemented. Use it to enable compress:
 //
-//  app.Set("AppCompress", &gear.DefaultCompress{})
+//  app.Set(gear.SetCompress, &gear.DefaultCompress{})
 //
 type DefaultCompress struct{}
 
@@ -27,7 +27,7 @@ type DefaultCompress struct{}
 //  import "github.com/teambition/compressible-go"
 //
 //  app := gear.New()
-//  app.Set("AppCompress", compressible.WithThreshold(1024))
+//  app.Set(gear.SetCompress, compressible.WithThreshold(1024))
 //
 //  // Add a static middleware
 //  app.Use(static.New(static.Options{

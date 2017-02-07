@@ -358,7 +358,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		var errbuf bytes.Buffer
 
 		app := gear.New()
-		app.Set("AppLogger", log.New(&errbuf, "TEST: ", 0))
+		app.Set(gear.SetLogger, log.New(&errbuf, "TEST: ", 0))
 
 		logger := New(&buf)
 		logger.SetLogInit(func(log Log, ctx *gear.Context) {

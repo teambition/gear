@@ -215,7 +215,7 @@ func TestGearContextTiming(t *testing.T) {
 
 		app := New()
 
-		app.Set("AppTimeout", time.Millisecond*10)
+		app.Set(SetTimeout, time.Millisecond*10)
 		app.Use(func(ctx *Context) error {
 			res, err := ctx.Timing(time.Millisecond*20, func(c context.Context) interface{} {
 				go func() {
@@ -261,7 +261,7 @@ func (t *ctxAnyType) New(ctx *Context) (interface{}, error) {
 func TestGearContextAny(t *testing.T) {
 	app := New()
 	assert.Panics(t, func() {
-		app.Set("AppEnv", 123)
+		app.Set(SetEnv, 123)
 	})
 
 	t.Run("type Any", func(t *testing.T) {
@@ -321,11 +321,11 @@ func TestGearContextAny(t *testing.T) {
 		assert := assert.New(t)
 
 		ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
-		assert.Equal("development", ctx.Setting("AppEnv").(string))
+		assert.Equal("development", ctx.Setting(SetEnv).(string))
 
-		app.Set("AppEnv", "test")
+		app.Set(SetEnv, "test")
 		ctx = CtxTest(app, "POST", "http://example.com/foo", nil)
-		assert.Equal("test", ctx.Setting("AppEnv").(string))
+		assert.Equal("test", ctx.Setting(SetEnv).(string))
 	})
 }
 
@@ -534,9 +534,9 @@ func TestGearContextCookies(t *testing.T) {
 
 		app := New()
 		assert.Panics(func() {
-			app.Set("AppKeys", "some key")
+			app.Set(SetKeys, "some key")
 		})
-		app.Set("AppKeys", []string{"some key"})
+		app.Set(SetKeys, []string{"some key"})
 		app.Use(func(ctx *Context) error {
 			val, err := ctx.Cookies.Get("cookieKey", true)
 			assert.Nil(err)
@@ -592,7 +592,7 @@ func (b *xmlBodyTemplate) Validate() error {
 func TestGearContextParseBody(t *testing.T) {
 	app := New()
 	assert.Panics(t, func() {
-		app.Set("AppBodyParser", 123)
+		app.Set(SetBodyParser, 123)
 	})
 
 	t.Run("should parse JSON content", func(t *testing.T) {
@@ -669,7 +669,7 @@ func TestGearContextParseBody(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		app.Set("AppBodyParser", DefaultBodyParser(100))
+		app.Set(SetBodyParser, DefaultBodyParser(100))
 
 		ctx := CtxTest(app, "POST", "http://example.com/foo",
 			bytes.NewBufferString(strings.Repeat("t", 101)))
@@ -972,9 +972,9 @@ func TestGearContextRender(t *testing.T) {
 
 		app := New()
 		assert.Panics(func() {
-			app.Set("AppRenderer", struct{}{})
+			app.Set(SetRenderer, struct{}{})
 		})
-		app.Set("AppRenderer", &RenderTest{
+		app.Set(SetRenderer, &RenderTest{
 			tpl: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
 		})
 		app.Use(func(ctx *Context) error {
@@ -994,7 +994,7 @@ func TestGearContextRender(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		app.Set("AppRenderer", &RenderTest{
+		app.Set(SetRenderer, &RenderTest{
 			tpl: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
 		})
 		app.Use(func(ctx *Context) error {
@@ -1044,7 +1044,7 @@ func TestGearContextStream(t *testing.T) {
 
 		var buf bytes.Buffer
 		app := New()
-		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
+		app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
 		app.Use(func(ctx *Context) error {
 			ctx.End(204)
 

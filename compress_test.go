@@ -53,9 +53,9 @@ func TestGearResponseCompress(t *testing.T) {
 
 		app := New()
 		assert.Panics(t, func() {
-			app.Set("AppCompress", struct{}{})
+			app.Set(SetCompress, struct{}{})
 		})
-		app.Set("AppCompress", &DefaultCompress{})
+		app.Set(SetCompress, &DefaultCompress{})
 
 		r := NewRouter()
 		r.Get("/full", func(ctx *Context) error {
@@ -156,7 +156,7 @@ func TestGearResponseCompress(t *testing.T) {
 			body := []byte(strings.Repeat("你好，Gear", 500))
 
 			app := New()
-			app.Set("AppCompress", &DefaultCompress{})
+			app.Set(SetCompress, &DefaultCompress{})
 
 			r := NewRouter()
 			r.Get("/full", func(ctx *Context) error {
@@ -186,7 +186,7 @@ func TestGearResponseCompress(t *testing.T) {
 			assert := assert.New(t)
 
 			app := New()
-			app.Set("AppCompress", &DefaultCompress{})
+			app.Set(SetCompress, &DefaultCompress{})
 
 			r := NewRouter()
 			r.Get("/204", func(ctx *Context) error {

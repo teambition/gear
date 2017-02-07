@@ -48,7 +48,7 @@ func TestGearMiddlewareStatic(t *testing.T) {
 	})
 
 	app := gear.New()
-	app.Set("AppCompress", &gear.DefaultCompress{})
+	app.Set(gear.SetCompress, &gear.DefaultCompress{})
 
 	app.Use(New(Options{
 		Root:        "../../testdata",

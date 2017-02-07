@@ -200,11 +200,11 @@ func (ctx *Context) SetAny(key, val interface{}) {
 
 // Setting returns App's settings by key
 //
-//  fmt.Println(ctx.Setting("AppEnv").(string) == "development")
-//  app.Set("AppEnv", "production")
-//  fmt.Println(ctx.Setting("AppEnv").(string) == "production")
+//  fmt.Println(ctx.Setting(gear.SetEnv).(string) == "development")
+//  app.Set(gear.SetEnv, "production")
+//  fmt.Println(ctx.Setting(gear.SetEnv).(string) == "production")
 //
-func (ctx *Context) Setting(key string) interface{} {
+func (ctx *Context) Setting(key interface{}) interface{} {
 	if val, ok := ctx.app.settings[key]; ok {
 		return val
 	}

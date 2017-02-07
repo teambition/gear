@@ -198,13 +198,13 @@ func TestGearError(t *testing.T) {
 		var buf bytes.Buffer
 		app := New()
 		assert.Panics(func() {
-			app.Set("AppLogger", struct{}{})
+			app.Set(SetLogger, struct{}{})
 		})
 		assert.Panics(func() {
-			app.Set("AppOnError", struct{}{})
+			app.Set(SetOnError, struct{}{})
 		})
-		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
-		app.Set("AppOnError", &testOnError{})
+		app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
+		app.Set(SetOnError, &testOnError{})
 
 		app.Use(func(ctx *Context) error {
 			return errors.New("Some error")
@@ -226,8 +226,8 @@ func TestGearError(t *testing.T) {
 
 		var buf bytes.Buffer
 		app := New()
-		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
-		app.Set("AppOnError", &testOnError{})
+		app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
+		app.Set(SetOnError, &testOnError{})
 
 		app.Use(func(ctx *Context) error {
 			var err *Error
@@ -251,7 +251,7 @@ func TestGearError(t *testing.T) {
 
 		var buf bytes.Buffer
 		app := New()
-		app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
+		app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
 		app.Use(func(ctx *Context) error {
 			ctx.Status(400)
 			panic("Some error")
@@ -429,16 +429,16 @@ func TestGearParseError(t *testing.T) {
 	})
 }
 
-func TestGearAppTimeout(t *testing.T) {
+func TestGearSetTimeout(t *testing.T) {
 	t.Run("respond 504 when timeout", func(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
 
 		assert.Panics(func() {
-			app.Set("AppTimeout", struct{}{})
+			app.Set(SetTimeout, struct{}{})
 		})
-		app.Set("AppTimeout", time.Millisecond*100)
+		app.Set(SetTimeout, time.Millisecond*100)
 
 		app.Use(func(ctx *Context) error {
 			time.Sleep(time.Millisecond * 300)
@@ -462,7 +462,7 @@ func TestGearAppTimeout(t *testing.T) {
 
 		app := New()
 
-		app.Set("AppTimeout", time.Millisecond*100)
+		app.Set(SetTimeout, time.Millisecond*100)
 
 		app.Use(func(ctx *Context) error {
 			ctx.Cancel()
@@ -487,7 +487,7 @@ func TestGearAppTimeout(t *testing.T) {
 
 		app := New()
 
-		app.Set("AppTimeout", time.Millisecond*100)
+		app.Set(SetTimeout, time.Millisecond*100)
 
 		app.Use(func(ctx *Context) error {
 			time.Sleep(time.Millisecond * 10)
@@ -509,17 +509,17 @@ func TestGearAppTimeout(t *testing.T) {
 	})
 }
 
-func TestGearAppWithContext(t *testing.T) {
+func TestGearSetWithContext(t *testing.T) {
 	t.Run("respond 200", func(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
 		assert.Panics(func() {
-			app.Set("AppWithContext", func() {})
+			app.Set(SetWithContext, func() {})
 		})
 
 		key := struct{}{}
-		app.Set("AppWithContext", func(ctx context.Context) context.Context {
+		app.Set(SetWithContext, func(ctx context.Context) context.Context {
 			return context.WithValue(ctx, key, "Hello Context")
 		})
 
@@ -633,7 +633,7 @@ func TestGearWrapResponseWriter(t *testing.T) {
 
 	app := New()
 	var buf bytes.Buffer
-	app.Set("AppLogger", log.New(&buf, "TEST: ", 0))
+	app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
 	app.Use(func(ctx *Context) error {
 		ctx.Res.rw = &WriterTest{ctx.Res.rw}
 
