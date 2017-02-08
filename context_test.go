@@ -1082,7 +1082,7 @@ func TestGearContextAttachment(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			return ctx.Attachment("README.md", file)
+			return ctx.Attachment("README.md", time.Time{}, file)
 		})
 
 		srv := app.Start()
@@ -1105,7 +1105,7 @@ func TestGearContextAttachment(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			return ctx.Attachment("README.md", file, true)
+			return ctx.Attachment("README.md", time.Time{}, file, true)
 		})
 
 		srv := app.Start()

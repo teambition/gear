@@ -467,14 +467,14 @@ func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
-func (ctx *Context) Attachment(name string, content io.ReadSeeker, inline ...bool) (err error) {
+func (ctx *Context) Attachment(name string, modtime time.Time, content io.ReadSeeker, inline ...bool) (err error) {
 	dispositionType := "attachment"
 	if len(inline) > 0 && inline[0] {
 		dispositionType = "inline"
 	}
 	if ctx.ended.swapTrue() {
 		ctx.Set(HeaderContentDisposition, fmt.Sprintf("%s; filename=%s", dispositionType, name))
-		http.ServeContent(ctx.Res, ctx.Req, name, time.Time{}, content)
+		http.ServeContent(ctx.Res, ctx.Req, name, modtime, content)
 	}
 	return
 }
