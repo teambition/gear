@@ -13,8 +13,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/teambition/gear"
 	"github.com/teambition/gear/logging"
 )
