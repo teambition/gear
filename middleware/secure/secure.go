@@ -39,47 +39,38 @@ const (
 	ReferrerPolicyUnsafeURL                   ReferrerPolicy = "unsafe-url"
 )
 
-var (
-	oldIERegex = regexp.MustCompile(`(?i)msie\s*(\d+)`)
-
-	defualtMiddleWares = []gear.Middleware{
-		DNSPrefetchControl(false),
-		HidePoweredBy(),
-		IENoOpen(),
-		NoSniff(),
-		XSSFilter(),
-		FrameGuard(FrameGuardActionSameOrigin),
-		StrictTransportSecurity(StrictTransportSecurityOptions{
-			MaxAge:            180 * 24 * time.Hour,
-			IncludeSubDomains: true,
-		}),
-	}
-)
+var oldIERegex = regexp.MustCompile(`(?i)msie\s*(\d+)`)
 
 // Default provides protection for your Gear app by setting
 // various HTTP headers.
-// It equals:
 //
-// app.Use(DNSPrefetchControl(false))
-// app.Use(HidePoweredBy())
-// app.Use(IENoOpen())
-// app.Use(NoSniff())
-// app.Use(XSSFilter())
-// app.Use(FrameGuard(FrameGuardActionSameOrigin))
-// app.Use(StrictTransportSecurity(StrictTransportSecurityOptions{
-// 	MaxAge:            180 * 24 * time.Hour,
-// 	IncludeSubDomains: true,
-// }))
+//  app.Use(secure.Default)
 //
-func Default() gear.Middleware {
-	return func(ctx *gear.Context) error {
-		for _, middleware := range defualtMiddleWares {
-			middleware(ctx) // no error will be returned form secure middlewares
-		}
-
-		return nil
-	}
-}
+// Equals:
+//
+//  app.Use(DNSPrefetchControl(false))
+//  app.Use(HidePoweredBy())
+//  app.Use(IENoOpen())
+//  app.Use(NoSniff())
+//  app.Use(XSSFilter())
+//  app.Use(FrameGuard(FrameGuardActionSameOrigin))
+//  app.Use(StrictTransportSecurity(StrictTransportSecurityOptions{
+//  	MaxAge:            180 * 24 * time.Hour,
+//  	IncludeSubDomains: true,
+//  }))
+//
+var Default = gear.Compose(
+	DNSPrefetchControl(false),
+	HidePoweredBy(),
+	IENoOpen(),
+	NoSniff(),
+	XSSFilter(),
+	FrameGuard(FrameGuardActionSameOrigin),
+	StrictTransportSecurity(StrictTransportSecurityOptions{
+		MaxAge:            180 * 24 * time.Hour,
+		IncludeSubDomains: true,
+	}),
+)
 
 // DNSPrefetchControl controls browser DNS prefetching. And for potential
 // privacy implications, it should be disabled.

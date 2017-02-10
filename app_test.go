@@ -612,6 +612,41 @@ func TestGearWrapHandlerFunc(t *testing.T) {
 	res.Body.Close()
 }
 
+func TestGearCompose(t *testing.T) {
+	assert := assert.New(t)
+
+	assert.Panics(func() {
+		Compose()
+	})
+
+	app := New()
+	count := 0
+	app.Use(Compose(
+		func(ctx *Context) error {
+			count++
+			assert.Equal(1, count)
+			return nil
+		},
+		func(ctx *Context) error {
+			count++
+			assert.Equal(2, count)
+			return ctx.End(400)
+		},
+		func(ctx *Context) error {
+			panic("this middleware unreachable")
+		},
+	))
+
+	srv := app.Start()
+	defer srv.Close()
+
+	res, err := RequestBy("GET", "http://"+srv.Addr().String())
+	assert.Nil(err)
+	assert.Equal(2, count)
+	assert.Equal(400, res.StatusCode)
+	res.Body.Close()
+}
+
 type WriterTest struct {
 	rw http.ResponseWriter
 }

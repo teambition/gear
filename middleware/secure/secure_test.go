@@ -392,7 +392,7 @@ func TestGearMiddlewareSecure(t *testing.T) {
 		t.Run("Should run default middlewares", func(t *testing.T) {
 			assert := assert.New(t)
 
-			app := getAppWithMiddleware(Default())
+			app := getAppWithMiddleware(Default)
 
 			srv := app.Start()
 			defer srv.Close()

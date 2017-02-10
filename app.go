@@ -155,7 +155,7 @@ func NewAppError(err string) error {
 // ParseError parse a error, textproto.Error or HTTPError to *Error
 func ParseError(e error, code ...int) *Error {
 	var err *Error
-	if !isNil(e) {
+	if !IsNil(e) {
 		switch e.(type) {
 		case *Error:
 			err = e.(*Error)
@@ -429,20 +429,20 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// process app middleware
 	err := app.middleware.run(ctx)
 	if ctx.Res.wroteHeader.isTrue() {
-		if !isNil(err) {
+		if !IsNil(err) {
 			app.Error(err)
 		}
 		return
 	}
 
-	if isNil(err) {
+	if IsNil(err) {
 		// if context canceled abnormally...
 		if err = ctx.Err(); err != nil {
 			err = &Error{http.StatusGatewayTimeout, err.Error(), "", nil}
 		}
 	}
 
-	if !isNil(err) {
+	if !IsNil(err) {
 		ctx.ended.setTrue()
 		ctx.Res.ResetHeader()
 		// process middleware error with OnError
@@ -492,8 +492,8 @@ func WrapHandlerFunc(fn http.HandlerFunc) Middleware {
 	}
 }
 
-// isNil checks if a specified object is nil or not, without Failing.
-func isNil(val interface{}) bool {
+// IsNil checks if a specified object is nil or not, without Failing.
+func IsNil(val interface{}) bool {
 	if val == nil {
 		return true
 	}
@@ -507,11 +507,19 @@ func isNil(val interface{}) bool {
 	}
 }
 
+// Compose composes a array of middlewares to one middleware
+func Compose(mds ...Middleware) Middleware {
+	if len(mds) == 0 {
+		panic(NewAppError("middleware functions required"))
+	}
+	return middlewares(mds).run
+}
+
 type middlewares []Middleware
 
 func (m middlewares) run(ctx *Context) (err error) {
 	for _, handle := range m {
-		if err = handle(ctx); !isNil(err) || ctx.ended.isTrue() {
+		if err = handle(ctx); !IsNil(err) || ctx.ended.isTrue() {
 			return err
 		}
 	}
