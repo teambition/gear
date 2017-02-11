@@ -12,11 +12,10 @@ import (
 	"net/http"
 	"net/textproto"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
-
-	"strconv"
 
 	"github.com/stretchr/testify/assert"
 )
