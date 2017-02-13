@@ -182,14 +182,6 @@ func TestGearAppHello(t *testing.T) {
 	})
 }
 
-type testOnError struct{}
-
-// OnError implemented OnError interface.
-func (o *testOnError) OnError(ctx *Context, err error) *Error {
-	ctx.Type(MIMETextHTMLCharsetUTF8)
-	return ParseError(err, 504)
-}
-
 func TestGearError(t *testing.T) {
 	t.Run("ErrorLog and OnError", func(t *testing.T) {
 		assert := assert.New(t)
@@ -203,7 +195,10 @@ func TestGearError(t *testing.T) {
 			app.Set(SetOnError, struct{}{})
 		})
 		app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
-		app.Set(SetOnError, &testOnError{})
+		app.Set(SetOnError, func(ctx *Context, err *Error) {
+			ctx.Type(MIMETextHTMLCharsetUTF8)
+			err.Code = 200
+		})
 
 		app.Use(func(ctx *Context) error {
 			return errors.New("Some error")
@@ -213,10 +208,10 @@ func TestGearError(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(504, res.StatusCode)
+		assert.Equal(500, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
 		assert.Equal("Some error", PickRes(res.Text()).(string))
-		assert.Equal("TEST: Error{Code:504, Msg:\"Some error\", Stack:\"\", Meta:\"\"}\n", buf.String())
+		assert.Equal("TEST: Error{Code:500, Msg:\"Some error\", Stack:\"\", Meta:\"\"}\n", buf.String())
 		res.Body.Close()
 	})
 
@@ -226,12 +221,13 @@ func TestGearError(t *testing.T) {
 		var buf bytes.Buffer
 		app := New()
 		app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
-		app.Set(SetOnError, &testOnError{})
+		app.Set(SetOnError, func(ctx *Context, err *Error) {
+			ctx.Type(MIMETextHTMLCharsetUTF8)
+			ctx.End(204)
+		})
 
 		app.Use(func(ctx *Context) error {
-			var err *Error
-			ctx.Status(204)
-			return err
+			return errors.New("some error")
 		})
 		srv := app.Start()
 		defer srv.Close()
@@ -239,7 +235,7 @@ func TestGearError(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(204, res.StatusCode)
-		assert.Equal("", res.Header.Get(HeaderContentType))
+		assert.Equal("text/html; charset=utf-8", res.Header.Get(HeaderContentType))
 		assert.Equal("", PickRes(res.Text()).(string))
 		assert.Equal("", buf.String())
 		res.Body.Close()
@@ -350,6 +346,10 @@ func TestGearParseError(t *testing.T) {
 
 	t.Run("Error", func(t *testing.T) {
 		err1 := &Error{Code: 400, Msg: "test"}
+		assert := assert.New(t)
+		assert.Equal(400, err1.Status())
+		assert.Equal("test", err1.Error())
+
 		err := ParseError(err1)
 		EqualPtr(t, err1, err)
 

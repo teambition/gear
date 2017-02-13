@@ -63,25 +63,6 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 	return &Error{Code: http.StatusUnsupportedMediaType, Msg: "Unsupported media type"}
 }
 
-// OnError interface is use to deal with errors returned by middlewares. Default to:
-//  app.Set("SetOnError", &DefaultOnError{})
-//
-type OnError interface {
-	OnError(ctx *Context, err error) *Error
-}
-
-// DefaultOnError is default ctx error handler.
-type DefaultOnError struct{}
-
-// OnError implemented OnError interface.
-func (o *DefaultOnError) OnError(ctx *Context, err error) *Error {
-	code := ctx.Status()
-	if code < 400 {
-		code = 0
-	}
-	return ParseError(err, code)
-}
-
 // HTTPError interface is used to create a server error that include status code and error message.
 type HTTPError interface {
 	// Error returns error's message.
@@ -196,7 +177,6 @@ type App struct {
 	middleware middlewares
 	settings   map[interface{}]interface{}
 
-	onerror    OnError
 	renderer   Renderer
 	bodyParser BodyParser
 	keys       []string
@@ -205,6 +185,7 @@ type App struct {
 	// Default to 0
 	timeout time.Duration
 
+	onerror     func(ctx *Context, err *Error)
 	withContext func(context.Context) context.Context
 	// ErrorLog specifies an optional logger for app's errors. Default to nil.
 	logger *log.Logger
@@ -222,7 +203,6 @@ func New() *App {
 		env = "development"
 	}
 	app.Set(SetEnv, env)
-	app.Set(SetOnError, &DefaultOnError{})
 	app.Set(SetBodyParser, DefaultBodyParser(1<<20))
 	app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
 	return app
@@ -270,10 +250,7 @@ const (
 	//
 	SetLogger
 
-	// Set a on-error hook to app, value should implements `gear.OnError` interface, default to:
-	//
-	//   app.Set(gear.SetOnError, &gear.DefaultOnError{})
-	//
+	// Set a on-error hook to app, value should be `func(ctx *Context, err *Error)`, no default value.
 	SetOnError
 
 	// Set a renderer to app, it will be used by `ctx.Render`, value should implements `gear.Renderer` interface,
@@ -324,8 +301,8 @@ func (app *App) Set(key, val interface{}) {
 				app.logger = logger
 			}
 		case SetOnError:
-			if onerror, ok := val.(OnError); !ok {
-				panic(NewAppError("SetOnError setting must implemented gear.OnError interface"))
+			if onerror, ok := val.(func(ctx *Context, err *Error)); !ok {
+				panic(NewAppError("SetOnError setting must be func(ctx *Context, err *Error)"))
 			} else {
 				app.onerror = onerror
 			}
@@ -343,7 +320,7 @@ func (app *App) Set(key, val interface{}) {
 			}
 		case SetWithContext:
 			if withContext, ok := val.(func(context.Context) context.Context); !ok {
-				panic(NewAppError("SetWithContext setting must be func instance"))
+				panic(NewAppError("SetWithContext setting must be func(context.Context) context.Context"))
 			} else {
 				app.withContext = withContext
 			}
@@ -416,8 +393,9 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// recover panic error
 	defer func() {
 		if err := recover(); err != nil {
+			ctx.cleanAfterHooks()
 			ctx.Res.ResetHeader()
-			ctx.salvage(ErrorWithStack(err))
+			ctx.respondError(ErrorWithStack(err))
 		}
 	}()
 
@@ -443,16 +421,11 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !IsNil(err) {
-		ctx.ended.setTrue()
-		ctx.Res.ResetHeader()
-		// process middleware error with OnError
-		if err := app.onerror.OnError(ctx, err); err != nil {
-			ctx.salvage(err)
-			return
-		}
+		ctx.Error(err)
+	} else {
+		// ensure respond
+		ctx.Res.WriteHeader(0)
 	}
-	// ensure respond
-	ctx.Res.WriteHeader(0)
 }
 
 // ServerListener is returned by a non-blocking app instance.

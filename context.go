@@ -499,16 +499,19 @@ func (ctx *Context) Redirect(url string) (err error) {
 // It will end the ctx. The middlewares after current middleware and "after hooks" will not run.
 // "end hooks" will run normally.
 // Note that this will not stop the current handler.
-func (ctx *Context) Error(e error) (err error) {
-	if e := ParseError(e); e != nil {
-		ctx.cleanAfterHooks() // clear afterHooks when any error
-		ctx.Set(HeaderXContentTypeOptions, "nosniff")
-		if ctx.Res.Get(HeaderContentType) == "" {
-			ctx.Set(HeaderContentType, MIMETextPlainCharsetUTF8)
-		}
-		return ctx.End(e.Status(), []byte(e.Error()))
+func (ctx *Context) Error(e error) error {
+	ctx.cleanAfterHooks() // clear afterHooks when any error
+	ctx.Res.ResetHeader()
+	err := ParseError(e, ctx.Res.status)
+	if err == nil {
+		err = &Error{Code: http.StatusInternalServerError, Msg: NewAppError("nil error").Error()}
 	}
-	return &Error{Code: http.StatusInternalServerError, Msg: NewAppError("nil error").Error()}
+	if ctx.app.onerror != nil {
+		ctx.app.onerror(ctx, err)
+	}
+	//  try to respond error if `OnError` does't do it.
+	ctx.respondError(err)
+	return nil
 }
 
 // ErrorStatus send a error by status code to response. The status should be 4xx or 5xx code.
@@ -519,7 +522,6 @@ func (ctx *Context) Error(e error) (err error) {
 func (ctx *Context) ErrorStatus(status int) (err error) {
 	if status >= 400 && status < 600 {
 		if msg := http.StatusText(status); msg != "" {
-			ctx.Set(HeaderContentType, MIMETextPlainCharsetUTF8)
 			return ctx.Error(&Error{Code: status, Msg: msg})
 		}
 	}
@@ -562,13 +564,15 @@ func (ctx *Context) OnEnd(hook func()) {
 	ctx.endHooks = append(ctx.endHooks, hook)
 }
 
-func (ctx *Context) salvage(err *Error) {
-	ctx.app.Error(err)
+func (ctx *Context) respondError(err *Error) {
 	if !ctx.Res.wroteHeader.isTrue() {
-		ctx.cleanAfterHooks()
+		if err.Code < 400 {
+			err.Code = 500
+		}
+		ctx.app.Error(err)
 		ctx.Set(HeaderContentType, MIMETextPlainCharsetUTF8)
 		ctx.Set(HeaderXContentTypeOptions, "nosniff")
-		ctx.Res.respond(err.Status(), []byte(err.Error()))
+		ctx.Res.respond(err.Code, []byte(err.Msg))
 	}
 }
 
