@@ -335,6 +335,12 @@ func (app *App) Set(key, val interface{}) {
 	app.settings[key] = val
 }
 
+// Env returns app' env. You can set app env with `app.Set(gear.SetEnv, "dome env")`
+// Default to os process "APP_ENV" or "development".
+func (app *App) Env() string {
+	return app.settings[SetEnv].(string)
+}
+
 // Listen starts the HTTP server.
 func (app *App) Listen(addr string) error {
 	app.Server.Addr = addr
