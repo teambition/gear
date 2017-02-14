@@ -1,5 +1,7 @@
 package secure
 
+// Inspire by https://github.com/helmetjs/helmet
+
 import (
 	"errors"
 	"fmt"
@@ -52,6 +54,7 @@ var oldIERegex = regexp.MustCompile(`(?i)msie\s*(\d+)`)
 //  app.Use(HidePoweredBy())
 //  app.Use(IENoOpen())
 //  app.Use(NoSniff())
+//  app.Use(NoCache())
 //  app.Use(XSSFilter())
 //  app.Use(FrameGuard(FrameGuardActionSameOrigin))
 //  app.Use(StrictTransportSecurity(StrictTransportSecurityOptions{
@@ -64,6 +67,7 @@ var Default = gear.Compose(
 	HidePoweredBy(),
 	IENoOpen(),
 	NoSniff(),
+	NoCache(),
 	XSSFilter(),
 	FrameGuard(FrameGuardActionSameOrigin),
 	StrictTransportSecurity(StrictTransportSecurityOptions{
@@ -82,7 +86,6 @@ func DNSPrefetchControl(allow bool) gear.Middleware {
 		} else {
 			ctx.Set(gear.HeaderXDNSPrefetchControl, "off")
 		}
-
 		return nil
 	}
 }
@@ -106,7 +109,6 @@ func FrameGuard(action FrameGuardAction, domains ...string) gear.Middleware {
 		case FrameGuardActionAllowFrom:
 			ctx.Set(gear.HeaderXFrameOptions, "ALLOW-FROM "+domains[0])
 		}
-
 		return nil
 	}
 }
@@ -118,7 +120,6 @@ func HidePoweredBy() gear.Middleware {
 		ctx.After(func() {
 			ctx.Res.Header().Del(gear.HeaderXPoweredBy)
 		})
-
 		return nil
 	}
 }
@@ -133,7 +134,7 @@ type PublicKeyPinningOptions struct {
 }
 
 // PublicKeyPinning helps you set the Public-Key-Pins header to prevent
-// person-in-the-middle attacks.
+// person-in-the-middle attacks(HPKP).
 // See https://developer.mozilla.org/en-US/docs/Web/HTTP/Public_Key_Pinning .
 func PublicKeyPinning(options PublicKeyPinningOptions) gear.Middleware {
 	if len(options.Sha256s) == 0 {
@@ -160,7 +161,6 @@ func PublicKeyPinning(options PublicKeyPinningOptions) gear.Middleware {
 		} else {
 			ctx.Set(gear.HeaderPublicKeyPins, publicKeyPins)
 		}
-
 		return nil
 	}
 }
@@ -174,7 +174,7 @@ type StrictTransportSecurityOptions struct {
 }
 
 // StrictTransportSecurity sets the Strict-Transport-Security header to keep
-// your users on HTTPS.
+// your users on HTTPS(HSTS).
 // See https://developer.mozilla.org/en-US/docs/Web/Security/HTTP_strict_transport_security .
 func StrictTransportSecurity(options StrictTransportSecurityOptions) gear.Middleware {
 	return func(ctx *gear.Context) error {
@@ -187,7 +187,6 @@ func StrictTransportSecurity(options StrictTransportSecurityOptions) gear.Middle
 		}
 
 		ctx.Set(gear.HeaderStrictTransportSecurity, val)
-
 		return nil
 	}
 }
@@ -198,7 +197,6 @@ func StrictTransportSecurity(options StrictTransportSecurityOptions) gear.Middle
 func IENoOpen() gear.Middleware {
 	return func(ctx *gear.Context) error {
 		ctx.Set(gear.HeaderXDownloadOptions, "noopen")
-
 		return nil
 	}
 }
@@ -210,7 +208,21 @@ func IENoOpen() gear.Middleware {
 func NoSniff() gear.Middleware {
 	return func(ctx *gear.Context) error {
 		ctx.Set(gear.HeaderXContentTypeOptions, "nosniff")
+		return nil
+	}
+}
 
+// NoCache will (try to) abolish all client-side caching.
+// It's possible that you've got bugs in an old HTML or JavaScript file,
+// and with a cache, some users will be stuck with those old versions.
+// See https://github.com/helmetjs/nocache
+// See http://docs.spring.io/spring-security/site/docs/current/reference/html/headers.html#headers-cache-control .
+// `s-max-age=0` equal to `Surrogate-Control: no-store`
+func NoCache() gear.Middleware {
+	return func(ctx *gear.Context) error {
+		ctx.Set(gear.HeaderCacheControl, "private, no-cache, max-age=0, s-max-age=0, must-revalidate")
+		ctx.Set(gear.HeaderPragma, "no-cache")
+		ctx.Set(gear.HeaderExpires, "0")
 		return nil
 	}
 }
@@ -221,7 +233,6 @@ func NoSniff() gear.Middleware {
 func SetReferrerPolicy(policy ReferrerPolicy) gear.Middleware {
 	return func(ctx *gear.Context) error {
 		ctx.Set(gear.HeaderRefererPolicy, string(policy))
-
 		return nil
 	}
 }
@@ -239,7 +250,6 @@ func XSSFilter() gear.Middleware {
 		} else {
 			ctx.Set(gear.HeaderXXSSProtection, "1; mode=block")
 		}
-
 		return nil
 	}
 }
@@ -249,7 +259,6 @@ func getIEVersionFromUA(ua string) (float64, error) {
 	if len(matches) <= 1 {
 		return 0, errors.New("secure: Not IE UserAgent")
 	}
-
 	return strconv.ParseFloat(matches[1], 64)
 }
 
@@ -301,7 +310,6 @@ func ContentSecurityPolicy(directives CSPDirectives) gear.Middleware {
 		} else {
 			ctx.Set(gear.HeaderContentSecurityPolicy, csp)
 		}
-
 		return nil
 	}
 }

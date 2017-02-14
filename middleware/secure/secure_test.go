@@ -21,11 +21,8 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal("on", res.Header.Get(gear.HeaderXDNSPrefetchControl))
 		})
@@ -38,11 +35,8 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal("off", res.Header.Get(gear.HeaderXDNSPrefetchControl))
 		})
@@ -57,11 +51,8 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal("DENY", res.Header.Get(gear.HeaderXFrameOptions))
 		})
@@ -74,11 +65,8 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal("SAMEORIGIN", res.Header.Get(gear.HeaderXFrameOptions))
 		})
@@ -92,11 +80,8 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal("ALLOW-FROM "+domain, res.Header.Get(gear.HeaderXFrameOptions))
 		})
@@ -119,11 +104,8 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Empty(res.Header.Get(gear.HeaderXPoweredBy))
 		})
@@ -146,11 +128,8 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal(`pin-sha256="cUPcTAZWKaASuYWhhneDttWpY3oBAkE3h2+soZS7sWs=";pin-sha256="M8HztCzM3elUxkcjR2S5P4hhyBNf6lHkmjAHKhpGPWE";max-age=100;includeSubDomains;report-uri="test.org"`, res.Header.Get(gear.HeaderPublicKeyPins))
 		})
@@ -172,11 +151,8 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal(`pin-sha256="cUPcTAZWKaASuYWhhneDttWpY3oBAkE3h2+soZS7sWs=";pin-sha256="M8HztCzM3elUxkcjR2S5P4hhyBNf6lHkmjAHKhpGPWE";max-age=100;includeSubDomains;report-uri="test.org"`, res.Header.Get(gear.HeaderPublicKeyPinsReportOnly))
 		})
@@ -206,11 +182,8 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal("max-age=100;includeSubDomains;preload;", res.Header.Get(gear.HeaderStrictTransportSecurity))
 		})
@@ -226,11 +199,8 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal("noopen", res.Header.Get(gear.HeaderXDownloadOptions))
 		})
@@ -246,13 +216,29 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal("nosniff", res.Header.Get(gear.HeaderXContentTypeOptions))
+		})
+	})
+
+	t.Run("NoCache", func(t *testing.T) {
+		t.Run(`Should set Cache-Control header`, func(t *testing.T) {
+			assert := assert.New(t)
+
+			app := getAppWithMiddleware(NoCache())
+			srv := app.Start()
+			defer srv.Close()
+
+			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
+			assert.Nil(err)
+			res, err := DefaultClient.Do(req)
+			assert.Nil(err)
+			assert.Equal("private, no-cache, max-age=0, s-max-age=0, must-revalidate",
+				res.Header.Get(gear.HeaderCacheControl))
+			assert.Equal("no-cache", res.Header.Get(gear.HeaderPragma))
+			assert.Equal("0", res.Header.Get(gear.HeaderExpires))
 		})
 	})
 
@@ -261,16 +247,12 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			assert := assert.New(t)
 
 			app := getAppWithMiddleware(SetReferrerPolicy(ReferrerPolicyOrigin))
-
 			srv := app.Start()
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal(string(ReferrerPolicyOrigin), res.Header.Get(gear.HeaderRefererPolicy))
 		})
@@ -281,19 +263,14 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			assert := assert.New(t)
 
 			app := getAppWithMiddleware(XSSFilter())
-
 			srv := app.Start()
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			// IE 8
 			req.Header.Set(gear.HeaderUserAgent, "Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0; GTB7.4; InfoPath.2; SV1; .NET CLR 3.3.69573; WOW64; en-US)")
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal("0", res.Header.Get(gear.HeaderXXSSProtection))
 		})
@@ -302,19 +279,14 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			assert := assert.New(t)
 
 			app := getAppWithMiddleware(XSSFilter())
-
 			srv := app.Start()
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			// IE 9
 			req.Header.Set(gear.HeaderUserAgent, "Mozilla/5.0 (Windows; U; MSIE 9.0; WIndows NT 9.0; en-US))")
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal("1; mode=block", res.Header.Get(gear.HeaderXXSSProtection))
 		})
@@ -323,19 +295,14 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			assert := assert.New(t)
 
 			app := getAppWithMiddleware(XSSFilter())
-
 			srv := app.Start()
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			// Firefox
 			req.Header.Set(gear.HeaderUserAgent, "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.1")
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal("1; mode=block", res.Header.Get(gear.HeaderXXSSProtection))
 		})
@@ -350,16 +317,12 @@ func TestGearMiddlewareSecure(t *testing.T) {
 				Sandbox:    []string{"allow-forms", "allow-scripts"},
 				ReportURI:  "/some-report-uri",
 			}))
-
 			srv := app.Start()
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal("default-src 'slef' www.google-analytics.com;sandbox allow-forms allow-scripts;report-uri /some-report-uri;", res.Header.Get(gear.HeaderContentSecurityPolicy))
 		})
@@ -378,11 +341,8 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal("default-src 'slef' www.google-analytics.com;sandbox allow-forms allow-scripts;report-uri /some-report-uri;", res.Header.Get(gear.HeaderContentSecurityPolicyReportOnly))
 		})
@@ -393,16 +353,12 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			assert := assert.New(t)
 
 			app := getAppWithMiddleware(Default)
-
 			srv := app.Start()
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, "http://"+srv.Addr().String(), nil)
-
 			assert.Nil(err)
-
 			res, err := DefaultClient.Do(req)
-
 			assert.Nil(err)
 			assert.Equal("off", res.Header.Get(gear.HeaderXDNSPrefetchControl))
 			assert.Empty(res.Header.Get(gear.HeaderXPoweredBy))
@@ -410,6 +366,10 @@ func TestGearMiddlewareSecure(t *testing.T) {
 			assert.Equal("nosniff", res.Header.Get(gear.HeaderXContentTypeOptions))
 			assert.Equal("1; mode=block", res.Header.Get(gear.HeaderXXSSProtection))
 			assert.Equal("max-age=15552000;includeSubDomains;", res.Header.Get(gear.HeaderStrictTransportSecurity))
+			assert.Equal("private, no-cache, max-age=0, s-max-age=0, must-revalidate",
+				res.Header.Get(gear.HeaderCacheControl))
+			assert.Equal("no-cache", res.Header.Get(gear.HeaderPragma))
+			assert.Equal("0", res.Header.Get(gear.HeaderExpires))
 		})
 	})
 }
