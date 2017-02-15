@@ -519,8 +519,8 @@ func TestGearSetWithContext(t *testing.T) {
 		})
 
 		key := struct{}{}
-		app.Set(SetWithContext, func(ctx context.Context) context.Context {
-			return context.WithValue(ctx, key, "Hello Context")
+		app.Set(SetWithContext, func(r *http.Request) context.Context {
+			return context.WithValue(r.Context(), key, "Hello Context")
 		})
 
 		app.Use(func(ctx *Context) error {

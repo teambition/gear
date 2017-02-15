@@ -185,8 +185,8 @@ type App struct {
 	// Default to 0
 	timeout time.Duration
 
-	onerror     func(ctx *Context, err *Error)
-	withContext func(context.Context) context.Context
+	onerror     func(*Context, *Error)
+	withContext func(*http.Request) context.Context
 	// ErrorLog specifies an optional logger for app's errors. Default to nil.
 	logger *log.Logger
 }
@@ -319,8 +319,8 @@ func (app *App) Set(key, val interface{}) {
 				app.timeout = timeout
 			}
 		case SetWithContext:
-			if withContext, ok := val.(func(context.Context) context.Context); !ok {
-				panic(NewAppError("SetWithContext setting must be func(context.Context) context.Context"))
+			if withContext, ok := val.(func(*http.Request) context.Context); !ok {
+				panic(NewAppError("SetWithContext setting must be func(*http.Request) context.Context"))
 			} else {
 				app.withContext = withContext
 			}

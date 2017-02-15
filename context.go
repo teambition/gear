@@ -71,7 +71,7 @@ func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	}
 
 	if app.withContext != nil {
-		ctx.ctx = app.withContext(ctx.ctx)
+		ctx.ctx = app.withContext(r.WithContext(ctx.ctx))
 	}
 	return ctx
 }
