@@ -79,7 +79,9 @@ func TestGearContextWithContext(t *testing.T) {
 
 	app := New()
 	app.Use(func(ctx *Context) error {
-		// ctx.WithValue
+
+		ctx.WithContext(ctx.WithValue("key", "val"))
+		assert.Equal("val", ctx.Value("key"))
 		c := ctx.WithValue("test", "abc")
 		assert.Equal("abc", c.Value("test").(string))
 		s := c.Value(http.ServerContextKey)

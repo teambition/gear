@@ -49,6 +49,7 @@ type Context struct {
 	afterHooks []func()
 	endHooks   []func()
 	ctx        context.Context
+	_ctx       context.Context
 	cancelCtx  context.CancelFunc
 	kv         map[interface{}]interface{}
 }
@@ -71,7 +72,9 @@ func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	}
 
 	if app.withContext != nil {
-		ctx.ctx = app.withContext(r.WithContext(ctx.ctx))
+		ctx._ctx = app.withContext(r.WithContext(ctx.ctx))
+	} else {
+		ctx._ctx = ctx.ctx
 	}
 	return ctx
 }
@@ -99,7 +102,7 @@ func (ctx *Context) Err() error {
 // if no value is associated with key. Successive calls to Value with
 // the same key returns the same result.
 func (ctx *Context) Value(key interface{}) (val interface{}) {
-	return ctx.ctx.Value(key)
+	return ctx._ctx.Value(key)
 }
 
 // Cancel cancel the ctx and all it' children context.
@@ -113,22 +116,40 @@ func (ctx *Context) Cancel() {
 // WithCancel returns a copy of the ctx with a new Done channel.
 // The returned context's Done channel is closed when the returned cancel function is called or when the parent context's Done channel is closed, whichever happens first.
 func (ctx *Context) WithCancel() (context.Context, context.CancelFunc) {
-	return context.WithCancel(ctx.ctx)
+	return context.WithCancel(ctx._ctx)
 }
 
 // WithDeadline returns a copy of the ctx with the deadline adjusted to be no later than d.
 func (ctx *Context) WithDeadline(deadline time.Time) (context.Context, context.CancelFunc) {
-	return context.WithDeadline(ctx.ctx, deadline)
+	return context.WithDeadline(ctx._ctx, deadline)
 }
 
 // WithTimeout returns WithDeadline(time.Now().Add(timeout)).
 func (ctx *Context) WithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(ctx.ctx, timeout)
+	return context.WithTimeout(ctx._ctx, timeout)
 }
 
 // WithValue returns a copy of the ctx in which the value associated with key is val.
 func (ctx *Context) WithValue(key, val interface{}) context.Context {
-	return context.WithValue(ctx.ctx, key, val)
+	return context.WithValue(ctx._ctx, key, val)
+}
+
+// WithContext sets the context to underlying gear.Context.
+// The context must be a children or a grandchild of gear.Context.
+//
+//  ctx.WithContext(ctx.WithValue("key", "value"))
+//  // ctx.Value("key") == "value"
+//
+// a Tracing middleware:
+//
+//  func Tracing(ctx *Context) error {
+//  	sp := opentracing.StartSpan(ctx.Path)
+//  	ctx.WithContext(opentracing.ContextWithSpan(ctx, sp))
+//  	ctx.OnEnd(sp.Finish)
+//  }
+//
+func (ctx *Context) WithContext(c context.Context) {
+	ctx._ctx = c
 }
 
 // Timing runs fn with the given time limit. If a call runs for longer than its time limit,
