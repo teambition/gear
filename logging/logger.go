@@ -163,39 +163,63 @@ type Logger struct {
 	consume func(Log, *gear.Context) // hook to consume log
 }
 
+// Check log output level statisfy output level or not, used internal, for performance
+func (l *Logger) checkLogLevel(level Level) bool {
+	// don't satisfy logger level, so skip
+	if level <= l.l {
+		return true
+	}
+
+	return false
+}
+
 // Emerg produce a "Emergency" log
 func (l *Logger) Emerg(v interface{}) {
-	l.Output(time.Now(), EmergLevel, fmt.Sprint(v))
+	if l.checkLogLevel(EmergLevel) {
+		l.Output(time.Now(), EmergLevel, fmt.Sprint(v))
+	}
 }
 
 // Alert produce a "Alert" log
 func (l *Logger) Alert(v interface{}) {
-	l.Output(time.Now(), AlertLevel, fmt.Sprint(v))
+	if l.checkLogLevel(AlertLevel) {
+		l.Output(time.Now(), AlertLevel, fmt.Sprint(v))
+	}
 }
 
 // Crit produce a "Critical" log
 func (l *Logger) Crit(v interface{}) {
-	l.Output(time.Now(), CritiLevel, fmt.Sprint(v))
+	if l.checkLogLevel(CritiLevel) {
+		l.Output(time.Now(), CritiLevel, fmt.Sprint(v))
+	}
 }
 
 // Err produce a "Error" log
 func (l *Logger) Err(v interface{}) {
-	l.Output(time.Now(), ErrLevel, fmt.Sprint(v))
+	if l.checkLogLevel(ErrLevel) {
+		l.Output(time.Now(), ErrLevel, fmt.Sprint(v))
+	}
 }
 
 // Warning produce a "Warning" log
 func (l *Logger) Warning(v interface{}) {
-	l.Output(time.Now(), WarningLevel, fmt.Sprint(v))
+	if l.checkLogLevel(WarningLevel) {
+		l.Output(time.Now(), WarningLevel, fmt.Sprint(v))
+	}
 }
 
 // Notice produce a "Notice" log
 func (l *Logger) Notice(v interface{}) {
-	l.Output(time.Now(), NoticeLevel, fmt.Sprint(v))
+	if l.checkLogLevel(NoticeLevel) {
+		l.Output(time.Now(), NoticeLevel, fmt.Sprint(v))
+	}
 }
 
 // Info produce a "Informational" log
 func (l *Logger) Info(v interface{}) {
-	l.Output(time.Now(), InfoLevel, fmt.Sprint(v))
+	if l.checkLogLevel(InfoLevel) {
+		l.Output(time.Now(), InfoLevel, fmt.Sprint(v))
+	}
 }
 
 // Debug produce a "Debug" log
@@ -245,14 +269,14 @@ func (l *Logger) Println(args ...interface{}) {
 func (l *Logger) Output(t time.Time, level Level, s string) (err error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if level <= l.l {
-		if level < 4 {
-			s = gear.ErrorWithStack(s, 4).String()
-		}
-		_, err = fmt.Fprintf(l.Out, l.lf, t.UTC().Format(l.tf), levels[level], s)
-		if err == nil && s[len(s)-1] != '\n' {
-			l.Out.Write([]byte{'\n'})
-		}
+
+	// log level checked before
+	if level < 4 {
+		s = gear.ErrorWithStack(s, 4).String()
+	}
+	_, err = fmt.Fprintf(l.Out, l.lf, t.UTC().Format(l.tf), levels[level], s)
+	if err == nil && s[len(s)-1] != '\n' {
+		l.Out.Write([]byte{'\n'})
 	}
 	return
 }
