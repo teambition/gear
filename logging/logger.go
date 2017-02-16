@@ -166,18 +166,12 @@ type Logger struct {
 // Check log output level statisfy output level or not, used internal, for performance
 func (l *Logger) checkLogLevel(level Level) bool {
 	// don't satisfy logger level, so skip
-	if level <= l.l {
-		return true
-	}
-
-	return false
+	return level <= l.l
 }
 
 // Emerg produce a "Emergency" log
 func (l *Logger) Emerg(v interface{}) {
-	if l.checkLogLevel(EmergLevel) {
-		l.Output(time.Now(), EmergLevel, fmt.Sprint(v))
-	}
+	l.Output(time.Now(), EmergLevel, fmt.Sprint(v))
 }
 
 // Alert produce a "Alert" log
@@ -224,7 +218,9 @@ func (l *Logger) Info(v interface{}) {
 
 // Debug produce a "Debug" log
 func (l *Logger) Debug(v interface{}) {
-	l.Output(time.Now(), DebugLevel, fmt.Sprint(v))
+	if l.checkLogLevel(DebugLevel) {
+		l.Output(time.Now(), DebugLevel, fmt.Sprint(v))
+	}
 }
 
 // Panic produce a "Emergency" log and then calls panic with the message
