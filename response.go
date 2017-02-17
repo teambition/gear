@@ -151,6 +151,14 @@ func (r *Response) CloseNotify() <-chan bool {
 	return r.w.(http.CloseNotifier).CloseNotify()
 }
 
+// Push implements http.Pusher.
+func (r *Response) Push(target string, opts *http.PushOptions) error {
+	if pusher, ok := r.w.(http.Pusher); ok {
+		return pusher.Push(target, opts)
+	}
+	return NewAppError("underlying http.ResponseWriter does't implements http.Pusher")
+}
+
 // HeaderWrote indecates that whether the reply header has been (logically) written.
 func (r *Response) HeaderWrote() bool {
 	return r.wroteHeader.isTrue()
