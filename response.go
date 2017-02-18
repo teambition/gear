@@ -78,6 +78,9 @@ func (r *Response) Header() http.Header {
 func (r *Response) Write(buf []byte) (int, error) {
 	// Some http Handler will call Write directly.
 	if !r.wroteHeader.isTrue() {
+		if r.status == 0 {
+			r.status = 200
+		}
 		r.WriteHeader(0)
 	}
 	return r.rw.Write(buf)
@@ -152,6 +155,7 @@ func (r *Response) CloseNotify() <-chan bool {
 }
 
 // Push implements http.Pusher.
+// Example: https://github.com/teambition/gear/blob/master/example/http2/app.go
 func (r *Response) Push(target string, opts *http.PushOptions) error {
 	if pusher, ok := r.w.(http.Pusher); ok {
 		return pusher.Push(target, opts)

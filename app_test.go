@@ -106,6 +106,40 @@ func (resp *GearResponse) Text() (val string, err error) {
 
 //--------- End ---------
 func TestGearServer(t *testing.T) {
+	t.Run("app.Close immediately", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			return ctx.End(204)
+		})
+		srv := app.Start()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(204, res.StatusCode)
+		res.Body.Close()
+		assert.Nil(app.Close())
+	})
+
+	t.Run("app.Close gracefully", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			return ctx.End(204)
+		})
+		srv := app.Start()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(204, res.StatusCode)
+		res.Body.Close()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		assert.Nil(app.Close(ctx))
+	})
+
 	t.Run("start with addr", func(t *testing.T) {
 		assert := assert.New(t)
 

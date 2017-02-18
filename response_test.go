@@ -248,6 +248,28 @@ func TestGearResponseCloseNotifier(t *testing.T) {
 	res.Body.Close()
 }
 
+func TestGearResponsePusher(t *testing.T) {
+	t.Run("Should return error if not http2", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			err := ctx.Res.Push("/test", &http.PushOptions{Method: "GET"})
+			assert.NotNil(err)
+
+			return ctx.End(200, []byte("OK"))
+		})
+
+		srv := app.Start()
+		defer app.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		res.Body.Close()
+	})
+}
+
 func TestGearCheckStatus(t *testing.T) {
 	assert := assert.New(t)
 	assert.False(IsStatusCode(1))
