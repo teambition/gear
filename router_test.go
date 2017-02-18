@@ -653,8 +653,7 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 
 		res, err = RequestBy("PUT", host+"/abc/xyz")
-		assert.Equal(307, res.StatusCode)
-		assert.Equal("/abc/xyz/", res.Header.Get("Location"))
+		assert.Equal(200, res.StatusCode)
 		res.Body.Close()
 
 		ctx = CtxTest(app, "PUT", "/abc/xyz", nil)

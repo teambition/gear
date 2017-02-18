@@ -78,6 +78,9 @@ func (r *Response) Header() http.Header {
 func (r *Response) Write(buf []byte) (int, error) {
 	// Some http Handler will call Write directly.
 	if !r.wroteHeader.isTrue() {
+		if r.status == 0 {
+			r.status = 200
+		}
 		r.WriteHeader(0)
 	}
 	return r.rw.Write(buf)
@@ -149,6 +152,15 @@ func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 // See [http.CloseNotifier](https://golang.org/pkg/net/http/#CloseNotifier)
 func (r *Response) CloseNotify() <-chan bool {
 	return r.w.(http.CloseNotifier).CloseNotify()
+}
+
+// Push implements http.Pusher.
+// Example: https://github.com/teambition/gear/blob/master/example/http2/app.go
+func (r *Response) Push(target string, opts *http.PushOptions) error {
+	if pusher, ok := r.w.(http.Pusher); ok {
+		return pusher.Push(target, opts)
+	}
+	return NewAppError("underlying http.ResponseWriter does't implements http.Pusher")
 }
 
 // HeaderWrote indecates that whether the reply header has been (logically) written.

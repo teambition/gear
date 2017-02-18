@@ -398,7 +398,7 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// recover panic error
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != nil && err != http.ErrAbortHandler {
 			ctx.cleanAfterHooks()
 			ctx.Res.ResetHeader()
 			ctx.respondError(ErrorWithStack(err))
@@ -432,6 +432,16 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// ensure respond
 		ctx.Res.WriteHeader(0)
 	}
+}
+
+// Close closes the underlying server.
+// If context omit, Server.Close will be used to close immediately.
+// Otherwise Server.Shutdown will be used to close gracefully.
+func (app *App) Close(ctx ...context.Context) error {
+	if len(ctx) > 0 {
+		return app.Server.Shutdown(ctx[0])
+	}
+	return app.Server.Close()
 }
 
 // ServerListener is returned by a non-blocking app instance.
