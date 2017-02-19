@@ -173,29 +173,25 @@ func ParseError(e error, code ...int) *Error {
 //  }
 //
 type App struct {
-	Server     *http.Server
-	middleware middlewares
-	settings   map[interface{}]interface{}
+	Server *http.Server
+	mds    middlewares
 
-	renderer   Renderer
-	bodyParser BodyParser
-	keys       []string
-	// Default to nil, do not compress response content.
-	compress Compressible
-	// Default to 0
-	timeout time.Duration
-
+	keys        []string
+	renderer    Renderer
+	bodyParser  BodyParser
+	compress    Compressible  // Default to nil, do not compress response content.
+	timeout     time.Duration // Default to 0, no time out.
+	logger      *log.Logger
 	onerror     func(*Context, *Error)
 	withContext func(*http.Request) context.Context
-	// ErrorLog specifies an optional logger for app's errors. Default to nil.
-	logger *log.Logger
+	settings    map[interface{}]interface{}
 }
 
 // New creates an instance of App.
 func New() *App {
 	app := new(App)
 	app.Server = new(http.Server)
-	app.middleware = make(middlewares, 0)
+	app.mds = make(middlewares, 0)
 	app.settings = make(map[interface{}]interface{})
 
 	env := os.Getenv("APP_ENV")
@@ -210,12 +206,12 @@ func New() *App {
 
 // Use uses the given middleware `handle`.
 func (app *App) Use(handle Middleware) {
-	app.middleware = append(app.middleware, handle)
+	app.mds = append(app.mds, handle)
 }
 
 // UseHandler uses a instance that implemented Handler interface.
 func (app *App) UseHandler(h Handler) {
-	app.middleware = append(app.middleware, h.Serve)
+	app.mds = append(app.mds, h.Serve)
 }
 
 type appSetting uint8
@@ -411,7 +407,7 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// process app middleware
-	err := app.middleware.run(ctx)
+	err := app.mds.run(ctx)
 	if ctx.Res.wroteHeader.isTrue() {
 		if !IsNil(err) {
 			app.Error(err)
@@ -498,11 +494,17 @@ func IsNil(val interface{}) bool {
 
 // Compose composes a array of middlewares to one middleware
 func Compose(mds ...Middleware) Middleware {
-	if len(mds) == 0 {
-		panic(NewAppError("middleware functions required"))
+	switch len(mds) {
+	case 0:
+		return noOp
+	case 1:
+		return mds[0]
+	default:
+		return middlewares(mds).run
 	}
-	return middlewares(mds).run
 }
+
+var noOp Middleware = func(ctx *Context) error { return nil }
 
 type middlewares []Middleware
 

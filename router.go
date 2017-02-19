@@ -95,8 +95,9 @@ import (
 type Router struct {
 	root       string
 	trie       *trie.Trie
-	otherwise  middlewares
-	middleware middlewares
+	otherwise  Middleware
+	middleware Middleware
+	mds        []Middleware
 }
 
 // RouterOptions is options for Router
@@ -166,8 +167,8 @@ func NewRouter(routerOptions ...RouterOptions) *Router {
 	}
 
 	return &Router{
-		root:       opts.Root,
-		middleware: make(middlewares, 0),
+		root: opts.Root,
+		mds:  make([]Middleware, 0),
 		trie: trie.New(trie.Options{
 			IgnoreCase:            opts.IgnoreCase,
 			FixedPathRedirect:     opts.FixedPathRedirect,
@@ -178,7 +179,8 @@ func NewRouter(routerOptions ...RouterOptions) *Router {
 
 // Use registers a new Middleware in the router, that will be called when router mathed.
 func (r *Router) Use(handle Middleware) {
-	r.middleware = append(r.middleware, handle)
+	r.mds = append(r.mds, handle)
+	r.middleware = Compose(r.mds...)
 }
 
 // Handle registers a new Middleware handler with method and path in the router.
@@ -195,7 +197,7 @@ func (r *Router) Handle(method, pattern string, handlers ...Middleware) {
 	if len(handlers) == 0 {
 		panic(NewAppError("invalid middleware"))
 	}
-	r.trie.Define(pattern).Handle(strings.ToUpper(method), middlewares(handlers))
+	r.trie.Define(pattern).Handle(strings.ToUpper(method), Compose(handlers...))
 }
 
 // Get registers a new GET route for a path with matching handler in the router.
@@ -239,19 +241,21 @@ func (r *Router) Otherwise(handlers ...Middleware) {
 	if len(handlers) == 0 {
 		panic(NewAppError("invalid middleware"))
 	}
-	r.otherwise = handlers
+	r.otherwise = Compose(handlers...)
 }
 
 // Serve implemented gear.Handler interface
 func (r *Router) Serve(ctx *Context) error {
 	path := ctx.Path
 	method := ctx.Method
-	var handlers middlewares
+	var handler Middleware
 
 	if !strings.HasPrefix(path, r.root) {
 		return nil
 	}
 
+	// ensure end middleware process
+	defer ctx.ended.setTrue()
 	if len(r.root) > 1 {
 		path = strings.TrimPrefix(path, r.root)
 		if path == "" {
@@ -283,10 +287,10 @@ func (r *Router) Serve(ctx *Context) error {
 			return ctx.Error(&Error{Code: http.StatusNotImplemented,
 				Msg: fmt.Sprintf(`"%s" is not implemented`, ctx.Path)})
 		}
-		handlers = r.otherwise
+		handler = r.otherwise
 	} else {
 		ok := false
-		if handlers, ok = matched.Node.GetHandler(method).(middlewares); !ok {
+		if handler, ok = matched.Node.GetHandler(method).(Middleware); !ok {
 			// OPTIONS support
 			if method == http.MethodOptions {
 				ctx.Set(HeaderAllow, matched.Node.GetAllow())
@@ -299,18 +303,13 @@ func (r *Router) Serve(ctx *Context) error {
 				return ctx.Error(&Error{Code: http.StatusMethodNotAllowed,
 					Msg: fmt.Sprintf(`"%s" is not allowed in "%s"`, method, ctx.Path)})
 			}
-			handlers = r.otherwise
+			handler = r.otherwise
 		}
 	}
 
 	ctx.SetAny(paramsKey, matched.Params)
-	return r.run(ctx, handlers)
-}
-
-func (r *Router) run(ctx *Context, handlers middlewares) (err error) {
-	defer ctx.ended.setTrue()
-	if err = r.middleware.run(ctx); err == nil && !ctx.ended.isTrue() {
-		err = handlers.run(ctx)
+	if len(r.mds) == 0 {
+		return handler(ctx)
 	}
-	return
+	return Compose(r.middleware, handler)(ctx)
 }

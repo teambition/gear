@@ -649,14 +649,11 @@ func TestGearWrapHandlerFunc(t *testing.T) {
 func TestGearCompose(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.Panics(func() {
-		Compose()
-	})
-
 	app := New()
 	count := 0
 	app.Use(Compose(
 		func(ctx *Context) error {
+			assert.Nil(Compose()(ctx))
 			count++
 			assert.Equal(1, count)
 			return nil
