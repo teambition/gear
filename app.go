@@ -18,6 +18,9 @@ import (
 	"time"
 )
 
+// Middleware defines a function to process as middleware.
+type Middleware func(ctx *Context) error
+
 // Handler interface is used by app.UseHandler as a middleware.
 type Handler interface {
 	Serve(ctx *Context) error
@@ -124,9 +127,6 @@ func (err *Error) String() string {
 	}
 	return fmt.Sprintf(`Error{Code:%3d, Msg:"%s", Stack:"%s", Meta:%#v}`, err.Code, err.Msg, err.Stack, meta)
 }
-
-// Middleware defines a function to process as middleware.
-type Middleware func(*Context) error
 
 // NewAppError create a error instance with "Gear: " prefix.
 func NewAppError(err string) error {

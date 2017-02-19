@@ -1245,6 +1245,30 @@ func TestGearContextError(t *testing.T) {
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("Gear: nil error", PickRes(res.Text()).(string))
 	})
+
+	t.Run("should transform with app.onerror", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Set(SetOnError, func(ctx *Context, err *Error) {
+			ctx.JSON(err.Code, struct {
+				Code  int    `json:"code"`
+				Error string `json:"error"`
+			}{err.Code, err.Msg})
+		})
+		app.Use(func(ctx *Context) error {
+			return ctx.Error(errors.New("some error"))
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal(`{"code":500,"error":"some error"}`, PickRes(res.Text()).(string))
+		assert.Equal(MIMEApplicationJSONCharsetUTF8, res.Header.Get(HeaderContentType))
+	})
 }
 
 func TestGearContextErrorStatus(t *testing.T) {

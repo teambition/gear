@@ -130,8 +130,6 @@ func main() {
 }
 ```
 
-
-
 ## Import
 
 ```go
@@ -255,50 +253,6 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 ## Documentation
 
 https://godoc.org/github.com/teambition/gear
-
-## Benchmark
-
-### Gear with "net/http": 50030
-```sh
-> wrk 'http://localhost:3333/?foo[bar]=baz' -d 10 -c 100 -t 4
-
-Running 10s test @ http://localhost:3333/?foo[bar]=baz
-  4 threads and 100 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     2.22ms    3.91ms 155.60ms   97.49%
-    Req/Sec    12.58k     1.26k   18.76k    84.25%
-  501031 requests in 10.01s, 65.46MB read
-Requests/sec:  50030.72
-Transfer/sec:      6.54MB
-```
-
-### Iris with "fasthttp": 70310
-```sh
-> wrk 'http://localhost:3333/?foo[bar]=baz' -d 10 -c 100 -t 4
-
-Running 10s test @ http://localhost:3333/?foo[bar]=baz
-  4 threads and 100 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     1.37ms  648.31us  15.60ms   89.48%
-    Req/Sec    17.75k     2.32k   39.65k    84.83%
-  710317 requests in 10.10s, 102.29MB read
-Requests/sec:  70310.19
-Transfer/sec:     10.13MB
-```
-
-### Gin with "net/http": 50195
-```sh
-> wrk 'http://localhost:3333/?foo[bar]=baz' -d 10 -c 100 -t 4
-
-Running 10s test @ http://localhost:3333/?foo[bar]=baz
-  4 threads and 100 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     2.07ms    1.50ms  30.44ms   90.04%
-    Req/Sec    12.62k     1.12k   15.42k    77.50%
-  502815 requests in 10.02s, 65.69MB read
-Requests/sec:  50195.68
-Transfer/sec:      6.56MB
-```
 
 ## License
 Gear is licensed under the [MIT](https://github.com/teambition/gear/blob/master/LICENSE) license.
