@@ -51,11 +51,11 @@ func New(iconpath string) gear.Middleware {
 }
 
 // NewWithIco creates a favicon middleware with ico file and a optional modTime.
-func NewWithIco(file []byte, modTime ...time.Time) gear.Middleware {
+func NewWithIco(file []byte, times ...time.Time) gear.Middleware {
+	modTime := time.Now()
 	reader := bytes.NewReader(file)
-	t := time.Now()
-	if len(modTime) > 0 {
-		t = modTime[0]
+	if len(times) > 0 {
+		modTime = times[0]
 	}
 
 	return func(ctx *gear.Context) (err error) {
@@ -71,7 +71,7 @@ func NewWithIco(file []byte, modTime ...time.Time) gear.Middleware {
 			return ctx.End(status)
 		}
 		ctx.Type("image/x-icon")
-		http.ServeContent(ctx.Res, ctx.Req, "favicon.ico", t, reader)
+		http.ServeContent(ctx.Res, ctx.Req, "favicon.ico", modTime, reader)
 		return
 	}
 }

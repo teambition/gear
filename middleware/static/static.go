@@ -1,20 +1,23 @@
 package static
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/teambition/gear"
 )
 
 // Options is static middleware options
 type Options struct {
-	Root        string // The directory you wish to serve
-	Prefix      string // The url prefix you wish to serve as static request, default to `'/'`.
-	StripPrefix bool   // Strip the prefix from URL path, default to `false`.
+	Root        string            // The directory you wish to serve
+	Prefix      string            // The url prefix you wish to serve as static request, default to `'/'`.
+	StripPrefix bool              // Strip the prefix from URL path, default to `false`.
+	Files       map[string][]byte // Optional, a map of File objects to serve.
 }
 
 // New creates a static middleware to serves static content from the provided root directory.
@@ -42,6 +45,7 @@ type Options struct {
 //  }
 //
 func New(opts Options) gear.Middleware {
+	modTime := time.Now()
 	if opts.Root == "" {
 		opts.Root = "."
 	}
@@ -61,6 +65,7 @@ func New(opts Options) gear.Middleware {
 	if opts.Prefix == "" {
 		opts.Prefix = "/"
 	}
+
 	return func(ctx *gear.Context) (err error) {
 		path := ctx.Path
 		if !strings.HasPrefix(path, opts.Prefix) {
@@ -75,8 +80,15 @@ func New(opts Options) gear.Middleware {
 			ctx.Set(gear.HeaderAllow, "GET, HEAD, OPTIONS")
 			return ctx.End(status)
 		}
+
 		if opts.StripPrefix {
 			path = strings.TrimPrefix(path, opts.Prefix)
+		}
+		if opts.Files != nil {
+			if file, ok := opts.Files[path]; ok {
+				http.ServeContent(ctx.Res, ctx.Req, path, modTime, bytes.NewReader(file))
+				return nil
+			}
 		}
 		path = filepath.Join(root, filepath.FromSlash(path))
 		http.ServeFile(ctx.Res, ctx.Req, path)
