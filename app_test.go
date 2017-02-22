@@ -5,6 +5,8 @@ import (
 	"compress/gzip"
 	"compress/zlib"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -18,6 +20,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/http2"
 )
 
 // ----- Test Helpers -----
@@ -246,7 +249,7 @@ func TestGearError(t *testing.T) {
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
 		assert.Equal("Some error", PickRes(res.Text()).(string))
-		assert.Equal("TEST: Error{Code:500, Msg:\"Some error\", Stack:\"\", Meta:\"\"}\n", buf.String())
+		assert.Equal("TEST: Error{Code:500, Msg:\"Some error\", Stack:\"\", Meta:<nil>}\n", buf.String())
 		res.Body.Close()
 	})
 
@@ -760,4 +763,35 @@ func TestErrorWithStack(t *testing.T) {
 		assert.Equal(`1\n3\n5\n7\n9\n11\n13\n15\n17\n19`, pruneStack(buf, 0))
 		assert.Equal(`3\n5\n7\n9\n11\n13\n15\n17\n19\n21`, pruneStack(buf, 1))
 	})
+}
+
+func HTTP2Transport(capem, cert, key string) (*http2.Transport, error) {
+	transport := &http2.Transport{}
+	tlsCfg := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	if capem != "" {
+		cert, err := ioutil.ReadFile(capem)
+		if err != nil {
+			return nil, err
+		}
+
+		certPool := x509.NewCertPool()
+		ok := certPool.AppendCertsFromPEM(cert)
+		if ok {
+			tlsCfg.RootCAs = certPool
+		}
+	}
+
+	if cert != "" && key != "" {
+		certificate, err := tls.LoadX509KeyPair(cert, key)
+		if err != nil {
+			return nil, err
+		}
+		tlsCfg.Certificates = []tls.Certificate{certificate}
+	}
+
+	transport.TLSClientConfig = tlsCfg
+	return transport, nil
 }

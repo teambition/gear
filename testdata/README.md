@@ -15,10 +15,15 @@ Client:
 
 Make CA:
 $ openssl genrsa -out rootCA.key 2048
-$ openssl req -x509 -new -nodes -key rootCA.key -days 1024 -out rootCA.pem
+$ openssl req -x509 -new -nodes -key rootCA.key -days 3650 -out rootCA.pem
 ... install that to Firefox
 
-Make cert:
+Make server cert:
 $ openssl genrsa -out server.key 2048
 $ openssl req -new -key server.key -out server.csr
-$ openssl x509 -req -in server.csr -CA rootCA.pem -CAkey rootCA.key -CAcreateserial -out server.crt -days 500
+$ openssl x509 -req -in server.csr -CA rootCA.pem -CAkey rootCA.key -CAcreateserial -out server.crt -extensions v3_ca -days 3650
+
+Make client cert:
+$ openssl genrsa -out client.key 2048
+$ openssl req -new -key client.key -out client.csr
+$ openssl x509 -req -in client.csr -CA rootCA.pem -CAkey rootCA.key -out client.crt -extensions v3_ca -days 3650

@@ -55,7 +55,7 @@ func (d DefaultBodyParser) MaxBytes() int64 {
 // Parse implemented BodyParser interface.
 func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charset string) error {
 	if len(buf) == 0 {
-		return &Error{Code: http.StatusBadRequest, Msg: "Request entity empty"}
+		return &Error{Code: http.StatusBadRequest, Msg: "request entity empty"}
 	}
 	switch mediaType {
 	case MIMEApplicationJSON:
@@ -63,7 +63,7 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 	case MIMEApplicationXML:
 		return xml.Unmarshal(buf, body)
 	}
-	return &Error{Code: http.StatusUnsupportedMediaType, Msg: "Unsupported media type"}
+	return &Error{Code: http.StatusUnsupportedMediaType, Msg: "unsupported media type"}
 }
 
 // HTTPError interface is used to create a server error that include status code and error message.
@@ -84,15 +84,15 @@ type Error struct {
 }
 
 // ErrorWithStack create a error with stacktrace
-func ErrorWithStack(v interface{}, skip ...int) *Error {
+func ErrorWithStack(val interface{}, skip ...int) *Error {
 	var err *Error
-	switch tmp := v.(type) {
+	switch v := val.(type) {
 	case error:
-		err = ParseError(tmp)
+		err = ParseError(v)
 	case string:
-		err = &Error{500, tmp, "", nil}
+		err = &Error{500, v, "", nil}
 	default:
-		err = &Error{500, fmt.Sprintf("%#v", tmp), "", nil}
+		err = &Error{500, fmt.Sprintf("%#v", v), "", nil}
 	}
 	if err.Stack == "" {
 		buf := make([]byte, 2048)
@@ -118,14 +118,12 @@ func (err *Error) Error() string {
 
 // String implemented fmt.Stringer interface, returns a Go-syntax string.
 func (err *Error) String() string {
-	meta := ""
-	if err.Meta != nil {
-		switch err.Meta.(type) {
-		case []byte:
-			meta = string(err.Meta.([]byte))
-		}
+	switch v := err.Meta.(type) {
+	case []byte:
+		err.Meta = string(v)
 	}
-	return fmt.Sprintf(`Error{Code:%3d, Msg:"%s", Stack:"%s", Meta:%#v}`, err.Code, err.Msg, err.Stack, meta)
+	return fmt.Sprintf(`Error{Code:%3d, Msg:"%s", Stack:"%s", Meta:%#v}`,
+		err.Code, err.Msg, err.Stack, err.Meta)
 }
 
 // NewAppError create a error instance with "Gear: " prefix.
@@ -137,15 +135,13 @@ func NewAppError(err string) error {
 func ParseError(e error, code ...int) *Error {
 	var err *Error
 	if !IsNil(e) {
-		switch e.(type) {
+		switch v := e.(type) {
 		case *Error:
-			err = e.(*Error)
+			err = v
 		case *textproto.Error:
-			_e := e.(*textproto.Error)
-			err = &Error{_e.Code, _e.Msg, "", nil}
+			err = &Error{v.Code, v.Msg, "", nil}
 		case HTTPError:
-			_e := e.(HTTPError)
-			err = &Error{_e.Status(), _e.Error(), "", nil}
+			err = &Error{v.Status(), v.Error(), "", nil}
 		default:
 			err = &Error{500, e.Error(), "", nil}
 			if len(code) > 0 && code[0] > 0 {

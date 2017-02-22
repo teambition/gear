@@ -106,7 +106,7 @@ func New(opts Options) gear.Middleware {
 				ctx.Res.Del(gear.HeaderAccessControlAllowOrigin)
 				ctx.Res.Del(gear.HeaderAccessControlAllowCredentials)
 				return ctx.Error(&gear.Error{Code: http.StatusForbidden,
-					Msg: "Invalid preflighted request, missing Access-Control-Request-Method header"})
+					Msg: "invalid preflighted request, missing Access-Control-Request-Method header"})
 			}
 			if len(opts.AllowMethods) > 0 {
 				ctx.Set(gear.HeaderAccessControlAllowMethods, strings.Join(opts.AllowMethods, ", "))

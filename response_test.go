@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -105,6 +106,19 @@ func TestGearResponse(t *testing.T) {
 
 		res.bodyLength = len([]byte("Hello"))
 		res.WriteHeader(0)
+		res.Write([]byte("Hello"))
+
+		assert.Equal(true, res.HeaderWrote())
+		assert.Equal(200, res.status)
+		assert.Equal(200, CtxResult(ctx).StatusCode)
+		assert.Equal("Hello", CtxBody(ctx))
+
+		ctx = CtxTest(app, "GET", "http://example.com/foo", nil)
+		res = ctx.Res
+
+		assert.Equal(false, res.HeaderWrote())
+		assert.Equal(0, res.status)
+
 		res.Write([]byte("Hello"))
 
 		assert.Equal(true, res.HeaderWrote())
@@ -255,7 +269,7 @@ func TestGearResponsePusher(t *testing.T) {
 		app := New()
 		app.Use(func(ctx *Context) error {
 			err := ctx.Res.Push("/test", &http.PushOptions{Method: "GET"})
-			assert.NotNil(err)
+			assert.Equal(err, ErrPusherNotImplemented)
 
 			return ctx.End(200, []byte("OK"))
 		})
@@ -266,6 +280,59 @@ func TestGearResponsePusher(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
+		res.Body.Close()
+	})
+
+	t.Run("Should support http2 push", func(t *testing.T) {
+		assert := assert.New(t)
+
+		const htmlBody = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <link href="/hello.css" rel="stylesheet" type="text/css">
+  </head>
+  <body>
+    <h1>Hello, Gear!</h1>
+  </body>
+</html>`
+
+		const pushBody = `
+h1 {
+  color: red;
+}
+`
+
+		app := New()
+		router := NewRouter()
+		router.Get("/", func(ctx *Context) error {
+			err := ctx.Res.Push("/hello.css", &http.PushOptions{Method: "GET"})
+			assert.Equal(err, http.ErrNotSupported)
+			return ctx.HTML(200, htmlBody)
+		})
+		router.Get("/hello.css", func(ctx *Context) error {
+			ctx.Type("text/css")
+			return ctx.End(200, []byte(pushBody))
+		})
+		app.UseHandler(router)
+
+		cond := sync.NewCond(new(sync.Mutex))
+		cond.L.Lock()
+		go func() {
+			cond.Signal()
+			app.ListenTLS("127.0.0.1:3443", "./testdata/server.crt", "./testdata/server.key")
+		}()
+		defer app.Close()
+
+		cond.Wait()
+		time.Sleep(time.Millisecond)
+		tr, err := HTTP2Transport(
+			"./testdata/rootCA.pem", "./testdata/client.crt", "./testdata/client.key")
+		assert.Nil(err)
+		cli := &http.Client{Transport: tr}
+		res, err := cli.Get("https://127.0.0.1:3443")
+		assert.Nil(err)
+		assert.Equal("HTTP/2.0", res.Proto)
 		res.Body.Close()
 	})
 }

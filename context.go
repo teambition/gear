@@ -22,6 +22,18 @@ type contextKey int
 
 const paramsKey contextKey = 0
 
+// ErrAnyKeyNonExistent is returned from Context.Any
+var ErrAnyKeyNonExistent = NewAppError("non-existent key")
+
+// ErrBodyParserNotRegistered is returned from Context.ParseBody
+var ErrBodyParserNotRegistered = NewAppError("bodyParser not registered")
+
+// ErrMissingRequestBody is returned from Context.ParseBody
+var ErrMissingRequestBody = NewAppError("missing request body")
+
+// ErrRendererNotRegistered is returned from Context.Render
+var ErrRendererNotRegistered = NewAppError("renderer not registered")
+
 // Any interface is used by ctx.Any.
 type Any interface {
 	New(ctx *Context) (interface{}, error)
@@ -201,13 +213,13 @@ func (ctx *Context) Timing(dt time.Duration, fn func(context.Context) interface{
 func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
 	var ok bool
 	if val, ok = ctx.kv[any]; !ok {
-		switch res := any.(type) {
+		switch v := any.(type) {
 		case Any:
-			if val, err = res.New(ctx); err == nil {
+			if val, err = v.New(ctx); err == nil {
 				ctx.kv[any] = val
 			}
 		default:
-			return nil, NewAppError("non-existent key")
+			return nil, ErrAnyKeyNonExistent
 		}
 	}
 	return
@@ -316,12 +328,13 @@ func (ctx *Context) QueryAll(name string) []string {
 //  	return err
 //  }
 //
+
 func (ctx *Context) ParseBody(body BodyTemplate) error {
 	if ctx.app.bodyParser == nil {
-		return NewAppError("bodyParser not registered")
+		return ErrBodyParserNotRegistered
 	}
 	if ctx.Req.Body == nil {
-		return NewAppError("missing request body")
+		return ErrMissingRequestBody
 	}
 
 	var err error
@@ -459,7 +472,7 @@ func (ctx *Context) XMLBlob(code int, buf []byte) error {
 // Note that this will not stop the current handler.
 func (ctx *Context) Render(code int, name string, data interface{}) (err error) {
 	if ctx.app.renderer == nil {
-		return NewAppError("renderer not registered")
+		return ErrRendererNotRegistered
 	}
 	buf := new(bytes.Buffer)
 	if err = ctx.app.renderer.Render(ctx, buf, name, data); err == nil {

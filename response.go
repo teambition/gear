@@ -11,6 +11,9 @@ import (
 var defaultHeaderFilterReg = regexp.MustCompile(
 	`(?i)^(accept|allow|retry-after|warning|vary|access-control-allow-)`)
 
+// ErrPusherNotImplemented is return from Response.Push.
+var ErrPusherNotImplemented = NewAppError("http.Pusher not implemented")
+
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.
 type Response struct {
@@ -160,7 +163,7 @@ func (r *Response) Push(target string, opts *http.PushOptions) error {
 	if pusher, ok := r.w.(http.Pusher); ok {
 		return pusher.Push(target, opts)
 	}
-	return NewAppError("underlying http.ResponseWriter does't implements http.Pusher")
+	return ErrPusherNotImplemented
 }
 
 // HeaderWrote indecates that whether the reply header has been (logically) written.
