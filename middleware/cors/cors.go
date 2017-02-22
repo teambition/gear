@@ -50,7 +50,11 @@ var (
 )
 
 // New creates a middleware to provide CORS support for gear.
-func New(opts Options) gear.Middleware {
+func New(options ...Options) gear.Middleware {
+	opts := Options{}
+	if len(options) > 0 {
+		opts = options[0]
+	}
 	if opts.AllowOrigins == nil {
 		opts.AllowOrigins = defaultAllowOrigins
 	}
