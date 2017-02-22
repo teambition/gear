@@ -439,9 +439,9 @@ func (ctx *Context) JSONPBlob(code int, callback string, buf []byte) error {
 	// the /**/ is a specific security mitigation for "Rosetta Flash JSONP abuse"
 	// @see http://miki.it/blog/2014/7/8/abusing-jsonp-with-rosetta-flash/
 	// the typeof check is just to reduce client error noise
-	buf = bytes.Join([][]byte{[]byte(`/**/ typeof ` + callback + ` === "function" && ` + callback + "("),
-		buf, []byte(");")}, []byte{})
-	return ctx.End(code, buf)
+	b := []byte(fmt.Sprintf(`/**/ typeof %s === "function" && %s(`, callback, callback))
+	b = append(b, buf...)
+	return ctx.End(code, append(b, ')', ';'))
 }
 
 // XML set an XML body with status code to response.
