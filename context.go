@@ -70,7 +70,7 @@ type Context struct {
 func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	ctx := &Context{app: app, Req: r}
 	ctx.Res = newResponse(ctx, w)
-	ctx.Cookies = cookie.New(w, r, app.keys)
+	ctx.Cookies = cookie.New(w, r, app.keys...)
 
 	ctx.Host = r.Host
 	ctx.Method = r.Method
