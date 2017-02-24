@@ -77,10 +77,10 @@ type HTTPError interface {
 
 // Error represents a numeric error with optional meta. It can be used in middleware as a return result.
 type Error struct {
-	Code  int
-	Msg   string
-	Meta  interface{}
-	Stack string
+	Code  int         `json:"code"`
+	Msg   string      `json:"error"`
+	Meta  interface{} `json:"meta,omitempty"`
+	Stack string      `json:"-"`
 }
 
 // Status implemented HTTPError interface.
@@ -382,10 +382,7 @@ func (app *App) Start(addr ...string) *ServerListener {
 // Error writes error to underlayer logging system.
 func (app *App) Error(err error) {
 	if err := ErrorWithStack(err, 4); err != nil {
-		code := err.Status()
-		if code == 500 || code > 501 || code < 400 {
-			app.logger.Println(err.String())
-		}
+		app.logger.Println(err.String())
 	}
 }
 

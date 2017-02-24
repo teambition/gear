@@ -273,7 +273,7 @@ func TestGearError(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal(`{"Code":500,"Msg":"some error","Meta":null,"Stack":""}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"code":500,"error":"some error"}`, PickRes(res.Text()).(string))
 		assert.Equal("", buf.String())
 		res.Body.Close()
 	})

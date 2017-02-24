@@ -600,10 +600,14 @@ func (ctx *Context) OnEnd(hook func()) {
 
 func (ctx *Context) respondError(err HTTPError) {
 	if !ctx.Res.wroteHeader.isTrue() {
-		ctx.app.Error(err)
+		code := err.Status()
+		// we don't need to logging 501, 4xx errors
+		if code == 500 || code > 501 || code < 400 {
+			ctx.app.Error(err)
+		}
 		ctx.Set(HeaderContentType, MIMETextPlainCharsetUTF8)
 		ctx.Set(HeaderXContentTypeOptions, "nosniff")
-		ctx.Res.respond(err.Status(), []byte(err.Error()))
+		ctx.Res.respond(code, []byte(err.Error()))
 	}
 }
 
