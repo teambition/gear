@@ -79,31 +79,8 @@ type HTTPError interface {
 type Error struct {
 	Code  int
 	Msg   string
-	Stack string
 	Meta  interface{}
-}
-
-// ErrorWithStack create a error with stacktrace
-func ErrorWithStack(val interface{}, skip ...int) *Error {
-	var err *Error
-	switch v := val.(type) {
-	case error:
-		err = ParseError(v)
-	case string:
-		err = &Error{500, v, "", nil}
-	default:
-		err = &Error{500, fmt.Sprintf("%#v", v), "", nil}
-	}
-	if err.Stack == "" {
-		buf := make([]byte, 2048)
-		buf = buf[:runtime.Stack(buf, false)]
-		s := 1
-		if len(skip) != 0 {
-			s = skip[0]
-		}
-		err.Stack = pruneStack(buf, s)
-	}
-	return err
+	Stack string
 }
 
 // Status implemented HTTPError interface.
@@ -122,8 +99,8 @@ func (err *Error) String() string {
 	case []byte:
 		err.Meta = string(v)
 	}
-	return fmt.Sprintf(`Error{Code:%3d, Msg:"%s", Stack:"%s", Meta:%#v}`,
-		err.Code, err.Msg, err.Stack, err.Meta)
+	return fmt.Sprintf(`Error{Code:%3d, Msg:"%s", Meta:%#v, Stack:"%s"}`,
+		err.Code, err.Msg, err.Meta, err.Stack)
 }
 
 // NewAppError create a error instance with "Gear: " prefix.
@@ -131,23 +108,53 @@ func NewAppError(err string) error {
 	return fmt.Errorf("Gear: %s", err)
 }
 
-// ParseError parse a error, textproto.Error or HTTPError to *Error
-func ParseError(e error, code ...int) *Error {
-	var err *Error
-	if !IsNil(e) {
-		switch v := e.(type) {
-		case *Error:
-			err = v
-		case *textproto.Error:
-			err = &Error{v.Code, v.Msg, "", nil}
-		case HTTPError:
-			err = &Error{v.Status(), v.Error(), "", nil}
-		default:
-			err = &Error{500, e.Error(), "", nil}
-			if len(code) > 0 && code[0] > 0 {
-				err.Code = code[0]
-			}
+// ParseError parse a error, textproto.Error or HTTPError to HTTPError
+func ParseError(e error, code ...int) HTTPError {
+	if IsNil(e) {
+		return nil
+	}
+
+	switch v := e.(type) {
+	case HTTPError:
+		return v
+	case *textproto.Error:
+		return &Error{v.Code, v.Msg, nil, ""}
+	default:
+		err := &Error{500, e.Error(), nil, ""}
+		if len(code) > 0 && code[0] > 0 {
+			err.Code = code[0]
 		}
+		return err
+	}
+}
+
+// ErrorWithStack create a error with stacktrace
+func ErrorWithStack(val interface{}, skip ...int) *Error {
+	var err *Error
+	if IsNil(val) {
+		return err
+	}
+
+	switch v := val.(type) {
+	case *Error:
+		err = v
+	case error:
+		e := ParseError(v)
+		err = &Error{e.Status(), e.Error(), nil, ""}
+	case string:
+		err = &Error{500, v, nil, ""}
+	default:
+		err = &Error{500, fmt.Sprintf("%#v", v), nil, ""}
+	}
+
+	if err.Stack == "" {
+		buf := make([]byte, 2048)
+		buf = buf[:runtime.Stack(buf, false)]
+		s := 1
+		if len(skip) != 0 {
+			s = skip[0]
+		}
+		err.Stack = pruneStack(buf, s)
 	}
 	return err
 }
@@ -178,7 +185,7 @@ type App struct {
 	compress    Compressible  // Default to nil, do not compress response content.
 	timeout     time.Duration // Default to 0, no time out.
 	logger      *log.Logger
-	onerror     func(*Context, *Error)
+	onerror     func(*Context, HTTPError)
 	withContext func(*http.Request) context.Context
 	settings    map[interface{}]interface{}
 }
@@ -293,7 +300,7 @@ func (app *App) Set(key, val interface{}) {
 				app.logger = logger
 			}
 		case SetOnError:
-			if onerror, ok := val.(func(ctx *Context, err *Error)); !ok {
+			if onerror, ok := val.(func(ctx *Context, err HTTPError)); !ok {
 				panic(NewAppError("SetOnError setting must be func(ctx *Context, err *Error)"))
 			} else {
 				app.onerror = onerror
@@ -374,8 +381,9 @@ func (app *App) Start(addr ...string) *ServerListener {
 
 // Error writes error to underlayer logging system.
 func (app *App) Error(err error) {
-	if err := ParseError(err); err != nil {
-		if err.Code == 500 || err.Code > 501 || err.Code < 400 {
+	if err := ErrorWithStack(err, 4); err != nil {
+		code := err.Status()
+		if code == 500 || code > 501 || code < 400 {
 			app.logger.Println(err.String())
 		}
 	}
@@ -414,7 +422,7 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if IsNil(err) {
 		// if context canceled abnormally...
 		if err = ctx.Err(); err != nil {
-			err = &Error{http.StatusGatewayTimeout, err.Error(), "", nil}
+			err = &Error{http.StatusGatewayTimeout, err.Error(), nil, ""}
 		}
 	}
 

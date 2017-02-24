@@ -233,9 +233,8 @@ func TestGearError(t *testing.T) {
 			app.Set(SetOnError, struct{}{})
 		})
 		app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
-		app.Set(SetOnError, func(ctx *Context, err *Error) {
+		app.Set(SetOnError, func(ctx *Context, err HTTPError) {
 			ctx.Type(MIMETextHTMLCharsetUTF8)
-			err.Code = 200
 		})
 
 		app.Use(func(ctx *Context) error {
@@ -249,19 +248,19 @@ func TestGearError(t *testing.T) {
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
 		assert.Equal("Some error", PickRes(res.Text()).(string))
-		assert.Equal("TEST: Error{Code:500, Msg:\"Some error\", Stack:\"\", Meta:<nil>}\n", buf.String())
+		assert.True(strings.Contains(buf.String(),
+			`TEST: Error{Code:500, Msg:"Some error", Meta:<nil>, Stack:"\t`))
 		res.Body.Close()
 	})
 
-	t.Run("return nil HTTPError", func(t *testing.T) {
+	t.Run("return HTTPError as JSON", func(t *testing.T) {
 		assert := assert.New(t)
 
 		var buf bytes.Buffer
 		app := New()
 		app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
-		app.Set(SetOnError, func(ctx *Context, err *Error) {
-			ctx.Type(MIMETextHTMLCharsetUTF8)
-			ctx.End(204)
+		app.Set(SetOnError, func(ctx *Context, err HTTPError) {
+			ctx.JSON(err.Status(), err)
 		})
 
 		app.Use(func(ctx *Context) error {
@@ -272,9 +271,9 @@ func TestGearError(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(204, res.StatusCode)
-		assert.Equal("text/html; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal("", PickRes(res.Text()).(string))
+		assert.Equal(500, res.StatusCode)
+		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
+		assert.Equal(`{"Code":500,"Msg":"some error","Meta":null,"Stack":""}`, PickRes(res.Text()).(string))
 		assert.Equal("", buf.String())
 		res.Body.Close()
 	})
@@ -403,15 +402,13 @@ func TestGearParseError(t *testing.T) {
 
 		err1 := &textproto.Error{Code: 400, Msg: "test"}
 		err := ParseError(err1)
-		assert.Equal(err.Code, 400)
-		assert.Nil(err.Meta)
+		assert.Equal(err.Status(), 400)
 
 		err2 := func() error {
 			return &textproto.Error{Code: 400, Msg: "test"}
 		}()
 		err = ParseError(err2)
-		assert.Equal(err.Code, 400)
-		assert.Nil(err.Meta)
+		assert.Equal(err.Status(), 400)
 	})
 
 	t.Run("custom HTTPError", func(t *testing.T) {
@@ -419,27 +416,23 @@ func TestGearParseError(t *testing.T) {
 
 		err1 := &testHTTPError1{c: 400, m: "test"}
 		err := ParseError(err1)
-		assert.Equal(err.Code, 400)
-		assert.Nil(err.Meta)
+		assert.Equal(err.Status(), 400)
 
 		err2 := func() error {
 			return &testHTTPError1{c: 400, m: "test"}
 		}()
 		err = ParseError(err2)
-		assert.Equal(err.Code, 400)
-		assert.Nil(err.Meta)
+		assert.Equal(err.Status(), 400)
 
 		err3 := &testHTTPError2{c: 400, m: "test"}
 		err = ParseError(err3)
-		assert.Equal(err.Code, 400)
-		assert.Nil(err.Meta)
+		assert.Equal(err.Status(), 400)
 
 		err4 := func() error {
 			return &testHTTPError2{c: 400, m: "test"}
 		}()
 		err = ParseError(err4)
-		assert.Equal(err.Code, 400)
-		assert.Nil(err.Meta)
+		assert.Equal(err.Status(), 400)
 	})
 
 	t.Run("error", func(t *testing.T) {
@@ -447,22 +440,19 @@ func TestGearParseError(t *testing.T) {
 
 		err1 := errors.New("test")
 		err := ParseError(err1)
-		assert.Nil(err.Meta)
-		assert.Equal(err.Code, 500)
+		assert.Equal(err.Status(), 500)
 
 		err2 := func() error {
 			return errors.New("test")
 		}()
 		err = ParseError(err2, 0)
-		assert.Nil(err.Meta)
-		assert.Equal(err.Code, 500)
+		assert.Equal(err.Status(), 500)
 
 		err3 := func() error {
 			return errors.New("test")
 		}()
 		err = ParseError(err3, 400)
-		assert.Nil(err.Meta)
-		assert.Equal(err.Code, 400)
+		assert.Equal(err.Status(), 400)
 	})
 }
 
@@ -727,8 +717,12 @@ func TestErrorWithStack(t *testing.T) {
 	t.Run("ErrorWithStack", func(t *testing.T) {
 		assert := assert.New(t)
 
+		var err error
+
+		assert.Nil(ErrorWithStack(err))
+
 		// *Error type test
-		err := &Error{500, "hello", "", nil}
+		err = &Error{500, "hello", nil, ""}
 		assert.NotZero(ErrorWithStack(err).Stack)
 		// string type test
 		str := "Some thing"
@@ -741,14 +735,14 @@ func TestErrorWithStack(t *testing.T) {
 		}
 		assert.NotZero(ErrorWithStack(v).Stack)
 		// test skip
-		errSkip := &Error{500, "hello", "", nil}
+		errSkip := &Error{500, "hello", nil, ""}
 		assert.True(strings.Index(ErrorWithStack(errSkip, 0).Stack, "app.go") > 0)
 	})
 
 	t.Run("Error string", func(t *testing.T) {
 		assert := assert.New(t)
 
-		err := &Error{500, "Some error", "", []byte("meta data")}
+		err := &Error{500, "Some error", []byte("meta data"), ""}
 		assert.True(strings.Index(err.String(), "meta data") > 0)
 	})
 

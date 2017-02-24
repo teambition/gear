@@ -598,15 +598,12 @@ func (ctx *Context) OnEnd(hook func()) {
 	ctx.endHooks = append(ctx.endHooks, hook)
 }
 
-func (ctx *Context) respondError(err *Error) {
+func (ctx *Context) respondError(err HTTPError) {
 	if !ctx.Res.wroteHeader.isTrue() {
-		if err.Code < 400 {
-			err.Code = 500
-		}
 		ctx.app.Error(err)
 		ctx.Set(HeaderContentType, MIMETextPlainCharsetUTF8)
 		ctx.Set(HeaderXContentTypeOptions, "nosniff")
-		ctx.Res.respond(err.Code, []byte(err.Msg))
+		ctx.Res.respond(err.Status(), []byte(err.Error()))
 	}
 }
 

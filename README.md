@@ -98,6 +98,12 @@ h1 {
 
 https://github.com/teambition/gear/tree/master/example/staticgo
 
+Install it with go:
+
+```sh
+go install github.com/teambition/gear/example/staticgo
+```
+
 It is a useful CMD tool that serve your local files as web server (support TLS).
 You can build `osx`, `linux`, `windows` version with `make build`.
 

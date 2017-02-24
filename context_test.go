@@ -946,7 +946,7 @@ type RenderTest struct {
 
 func (t *RenderTest) Render(ctx *Context, w io.Writer, name string, data interface{}) (err error) {
 	if err = t.tpl.ExecuteTemplate(w, name, data); err != nil {
-		err = &Error{404, err.Error(), "", err}
+		err = &Error{404, err.Error(), err, ""}
 	}
 	return
 }
@@ -1250,14 +1250,11 @@ func TestGearContextError(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		app.Set(SetOnError, func(ctx *Context, err *Error) {
-			ctx.JSON(err.Code, struct {
-				Code  int    `json:"code"`
-				Error string `json:"error"`
-			}{err.Code, err.Msg})
+		app.Set(SetOnError, func(ctx *Context, err HTTPError) {
+			ctx.JSON(err.Status(), err)
 		})
 		app.Use(func(ctx *Context) error {
-			return ctx.Error(errors.New("some error"))
+			return ctx.Error(&MyHTTPError{400, "some error"})
 		})
 
 		srv := app.Start()
@@ -1265,11 +1262,19 @@ func TestGearContextError(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(500, res.StatusCode)
-		assert.Equal(`{"code":500,"error":"some error"}`, PickRes(res.Text()).(string))
+		assert.Equal(400, res.StatusCode)
+		assert.Equal(`{"code":400,"error":"some error"}`, PickRes(res.Text()).(string))
 		assert.Equal(MIMEApplicationJSONCharsetUTF8, res.Header.Get(HeaderContentType))
 	})
 }
+
+type MyHTTPError struct {
+	Code int    `json:"code"`
+	Msg  string `json:"error"`
+}
+
+func (e *MyHTTPError) Status() int   { return e.Code }
+func (e *MyHTTPError) Error() string { return e.Msg }
 
 func TestGearContextErrorStatus(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
