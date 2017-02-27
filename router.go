@@ -254,8 +254,6 @@ func (r *Router) Serve(ctx *Context) error {
 		return nil
 	}
 
-	// ensure end middleware process
-	defer ctx.ended.setTrue()
 	if len(r.root) > 1 {
 		path = strings.TrimPrefix(path, r.root)
 		if path == "" {
@@ -308,8 +306,8 @@ func (r *Router) Serve(ctx *Context) error {
 	}
 
 	ctx.SetAny(paramsKey, matched.Params)
-	if len(r.mds) == 0 {
-		return handler(ctx)
+	if len(r.mds) > 0 {
+		handler = Compose(r.middleware, handler)
 	}
-	return Compose(r.middleware, handler)(ctx)
+	return handler(ctx)
 }

@@ -278,6 +278,32 @@ func TestGearError(t *testing.T) {
 		res.Body.Close()
 	})
 
+	t.Run("return router error as JSON", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := New()
+		app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
+		app.Set(SetOnError, func(ctx *Context, err HTTPError) {
+			ctx.JSON(err.Status(), err)
+		})
+		router := NewRouter()
+		router.Get("/", func(ctx *Context) error {
+			return errors.New("some error")
+		})
+		app.UseHandler(router)
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
+		assert.Equal(`{"code":500,"error":"some error"}`, PickRes(res.Text()).(string))
+		assert.Equal("", buf.String())
+		res.Body.Close()
+	})
+
 	t.Run("panic recovered", func(t *testing.T) {
 		assert := assert.New(t)
 
