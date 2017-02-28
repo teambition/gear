@@ -4,4 +4,5 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
-## [1.0.0] - Comming soon
+
+## [1.0.0] - 2017-03-01
