@@ -47,50 +47,68 @@ import (
 // request to that function.
 //
 // The registered path, against which the router matches incoming requests, can
-// contain three types of parameters:
+// contain six types of parameters:
 //
-//  Syntax         Type
-//  :name          named parameter
-//  :name*         named with catch-all parameter
-//  :name(regexp)  named with regexp parameter
-//  ::name         not named parameter, it is literal `:name`
+// | Syntax | Description |
+// |--------|------|
+// | `:name` | named parameter |
+// | `:name(regexp)` | named with regexp parameter |
+// | `:name+suffix` | named parameter with suffix matching |
+// | `:name(regexp)+suffix` | named with regexp parameter and suffix matching |
+// | `:name*` | named with catch-all parameter |
+// | `::name` | not named parameter, it is literal `:name` |
 //
-// Named parameters are dynamic path segments. They match anything until the
-// next '/' or the path end:
+// Named parameters are dynamic path segments. They match anything until the next '/' or the path end:
 //
-//  Path: /api/:type/:ID
+// Defined: `/api/:type/:ID`
+// ```
+// /api/user/123             matched: type="user", ID="123"
+// /api/user                 no match
+// /api/user/123/comments    no match
+// ```
 //
-//  Requests:
-//   /api/user/123             match: type="user", ID="123"
-//   /api/user                 no match
-//   /api/user/123/comments    no match
+// Named with regexp parameters match anything using regexp until the next '/' or the path end:
 //
-// Named with catch-all parameters match anything until the path end, including the
-// directory index (the '/' before the catch-all). Since they match anything
-// until the end, catch-all parameters must always be the final path element.
+// Defined: `/api/:type/:ID(^\d+$)`
+// ```
+// /api/user/123             matched: type="user", ID="123"
+// /api/user                 no match
+// /api/user/abc             no match
+// /api/user/123/comments    no match
+// ```
 //
-//  Path: /files/:filepath*
+// Named parameters with suffix, such as [Google API Design](https://cloud.google.com/apis/design/custom_methods):
 //
-//  Requests:
-//   /files                              no match
-//   /files/LICENSE                      match: filepath="LICENSE"
-//   /files/templates/article.html       match: filepath="templates/article.html"
+// Defined: `/api/:resource/:ID+:undelete`
+// ```
+// /api/file/123                     no match
+// /api/file/123:undelete            matched: resource="file", ID="123"
+// /api/file/123:undelete/comments   no match
+// ```
 //
-// Named with regexp parameters match anything using regexp until the
-// next '/' or the path end:
+// Named with regexp parameters and suffix:
 //
-//  Path: /api/:type/:ID(^\\d+$)
+// Defined: `/api/:resource/:ID(^\d+$)+:cancel`
+// ```
+// /api/task/123                   no match
+// /api/task/123:cancel            matched: resource="task", ID="123"
+// /api/task/abc:cancel            no match
+// ```
 //
-//  Requests:
-//   /api/user/123             match: type="user", ID="123"
-//   /api/user                 no match
-//   /api/user/abc             no match
-//   /api/user/123/comments    no match
+// Named with catch-all parameters match anything until the path end, including the directory index (the '/' before the catch-all). Since they match anything until the end, catch-all parameters must always be the final path element.
 //
-// The value of parameters is saved on the gear.Context. Retrieve the value of a parameter by name:
+// Defined: `/files/:filepath*`
+// ```
+// /files                           no match
+// /files/LICENSE                   matched: filepath="LICENSE"
+// /files/templates/article.html    matched: filepath="templates/article.html"
+// ```
 //
-//  type := ctx.Param("type")
-//  id   := ctx.Param("ID")
+// The value of parameters is saved on the `Matched.Params`. Retrieve the value of a parameter by name:
+// ```
+// type := matched.Params("type")
+// id   := matched.Params("ID")
+// ```
 //
 type Router struct {
 	root       string

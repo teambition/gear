@@ -6,7 +6,6 @@ import (
 	"compress/zlib"
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -785,23 +784,10 @@ func TestErrorWithStack(t *testing.T) {
 	})
 }
 
-func HTTP2Transport(capem, cert, key string) (*http2.Transport, error) {
+func HTTP2Transport(cert, key string) (*http2.Transport, error) {
 	transport := &http2.Transport{}
 	tlsCfg := &tls.Config{
 		InsecureSkipVerify: true,
-	}
-
-	if capem != "" {
-		cert, err := ioutil.ReadFile(capem)
-		if err != nil {
-			return nil, err
-		}
-
-		certPool := x509.NewCertPool()
-		ok := certPool.AppendCertsFromPEM(cert)
-		if ok {
-			tlsCfg.RootCAs = certPool
-		}
 	}
 
 	if cert != "" && key != "" {

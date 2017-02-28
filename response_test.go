@@ -320,14 +320,13 @@ h1 {
 		cond.L.Lock()
 		go func() {
 			cond.Signal()
-			app.ListenTLS("127.0.0.1:3443", "./testdata/server.crt", "./testdata/server.key")
+			app.ListenTLS("127.0.0.1:3443", "./testdata/cert.pem", "./testdata/key.pem")
 		}()
 		defer app.Close()
 
 		cond.Wait()
 		time.Sleep(time.Millisecond)
-		tr, err := HTTP2Transport(
-			"./testdata/rootCA.pem", "./testdata/client.crt", "./testdata/client.key")
+		tr, err := HTTP2Transport("./testdata/cert.pem", "./testdata/key.pem")
 		assert.Nil(err)
 		cli := &http.Client{Transport: tr}
 		res, err := cli.Get("https://127.0.0.1:3443")

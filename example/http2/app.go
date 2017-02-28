@@ -43,7 +43,7 @@ h1 {
 		return ctx.End(200, []byte(pushBody))
 	})
 	app.UseHandler(router)
-	app.Error(app.ListenTLS(":3000", "../../testdata/server.crt", "../../testdata/server.key"))
+	app.Error(app.ListenTLS(":3000", "../../testdata/cert.pem", "../../testdata/key.pem"))
 }
 
 // Visit: https://127.0.0.1:3000/
