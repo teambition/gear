@@ -2,10 +2,13 @@ package gear
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 var defaultHeaderFilterReg = regexp.MustCompile(
@@ -215,4 +218,24 @@ func isEmptyStatus(status int) bool {
 	default:
 		return false
 	}
+}
+
+var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
+
+// ContentDisposition implements a simple version of https://tools.ietf.org/html/rfc2183
+// Use mime.ParseMediaType to parse Content-Disposition header.
+func ContentDisposition(fileName, dispositionType string) (header string) {
+	if dispositionType == "" {
+		dispositionType = "attachment"
+	}
+	if fileName == "" {
+		return dispositionType
+	}
+
+	header = fmt.Sprintf(`%s; filename="%s"`, dispositionType, quoteEscaper.Replace(fileName))
+	fallbackName := url.PathEscape(fileName)
+	if len(fallbackName) != len(fileName) {
+		header = fmt.Sprintf(`%s; filename*=UTF-8''%s`, header, fallbackName)
+	}
+	return
 }

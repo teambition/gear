@@ -1,6 +1,7 @@
 package gear
 
 import (
+	"mime"
 	"net/http"
 	"regexp"
 	"strings"
@@ -346,4 +347,32 @@ func TestGearCheckStatus(t *testing.T) {
 
 	assert.False(isEmptyStatus(200))
 	assert.True(isEmptyStatus(204))
+}
+
+func TestGearContentDisposition(t *testing.T) {
+	t.Run("Should format", func(t *testing.T) {
+		assert := assert.New(t)
+
+		assert.Equal("attachment", ContentDisposition("", ""))
+		assert.Equal("inline", ContentDisposition("", "inline"))
+		assert.Equal(`inline; filename="abc.txt"`, ContentDisposition(`abc.txt`, "inline"))
+		assert.Equal(`attachment; filename="\"abc\".txt"; filename*=UTF-8''%22abc%22.txt`,
+			ContentDisposition(`"abc".txt`, ""))
+		assert.Equal(`attachment; filename="统计数据.txt"; filename*=UTF-8''%E7%BB%9F%E8%AE%A1%E6%95%B0%E6%8D%AE.txt`,
+			ContentDisposition(`统计数据.txt`, ""))
+		assert.Equal(`inline; filename="€ rates.txt"; filename*=UTF-8''%E2%82%AC%20rates.txt`,
+			ContentDisposition(`€ rates.txt`, "inline"))
+
+		mType, params, _ := mime.ParseMediaType(ContentDisposition(`统计数据.txt`, ""))
+		assert.Equal("attachment", mType)
+		assert.Equal("统计数据.txt", params["filename"])
+
+		mType, params, _ = mime.ParseMediaType(ContentDisposition(`€ rates.txt`, "inline"))
+		assert.Equal("inline", mType)
+		assert.Equal("€ rates.txt", params["filename"])
+
+		mType, params, _ = mime.ParseMediaType(ContentDisposition(`"abc".txt`, ""))
+		assert.Equal("attachment", mType)
+		assert.Equal(`"abc".txt`, params["filename"])
+	})
 }

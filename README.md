@@ -7,36 +7,41 @@
 =====
 A lightweight, composable and high performance web service framework for Go.
 
+## Design
+
+[Gear 框架设计考量](https://github.com/teambition/gear/blob/master/doc/design.md)
+
 ## Demo
 
 ### Simple service
+
 ```go
 package main
 
 import (
-	"fmt"
-	"github.com/teambition/gear"
-	"github.com/teambition/gear/logging"
+  "fmt"
+  "github.com/teambition/gear"
+  "github.com/teambition/gear/logging"
 )
 
 func main() {
-	app := gear.New()
+  app := gear.New()
 
-	// Add logging middleware
-	app.UseHandler(logging.Default())
+  // Add logging middleware
+  app.UseHandler(logging.Default())
 
-	// Add router middleware
-	router := gear.NewRouter()
-	router.Use(func(ctx *gear.Context) error {
-		// do some thing.
-		fmt.Println("Router middleware...", ctx.Path)
-		return nil
-	})
-	router.Get("/", func(ctx *gear.Context) error {
-		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-	})
-	app.UseHandler(router)
-	app.Error(app.Listen(":3000"))
+  // Add router middleware
+  router := gear.NewRouter()
+  router.Use(func(ctx *gear.Context) error {
+    // do some thing.
+    fmt.Println("Router middleware...", ctx.Path)
+    return nil
+  })
+  router.Get("/", func(ctx *gear.Context) error {
+    return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+  })
+  app.UseHandler(router)
+  app.Error(app.Listen(":3000"))
 }
 ```
 
@@ -48,17 +53,17 @@ https://github.com/teambition/gear/tree/master/example/http2
 package main
 
 import (
-	"net/http"
+  "net/http"
 
-	"github.com/teambition/gear"
-	"github.com/teambition/gear/logging"
-	"github.com/teambition/gear/middleware/favicon"
+  "github.com/teambition/gear"
+  "github.com/teambition/gear/logging"
+  "github.com/teambition/gear/middleware/favicon"
 )
 
 // go run app.go
 func main() {
 
-	const htmlBody = `
+  const htmlBody = `
 <!DOCTYPE html>
 <html>
   <head>
@@ -69,28 +74,28 @@ func main() {
   </body>
 </html>`
 
-	const pushBody = `
+  const pushBody = `
 h1 {
   color: red;
 }
 `
 
-	app := gear.New()
+  app := gear.New()
 
-	app.UseHandler(logging.Default())
-	app.Use(favicon.New("../../testdata/favicon.ico"))
+  app.UseHandler(logging.Default())
+  app.Use(favicon.New("../../testdata/favicon.ico"))
 
-	router := gear.NewRouter()
-	router.Get("/", func(ctx *gear.Context) error {
-		ctx.Res.Push("/hello.css", &http.PushOptions{Method: "GET"})
-		return ctx.HTML(200, htmlBody)
-	})
-	router.Get("/hello.css", func(ctx *gear.Context) error {
-		ctx.Type("text/css")
-		return ctx.End(200, []byte(pushBody))
-	})
-	app.UseHandler(router)
-	app.Error(app.ListenTLS(":3000", "../../testdata/server.crt", "../../testdata/server.key"))
+  router := gear.NewRouter()
+  router.Get("/", func(ctx *gear.Context) error {
+    ctx.Res.Push("/hello.css", &http.PushOptions{Method: "GET"})
+    return ctx.HTML(200, htmlBody)
+  })
+  router.Get("/hello.css", func(ctx *gear.Context) error {
+    ctx.Type("text/css")
+    return ctx.End(200, []byte(pushBody))
+  })
+  app.UseHandler(router)
+  app.Error(app.ListenTLS(":3000", "../../testdata/server.crt", "../../testdata/server.key"))
 }
 ```
 
@@ -111,37 +116,37 @@ You can build `osx`, `linux`, `windows` version with `make build`.
 package main
 
 import (
-	"flag"
+  "flag"
 
-	"github.com/teambition/gear"
-	"github.com/teambition/gear/logging"
-	"github.com/teambition/gear/middleware/cors"
-	"github.com/teambition/gear/middleware/static"
+  "github.com/teambition/gear"
+  "github.com/teambition/gear/logging"
+  "github.com/teambition/gear/middleware/cors"
+  "github.com/teambition/gear/middleware/static"
 )
 
 var (
-	address  = flag.String("addr", "127.0.0.1:3000", `address to listen on.`)
-	path     = flag.String("path", "./", `static files path to serve.`)
-	certFile = flag.String("certFile", "", `certFile path, used to create TLS static server.`)
-	keyFile  = flag.String("keyFile", "", `keyFile path, used to create TLS static server.`)
+  address  = flag.String("addr", "127.0.0.1:3000", `address to listen on.`)
+  path     = flag.String("path", "./", `static files path to serve.`)
+  certFile = flag.String("certFile", "", `certFile path, used to create TLS static server.`)
+  keyFile  = flag.String("keyFile", "", `keyFile path, used to create TLS static server.`)
 )
 
 func main() {
-	flag.Parse()
-	app := gear.New()
+  flag.Parse()
+  app := gear.New()
 
-	app.UseHandler(logging.Default())
-	app.Use(cors.New())
-	app.Use(static.New(static.Options{Root: *path}))
+  app.UseHandler(logging.Default())
+  app.Use(cors.New())
+  app.Use(static.New(static.Options{Root: *path}))
 
-	logging.Println("staticgo v1.1.0, created by https://github.com/teambition/gear")
-	logging.Printf("listen: %s, serve: %s\n", *address, *path)
+  logging.Println("staticgo v1.1.0, created by https://github.com/teambition/gear")
+  logging.Printf("listen: %s, serve: %s\n", *address, *path)
 
-	if *certFile != "" && *keyFile != "" {
-		app.Error(app.ListenTLS(*address, *certFile, *keyFile))
-	} else {
-		app.Error(app.Listen(*address))
-	}
+  if *certFile != "" && *keyFile != "" {
+    app.Error(app.ListenTLS(*address, *certFile, *keyFile))
+  } else {
+    app.Error(app.Listen(*address))
+  }
 }
 ```
 
@@ -153,116 +158,89 @@ import "github.com/teambition/gear"
 ```
 
 ## About Router
+
 [gear.Router](https://godoc.org/github.com/teambition/gear#Router) is a tire base HTTP request handler.
 Features:
 
+1. Support named parameter
 1. Support regexp
-2. Support multi-router
-3. Support router layer middlewares
-4. Support fixed path automatic redirection
-5. Support trailing slash automatic redirection
-6. Automatic handle `405 Method Not Allowed`
-7. Automatic handle `501 Not Implemented`
-8. Automatic handle `OPTIONS` method
-9. Best Performance
+1. Support suffix matching
+1. Support multi-router
+1. Support router layer middlewares
+1. Support fixed path automatic redirection
+1. Support trailing slash automatic redirection
+1. Automatic handle `405 Method Not Allowed`
+1. Automatic handle `501 Not Implemented`
+1. Automatic handle `OPTIONS` method
+1. Best Performance
 
-The registered path, against which the router matches incoming requests, can contain three types of parameters:
+The registered path, against which the router matches incoming requests, can contain six types of parameters:
 
 | Syntax | Description |
 |--------|------|
 | `:name` | named parameter |
-| `:name*` | named with catch-all parameter |
 | `:name(regexp)` | named with regexp parameter |
+| `:name+suffix` | named parameter with suffix matching |
+| `:name(regexp)+suffix` | named with regexp parameter and suffix matching |
+| `:name*` | named with catch-all parameter |
 | `::name` | not named parameter, it is literal `:name` |
-
 
 Named parameters are dynamic path segments. They match anything until the next '/' or the path end:
 
 Defined: `/api/:type/:ID`
-```
+
+```md
 /api/user/123             matched: type="user", ID="123"
 /api/user                 no match
 /api/user/123/comments    no match
 ```
 
-Named with catch-all parameters match anything until the path end, including the directory index (the '/' before the catch-all). Since they match anything until the end, catch-all parameters must always be the final path element.
-
-Defined: `/files/:filepath*`
-```
-/files                           no match
-/files/LICENSE                   matched: filepath="LICENSE"
-/files/templates/article.html    matched: filepath="templates/article.html"
-```
-
 Named with regexp parameters match anything using regexp until the next '/' or the path end:
 
 Defined: `/api/:type/:ID(^\d+$)`
-```
+
+```md
 /api/user/123             matched: type="user", ID="123"
 /api/user                 no match
 /api/user/abc             no match
 /api/user/123/comments    no match
 ```
 
-The value of parameters is saved on the gear.Context. Retrieve the value of a parameter by name:
-```
-type := ctx.Param("type")
-id   := ctx.Param("ID")
-```
+Named parameters with suffix, such as [Google API Design](https://cloud.google.com/apis/design/custom_methods):
 
-## About Middleware
-```go
-// Middleware defines a function to process as middleware.
-type Middleware func(*gear.Context) error
+Defined: `/api/:resource/:ID+:undelete`
+
+```md
+/api/file/123                     no match
+/api/file/123:undelete            matched: resource="file", ID="123"
+/api/file/123:undelete/comments   no match
 ```
 
-`Middleware` can be used in app layer or router layer or middleware inside. It be good at composition.
-We should write any module as a middleware. We should use middleware to compose all our business.
+Named with regexp parameters and suffix:
 
-There are three build-in middlewares currently: https://godoc.org/github.com/teambition/gear/middleware
+Defined: `/api/:resource/:ID(^\d+$)+:cancel`
 
-```go
-// package middleware
-import (
-	"github.com/teambition/gear/middleware/cors"
-	"github.com/teambition/gear/middleware/favicon"
-	"github.com/teambition/gear/middleware/static"
-)
+```md
+/api/task/123                   no match
+/api/task/123:cancel            matched: resource="task", ID="123"
+/api/task/abc:cancel            no match
 ```
-1. [CORS middleware](https://godoc.org/github.com/teambition/gear/middleware/cors#New) Use to serve CORS request.
-2. [Favicon middleware](https://godoc.org/github.com/teambition/gear/middleware/favicon#New) Use to serve favicon.ico.
-3. [Static server middleware](https://godoc.org/github.com/teambition/gear/middleware/static#New) Use to serve static files.
 
-All this middlewares can be use in app layer, router layer or middleware layer.
+Named with catch-all parameters match anything until the path end, including the directory index (the '/' before the catch-all). Since they match anything until the end, catch-all parameters must always be the final path element.
 
-## About Hook
-`Hook` can be used to some teardowm job dynamically. For example, Logger middleware use `ctx.OnEnd` to write logs to underlayer. Hooks are executed in LIFO order, just like go `defer`. `Hook` can only be add in middleware. You can't add another hook in a hook.
+Defined: `/files/:filepath*`
+
+```
+/files                           no match
+/files/LICENSE                   matched: filepath="LICENSE"
+/files/templates/article.html    matched: filepath="templates/article.html"
+```
+
+The value of parameters is saved on the `Matched.Params`. Retrieve the value of a parameter by name:
 
 ```go
-ctx.After(hook func())
-```
-Add one or more "after hook" to current request process. They will run after middleware process(means context process `ended`), and before `Response.WriteHeader`. If some middleware return `error`, the middleware process will stop, all "after hooks" will be clear and not run.
-
-```go
-ctx.OnEnd(hook func())
-```
-Add one or more "end hook" to current request process. They will run after `Response.WriteHeader` called. The middleware error will not stop "end hook" process.
-
-Here is example using "end hook" in Logger middleware.
-```go
-func (l *Logger) Serve(ctx *gear.Context) error {
-	// Add a "end hook" to flush logs.
-	ctx.OnEnd(func() {
-		log := l.FromCtx(ctx)
-		log["Status"] = ctx.Status()
-		log["Type"] = ctx.Res.Get(gear.HeaderContentType)
-		log["Length"] = ctx.Res.Get(gear.HeaderContentLength)
-
-		// Don't block current process.
-		go l.consume(log, ctx)
-	})
-	return nil
-}
+type := matched.Params("type")
+id   := matched.Params("ID")
 ```
 
 ## Documentation
@@ -270,5 +248,6 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 https://godoc.org/github.com/teambition/gear
 
 ## License
+
 Gear is licensed under the [MIT](https://github.com/teambition/gear/blob/master/LICENSE) license.
-Copyright &copy; 2016 [Teambition](https://www.teambition.com).
+Copyright &copy; 2016-2017 [Teambition](https://www.teambition.com).

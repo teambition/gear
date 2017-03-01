@@ -507,7 +507,7 @@ func (ctx *Context) Attachment(name string, modtime time.Time, content io.ReadSe
 		if len(inline) > 0 && inline[0] {
 			dispositionType = "inline"
 		}
-		ctx.Set(HeaderContentDisposition, fmt.Sprintf("%s; filename=%s", dispositionType, name))
+		ctx.Set(HeaderContentDisposition, ContentDisposition(name, dispositionType))
 		http.ServeContent(ctx.Res, ctx.Req, name, modtime, content)
 	}
 	return
