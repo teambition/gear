@@ -767,8 +767,14 @@ func TestErrorWithStack(t *testing.T) {
 	t.Run("Error string", func(t *testing.T) {
 		assert := assert.New(t)
 
-		err := &Error{500, "Some error", []byte("meta data"), ""}
-		assert.True(strings.Index(err.String(), "meta data") > 0)
+		meta := []byte("服务异常")
+		err := &Error{500, "Some error", meta, ""}
+		assert.True(strings.Contains(err.String(), `, Meta:"服务异常",`))
+
+		meta = meta[0 : len(meta)-1] // invalid utf8 bytes
+		err = &Error{500, "Some error", meta, ""}
+		assert.False(strings.Contains(err.String(), `, Meta:"服务`))
+		assert.True(strings.Contains(err.String(), `, Meta:[]byte{`))
 	})
 
 	t.Run("pruneStack", func(t *testing.T) {

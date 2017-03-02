@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 )
 
 // Middleware defines a function to process as middleware.
@@ -95,8 +96,7 @@ func (err *Error) Error() string {
 
 // String implemented fmt.Stringer interface, returns a Go-syntax string.
 func (err *Error) String() string {
-	switch v := err.Meta.(type) {
-	case []byte:
+	if v, ok := err.Meta.([]byte); ok && utf8.Valid(v) {
 		err.Meta = string(v)
 	}
 	return fmt.Sprintf(`Error{Code:%3d, Msg:"%s", Meta:%#v, Stack:"%s"}`,

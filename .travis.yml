@@ -14,3 +14,4 @@ script:
   - go test -coverprofile=static.coverprofile ./middleware/static
   - go test -coverprofile=secure.coverprofile ./middleware/secure
   - gover
+  - goveralls -coverprofile=gover.coverprofile -service=travis-ci
