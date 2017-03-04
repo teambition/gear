@@ -71,7 +71,6 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 type HTTPError interface {
 	// Error returns error's message.
 	Error() string
-
 	// Status returns error's http status code.
 	Status() int
 }

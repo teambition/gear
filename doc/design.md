@@ -4,6 +4,15 @@ Gear 是由 [Teambition](https://www.teambition.com) 开发的一个轻量级的
 
 Gear 框架在设计与实现的过程中充分参考了 Go 语言下多款知名 Web 框架，也参考了 Node.js 下的知名 Web 框架，汲取各方优秀因素，结合我们的开发实践，精心打磨而成。
 
+## Summary
+
+- [1. Server 底层基于原生 net/http 而不是 fasthttp](#1-server-底层基于原生-nethttp-而不是-fasthttp)
+- [2. 通过 gear.Middleware 中间件模式扩展功能模块](#2-通过-gearmiddleware-中间件模式扩展功能模块)
+- [3. 中间件的单向顺序流程控制和级联流程控制](#3-中间件的单向顺序流程控制和级联流程控制)
+- [4. 功能强大，完美集成 context.Context 的 gear.Context](#4-功能强大完美集成-contextcontext-的-gearcontext)
+- [5. 错误和异常处理](#5-错误和异常处理)
+- TODO
+
 
 ## 1. Server 底层基于原生 `net/http` 而不是 `fasthttp`
 
@@ -159,7 +168,7 @@ func (a *User) Login(ctx *gear.Context) (err error) {
 最后就是某些中间件运行时可能出现的 panic error，它们能被框架捕获并按照类似 `error` 中断逻辑自动处理，错误信息中还会包含错误堆栈（Error.Stack），方便开发者在运行日志中定位错误。
 
 
-## 3. 中间件的 **单向顺序** 流程控制和 **级联** 流程控制
+## 3. 中间件的单向顺序流程控制和级联流程控制
 
 Node.js 生态中知名框架 [koa](https://github.com/koajs/koa) 就是 **级联** 流程控制，其文档中的一个示例代码如下：
 
@@ -256,8 +265,7 @@ type Error struct {
 
 ```go
 func (err *Error) String() string {
-  switch v := err.Meta.(type) {
-  case []byte:
+  if v, ok := err.Meta.([]byte); ok && utf8.Valid(v) {
     err.Meta = string(v)
   }
   return fmt.Sprintf(`Error{Code:%3d, Msg:"%s", Meta:%#v, Stack:"%s"}`,

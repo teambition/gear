@@ -7,9 +7,28 @@
 =====
 A lightweight, composable and high performance web service framework for Go.
 
+## Features
+
+- Effective and flexible middlewares flow control, create anything by middleware
+- Powerful and smart error handler, make development easy
+- Trie base Router, it is as fast as [HttpRouter](https://github.com/julienschmidt/httprouter), but more powerful
+- Integrated timeout context.Context
+- Integrated response content compress
+- Integrated structured logging middleware
+- Integrated request body parser
+- Integrated signed cookies
+- Integrated JSON, JSONP, XML and HTML renderer
+- Integrated CORS, Secure, Favicon and Static middlewares
+- More useful gear.Context method to manipulate HTTP
+- Completely HTTP2 supported
+
 ## Design
 
 [Gear 框架设计考量](https://github.com/teambition/gear/blob/master/doc/design.md)
+
+## Documentation
+
+[go-documentation](https://godoc.org/github.com/teambition/gear)
 
 ## Demo
 
@@ -243,9 +262,22 @@ type := matched.Params("type")
 id   := matched.Params("ID")
 ```
 
-## Documentation
+## More Middlewares
 
-https://godoc.org/github.com/teambition/gear
+- Structured logging: [github.com/teambition/gear/logging](https://github.com/teambition/gear/tree/master/logging)
+- CORS handler: [github.com/teambition/gear/middleware/cors](https://github.com/teambition/gear/tree/master/middleware/cors)
+- Secure handler: [github.com/teambition/gear/middleware/secure](https://github.com/teambition/gear/tree/master/middleware/secure)
+- Static serving: [github.com/teambition/gear/middleware/static](https://github.com/teambition/gear/tree/master/middleware/static)
+- Favicon serving: [github.com/teambition/gear/middleware/favicon](https://github.com/teambition/gear/tree/master/middleware/favicon)
+- JWT and Crypto auth: [Gear-Auth](https://github.com/teambition/gear-auth)
+- Cookie session: [Gear-Session](https://github.com/teambition/gear-session)
+- Smart rate limiter: [Gear-Ratelimiter](https://github.com/teambition/gear-ratelimiter)
+- CSRF: [Gear-CSRF](https://github.com/teambition/gear-csrf)
+- Opentracing with Zipkin: [Gear-tracing](https://github.com/teambition/gear-tracing)
+
+## Applications base on Gear
+
+- [KPass](https://github.com/seccom/kpass) - a web application to manage password safe.
 
 ## License
 

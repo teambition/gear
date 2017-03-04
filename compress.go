@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-// Compressible interface is use to enable compress response context.
+// Compressible interface is use to enable compress response content.
 type Compressible interface {
 	// Compressible checks the response Content-Type and Content-Length to
 	// determine whether to compress.
