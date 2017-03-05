@@ -20,7 +20,11 @@ import (
 
 type contextKey int
 
-const paramsKey contextKey = 0
+const (
+	isContext contextKey = iota
+	isRecursive
+	paramsKey
+)
 
 // ErrAnyKeyNonExistent is returned from Context.Any
 var ErrAnyKeyNonExistent = NewAppError("non-existent key")
@@ -82,9 +86,13 @@ func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	} else {
 		ctx.ctx, ctx.cancelCtx = context.WithTimeout(r.Context(), app.timeout)
 	}
+	ctx.ctx = context.WithValue(ctx.ctx, isContext, isContext)
 
 	if app.withContext != nil {
 		ctx._ctx = app.withContext(r.WithContext(ctx.ctx))
+		if ctx._ctx.Value(isContext) == nil {
+			panic(NewAppError("the context is not created from gear.Context"))
+		}
 	} else {
 		ctx._ctx = ctx.ctx
 	}
@@ -114,6 +122,9 @@ func (ctx *Context) Err() error {
 // if no value is associated with key. Successive calls to Value with
 // the same key returns the same result.
 func (ctx *Context) Value(key interface{}) (val interface{}) {
+	if key == isRecursive {
+		return isRecursive
+	}
 	return ctx._ctx.Value(key)
 }
 
@@ -146,21 +157,35 @@ func (ctx *Context) WithValue(key, val interface{}) context.Context {
 	return context.WithValue(ctx._ctx, key, val)
 }
 
+// Context returns the underlying context of gear.Context
+func (ctx *Context) Context() context.Context {
+	return ctx._ctx
+}
+
 // WithContext sets the context to underlying gear.Context.
 // The context must be a children or a grandchild of gear.Context.
 //
 //  ctx.WithContext(ctx.WithValue("key", "value"))
 //  // ctx.Value("key") == "value"
 //
-// a Tracing middleware:
+// a opentracing middleware:
 //
-//  func Tracing(ctx *Context) error {
-//  	sp := opentracing.StartSpan(ctx.Path)
-//  	ctx.WithContext(opentracing.ContextWithSpan(ctx, sp))
-//  	ctx.OnEnd(sp.Finish)
+//  func New(opts ...opentracing.StartSpanOption) gear.Middleware {
+//  	return func(ctx *gear.Context) error {
+//  		span := opentracing.StartSpan(fmt.Sprintf(`%s %s`, ctx.Method, ctx.Path), opts...)
+//  		ctx.WithContext(opentracing.ContextWithSpan(ctx.Context(), span))
+//  		ctx.OnEnd(span.Finish)
+//  		return nil
+//  	}
 //  }
 //
 func (ctx *Context) WithContext(c context.Context) {
+	if c.Value(isRecursive) != nil {
+		panic(NewAppError("context recursive, please use ctx.Context() as parent context"))
+	}
+	if c.Value(isContext) == nil {
+		panic(NewAppError("the context is not created from gear.Context"))
+	}
 	ctx._ctx = c
 }
 
@@ -328,7 +353,6 @@ func (ctx *Context) QueryAll(name string) []string {
 //  	return err
 //  }
 //
-
 func (ctx *Context) ParseBody(body BodyTemplate) error {
 	if ctx.app.bodyParser == nil {
 		return ErrBodyParserNotRegistered

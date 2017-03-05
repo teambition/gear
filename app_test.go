@@ -589,6 +589,27 @@ func TestGearSetWithContext(t *testing.T) {
 		assert.Equal("Hello Context", PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
+
+	t.Run("should panic", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Set(SetWithContext, func(r *http.Request) context.Context {
+			return context.WithValue(context.Background(), "key", "Hello Context")
+		})
+		count := 0
+		app.Use(func(ctx *Context) error {
+			count++
+			return ctx.End(204)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		_, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.NotNil(err)
+		assert.Equal(0, count)
+	})
 }
 
 func TestGearWrapHandler(t *testing.T) {

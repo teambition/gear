@@ -11,7 +11,7 @@ A lightweight, composable and high performance web service framework for Go.
 
 - Effective and flexible middlewares flow control, create anything by middleware
 - Powerful and smart error handler, make development easy
-- Trie base Router, it is as fast as [HttpRouter](https://github.com/julienschmidt/httprouter), but more powerful
+- Trie base gear.Router, it is as faster as [HttpRouter](https://github.com/julienschmidt/httprouter), but more powerful
 - Integrated timeout context.Context
 - Integrated response content compress
 - Integrated structured logging middleware
@@ -28,7 +28,7 @@ A lightweight, composable and high performance web service framework for Go.
 
 ## Documentation
 
-[go-documentation](https://godoc.org/github.com/teambition/gear)
+[Go-Documentation](https://godoc.org/github.com/teambition/gear)
 
 ## Demo
 

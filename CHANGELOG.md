@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.0.3] - 2017-03-05
+
+**Fixed:**
+
+- Fix Context.WithContext method that maybe recursive.
+
 ## [1.0.2] - 2017-03-02
 
 **Fixed:**
