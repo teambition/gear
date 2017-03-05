@@ -2,7 +2,15 @@
 
 Gear 是由 [Teambition](https://www.teambition.com) 开发的一个轻量级的、专注于可组合扩展和高性能的 Go 语言 Web 服务框架。
 
-Gear 框架在设计与实现的过程中充分参考了 Go 语言下多款知名 Web 框架，也参考了 Node.js 下的知名 Web 框架，汲取各方优秀因素，结合我们的开发实践，精心打磨而成。
+Gear 框架在设计与实现的过程中充分参考了 Go 语言下多款知名 Web 框架，也参考了 Node.js 下的知名 Web 框架，汲取各方优秀因素，结合我们的开发实践，精心打磨而成。Gear 框架主要有如下特点：
+
+1. 基于中间件模式的业务处理控制流程。中间件模式使功能模块开发标准化、解耦、易于组合和集成到应用
+1. 框架级的错误和异常自动处理机制。开发者无需再担心业务逻辑中的每一个错误，只需在中间件返回错误，交给框架自动处理，也支持自定义处理逻辑
+1. 集成了便捷的读写 HTTP Request/Response 对象的方法，使得 Web 应用开发更加高效
+1. 高效而强大的路由处理器，能定义出各种路由规则满足业务逻辑需求
+1. 丰富的中间件生态，如 CORS, CSRF, Secure, Logging, Favicon, Session, Rate limiter, Tracing等
+1. 完整的 HTTP/2.0 支持
+1. 超轻量级，框架只实现核心的、共性的需求，可选需求均通过外部中间件或库来满足，确保应用实现的灵活自由，不被框架绑定束缚
 
 ## Summary
 
@@ -11,6 +19,8 @@ Gear 框架在设计与实现的过程中充分参考了 Go 语言下多款知�
 - [3. 中间件的单向顺序流程控制和级联流程控制](#3-中间件的单向顺序流程控制和级联流程控制)
 - [4. 功能强大，完美集成 context.Context 的 gear.Context](#4-功能强大完美集成-contextcontext-的-gearcontext)
 - [5. 错误和异常处理](#5-错误和异常处理)
+- [6. After Hook 和 End Hook 的后置处理](#6-after-hook-和-end-hook-的后置处理)
+- [7. Any interface 无限的 gear.Context 状态扩展能力](#7-any-interface-无限的-gearcontext-状态扩展能力)
 - TODO
 
 
@@ -448,9 +458,114 @@ func ParseError(e error, code ...int) HTTPError {
 
 这里再次强调，框架内捕捉的所有错误，包括 `ctx.Error(error)` 和 `ctx.ErrorStatus(statusCode)` 主动发起的，包括中间件 `return error` 返回的，包括 panic 的，也包括 `context.Context` cancel 引发的错误等，都是经过上面叙述的错误处理流程处理，响应给客户端，有必要的则输出到日志。
 
-## After Hook 和 End hook 的应用
+## 6. After Hook 和 End Hook 的后置处理
 
-## ctx.Any 无限的 gear.Context 状态扩展能力
+前文提到，在 **级联** 流程控制模式下，很容易实现一种后置的处理逻辑。比如 logging，当请求进来时，初始化 log 数据，当处理流程完成时，再把 log 写入 IO。Gear 框架用 hook `func()` 机制来实现这类需求，并且这种后置处理需求细分为 `ctx.After(hook func())` 和 `ctx.OnEnd(hook func())` 两种。比如，Gear 的 logging 中间件的主要处理逻辑是：
+
+```go
+func (l *Logger) Serve(ctx *gear.Context) error {
+  log := l.FromCtx(ctx)
+  // Add a "end hook" to flush logs
+  ctx.OnEnd(func() {
+    // Ignore empty log
+    if len(log) == 0 {
+      return
+    }
+    log["Status"] = ctx.Status()
+    log["Type"] = ctx.Res.Get(gear.HeaderContentType)
+    log["Length"] = ctx.Res.Get(gear.HeaderContentLength)
+    // Don't block current process.
+    go l.consume(log, ctx)
+  })
+  return nil
+}
+```
+
+ 这是一个 `gear.Handler` 类型的中间件，与 Gin 框架的 Logger 中间件稍有差异，在进入到中间件时 `l.FromCtx(ctx)` 会初始化 log，而 log 的消费处理逻辑则是在 End Hook 中进行的，这样不会因为中间件的错误异常而导致 log 被丢失。
+
+ 开发者可以在中间件处理流过程中动态的添加 After Hooks 和 End Hooks。中间件处理流完成后则不能再添加，否则会 panic 异常。
+
+ After Hooks 将在中间件处理流结束后，`http.ResponseWriter` 的 `w.WriteHeader` 调用之前执行，End Hooks 则是在 `w.WriteHeader` 调用之后，`w.Write` 之前执行，执行顺序与 Go 语言的 `defer` 一致，是 LIFO（后进先出）模式。所以，After Hooks 中仍然有修改 Response 内容的能力，比如修改 Headers, 或者 Cookie Session 的 Save 行为等。End Hooks 则不能再修改任何内容，只能做纯粹的后置处理逻辑，如写入日志，发起对外的 web hook 等。
+
+ 当中间件处理流出现错误或异常导致中断时，表明中间件处理流不再是预期的正常行为，After Hooks 队列将被清空，不会执行。但 End Hooks 仍会照样执行，这也是为什么 Gear logging 中间件的 `l.consume` 逻辑放在了 End Hook。
+
+ 再次说明，一般 **级联** 流程控制模式的框架都只能实现类 After Hook 的逻辑，而没有提供实现类 End Hook 逻辑的能力。这样主要有两个问题，一是中间件处理流异常时 After 处理逻辑会丢失；二是像 logging 这种需求，放在 End Hook 中处理在时间点上更准确。
+
+## 7. Any interface 无限的 gear.Context 状态扩展能力
+
+对于基于中间件模式的业务处理控制流程而言，在各个中间件之间传递业务逻辑的状态值很有必要。Go 语言原生的 `context.Context` 提供的 `Value` 能力并不能很好的满足这类需求。
+
+比如 logging，我们需要传递一个 log 的结构体，在请求开始的时候初始化并追加一些初始状态数据，业务处理过程中再追加一些数据，业务处理完成后把这些数据处理后写入 IO。
+
+又比如 cookie session，我们需要传递一个 session 的结构体，在请求开始的时候初始化、验证、提取 session 数据，业务处理过程中需要从 session 读取数据进行相应操作，业务处理最后可能要把 session 写回客户端。
+
+Gear 框架创新性的提出了 `Any interface` 这一解决方案，它由三部分组成：
+
+```go
+// Any interface is used by ctx.Any.
+type Any interface {
+  New(ctx *Context) (interface{}, error)
+}
+```
+
+```go
+func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
+  var ok bool
+  if val, ok = ctx.kv[any]; !ok {
+    switch v := any.(type) {
+    case Any:
+      if val, err = v.New(ctx); err == nil {
+        ctx.kv[any] = val
+      }
+    default:
+      return nil, ErrAnyKeyNonExistent
+    }
+  }
+  return
+}
+```
+
+```go
+// SetAny save a key, value pair on the ctx.
+// Then we can use ctx.Any(key) to retrieve the value from ctx.
+func (ctx *Context) SetAny(key, val interface{}) {
+  ctx.kv[key] = val
+}
+```
+
+其基本运行逻辑是，开发者可以通过 `ctx.SetAny(key, value)` 将任何键值对保存到 ctx 中，再通过 `ctx.Any(key)` 将 value 取出。如果 value 不存在，但 key 实现了 `Any interface`，那么其 `New` 方法将会运行，生成 value，并将 value 保存以备下次取值（但 `New` 返回错误时不会保存）。所以，对于一个中间件处理流，用实现了 `Any interface` 的 `key` 取值时，只会 `New` 一次，这个行为本身也相当于是惰性求值（真正需要时求值）。
+
+以 [Gear-Auth](https://github.com/teambition/gear-auth) 中间件为例：
+
+```go
+func (a *Auth) New(ctx *gear.Context) (val interface{}, err error) {
+  if token := a.ex(ctx); token != "" {
+    val, err = a.j.Verify(token)
+  }
+  if val == nil {
+    // create a empty jwt.Claims
+    val = josejwt.Claims{}
+    if err == nil {
+      err = &gear.Error{Code: 401, Msg: "no token found"}
+    }
+  }
+  ctx.SetAny(a, val)
+  return
+}
+
+func (a *Auth) FromCtx(ctx *gear.Context) (josejwt.Claims, error) {
+  val, err := ctx.Any(a)
+  return val.(josejwt.Claims), err
+}
+//  claims, err := auther.FromCtx(ctx)
+//  fmt.Println(claims, err)
+```
+
+它实现了 `Any interface`，当我们第一次调用 `ctx.Any(a)` 时，`New` 方法的逻辑就会运行，它从 `gear.Context` 中读取 token 并验证提取内容到 `Claims`，如果验证出错，还会生成一个空的 `Claims` 并通过 `ctx.SetAny(a, val)` 设置进去。也就是说 `ctx.Any` 总会返回值，只是当错误存在时这个值是空值。并且，这里保证了读取 token 并验证提取内容这一行为只会运行一次。
+
+这里还提供了 `FromCtx`，其实它只是 `ctx.Any` 的语法糖，把 `ctx.Any` 返回的 `interface{}` 类型强制转成可用的 `josejwt.Claims` 类型了。在实际开发中 `FromCtx` 这个语法糖非常好用。
+
+这是相对复杂的一个 `Any` 用例，实际上 logging，gear-session，gear-tracing 甚至框架内的 `ctx.Param` 都使用了它。总之，当涉及到要在中间件之间进行状态传值时，就可以用它了，够强大，够安全。
 
 ## ctx.ParseBody 请求 body 的解析和验证
 

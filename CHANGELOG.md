@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.0.4] - 2017-03-05
+
+**Fixed:**
+
+- Fix logging middleware that should init structured log when start.
+
 ## [1.0.3] - 2017-03-05
 
 **Fixed:**

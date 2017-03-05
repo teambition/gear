@@ -352,9 +352,9 @@ func (l *Logger) FromCtx(ctx *gear.Context) Log {
 //  })
 //
 func (l *Logger) Serve(ctx *gear.Context) error {
-	// Add a "end hook" to flush logs.
+	log := l.FromCtx(ctx)
+	// Add a "end hook" to flush logs
 	ctx.OnEnd(func() {
-		log := l.FromCtx(ctx)
 		// Ignore empty log
 		if len(log) == 0 {
 			return

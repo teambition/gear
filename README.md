@@ -19,8 +19,8 @@ A lightweight, composable and high performance web service framework for Go.
 - Integrated signed cookies
 - Integrated JSON, JSONP, XML and HTML renderer
 - Integrated CORS, Secure, Favicon and Static middlewares
-- More useful gear.Context method to manipulate HTTP
-- Completely HTTP2 supported
+- More useful methods on gear.Context to manipulate HTTP Request/Response
+- Completely HTTP/2.0 supported
 
 ## Design
 
@@ -273,9 +273,9 @@ id   := matched.Params("ID")
 - Cookie session: [Gear-Session](https://github.com/teambition/gear-session)
 - Smart rate limiter: [Gear-Ratelimiter](https://github.com/teambition/gear-ratelimiter)
 - CSRF: [Gear-CSRF](https://github.com/teambition/gear-csrf)
-- Opentracing with Zipkin: [Gear-tracing](https://github.com/teambition/gear-tracing)
+- Opentracing with Zipkin: [Gear-Tracing](https://github.com/teambition/gear-tracing)
 
-## Applications base on Gear
+## Applications with Gear
 
 - [KPass](https://github.com/seccom/kpass) - a web application to manage password safe.
 
