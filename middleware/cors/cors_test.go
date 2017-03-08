@@ -136,8 +136,8 @@ func TestGearMiddlewareCORS(t *testing.T) {
 
 			assert.Nil(err)
 			assert.Equal("Origin", res.Header.Get(gear.HeaderVary))
-			assert.Equal("*", res.Header.Get(gear.HeaderAccessControlAllowOrigin))
-			assert.Equal("", res.Header.Get(gear.HeaderAccessControlAllowCredentials))
+			assert.Equal("test.org", res.Header.Get(gear.HeaderAccessControlAllowOrigin))
+			assert.Equal("true", res.Header.Get(gear.HeaderAccessControlAllowCredentials))
 			assert.Equal(strings.Join(defaultAllowMethods, ", "),
 				res.Header.Get(gear.HeaderAccessControlAllowMethods))
 		})
