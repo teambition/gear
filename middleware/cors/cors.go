@@ -65,7 +65,7 @@ func New(options ...Options) gear.Middleware {
 		opts.AllowOriginsValidator = func(origin string, _ *gear.Context) (allowOrigin string) {
 			for _, o := range opts.AllowOrigins {
 				if o == origin || o == "*" {
-					allowOrigin = o
+					allowOrigin = origin
 					break
 				}
 			}
@@ -89,7 +89,7 @@ func New(options ...Options) gear.Middleware {
 			return ctx.Error(&gear.Error{Code: http.StatusForbidden,
 				Msg: fmt.Sprintf("Origin: %v is not allowed", origin)})
 		}
-		if allowOrigin != "*" && opts.Credentials {
+		if opts.Credentials {
 			// when responding to a credentialed request, server must specify a
 			// domain, and cannot use wild carding.
 			// See *important note* in https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Requests_with_credentials .
