@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
-
 	"github.com/teambition/gear"
+	"log"
 )
 
 // Log records key-value pairs for structured logging.
@@ -61,6 +61,14 @@ func (l Log) Reset() {
 type Level uint8
 
 const (
+	_        = iota
+	KB int64 = 1 << (iota * 10)
+	MB
+	GB
+	TB
+)
+var max_file_size int64 = 29*MB
+const (
 	// EmergLevel is 0, "Emergency", system is unusable
 	EmergLevel Level = iota
 	// AlertLevel is 1, "Alert", action must be taken immediately
@@ -86,6 +94,68 @@ var std = New(os.Stderr)
 func Default() *Logger {
 	return std
 }
+// FileLogger return the file logger
+func FileLogger(dir string) *Logger {
+	mkdirlog(dir)
+	now := time.Now().Format("2006-01-02")
+	filename := dir+`/`+now+`.log`
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, os.ModePerm)
+	if err != nil {
+		log.Fatalln("open log file error",err)
+	}
+	logger := &Logger{filename: now + ".log", dir: dir, Out: file,logfile:file}
+	logger.SetLevel(DebugLevel)
+	logger.SetTimeFormat("2006-01-02T15:04:05.999Z")
+	logger.SetLogFormat("%s %s %s")
+
+	logger.init = func(log Log, ctx *gear.Context) {
+		log["IP"] = ctx.IP()
+		log["Method"] = ctx.Method
+		log["URL"] = ctx.Req.URL.String()
+		log["Start"] = time.Now()
+	}
+
+	logger.consume = func(log Log, ctx *gear.Context) {
+		logger.mu.Lock() // don't need Lock usually, logger.Output do it for us.
+		defer logger.mu.Unlock()
+		fmt.Fprintf(logger.Out, "%s %s %s ", log["IP"].(net.IP), log["Method"].(string), log["URL"].(string))
+		status := log["Status"].(int)
+		FprintWithColor(logger.Out, strconv.Itoa(status), colorStatus(status))
+		fmt.Fprintln(logger.Out, fmt.Sprintf(
+			" %s - %.3f ms", log["Length"], float64(time.Now().Sub(log["Start"].(time.Time)))/1e6))
+	}
+	check_size := time.NewTicker(4 * time.Hour)
+	go func() {
+		for true {
+			select {
+			case <-check_size.C:
+				if fileSize(logger.logfile.Name()) >= max_file_size {
+					logger.changeFile()
+				}
+			}
+		}
+	}()
+	day_change := time.NewTicker(24 * time.Hour)
+	go func() {
+		for true {
+			select {
+			case <-day_change.C :
+				now := time.Now().Format("2006-01-02")
+				filename := dir+`/`+now+`.log`
+				file, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, os.ModePerm)
+				if err != nil {
+					log.Fatalln("open log file error",err)
+				}
+				logger.mu.Lock()
+				defer logger.mu.Unlock()
+				logger.logfile = file
+				logger.Out = file
+			}
+		}
+	}()
+	return logger
+}
+
 
 // New creates a Logger instance with given io.Writer and DebugLevel log level.
 // the logger timestamp format is "2006-01-02T15:04:05.999Z"(JavaScript ISO date string), log format is "%s %s %s"
@@ -161,6 +231,9 @@ type Logger struct {
 	mu      sync.Mutex               // ensures atomic writes; protects the following fields
 	init    func(Log, *gear.Context) // hook to initialize log with gear.Context
 	consume func(Log, *gear.Context) // hook to consume log
+	dir string // the log file directory
+	filename string // the name of the log file
+	logfile *os.File // the file object
 }
 
 // Check log output level statisfy output level or not, used internal, for performance
