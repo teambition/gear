@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.1.0] - 2017-03-08
+
+**Changed:**
+
+- Simplify ctx.Timing method: `func (*Context) Timing(time.Duration, fn func(context.Context)) error`
+
 ## [1.0.5] - 2017-03-08
 
 **Fixed:**

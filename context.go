@@ -189,13 +189,13 @@ func (ctx *Context) WithContext(c context.Context) {
 	ctx._ctx = c
 }
 
-// Timing runs fn with the given time limit. If a call runs for longer than its time limit,
-// it will return context.DeadlineExceeded as error, otherwise return fn's result.
-func (ctx *Context) Timing(dt time.Duration, fn func(context.Context) interface{}) (res interface{}, err error) {
+// Timing runs fn with the given time limit. If a call runs for longer than its time limit or panic,
+// it will return context.DeadlineExceeded error or panic error.
+func (ctx *Context) Timing(dt time.Duration, fn func(context.Context)) (err error) {
 	ct, cancel := ctx.WithTimeout(dt)
 	defer cancel()
 
-	ch := make(chan interface{})
+	ch := make(chan struct{})
 	go func() {
 		// recover the fn call
 		defer func() {
@@ -204,12 +204,12 @@ func (ctx *Context) Timing(dt time.Duration, fn func(context.Context) interface{
 			}
 			close(ch)
 		}()
-		ch <- fn(ct)
+		fn(ct)
 	}()
 	select {
 	case <-ct.Done():
 		err = ct.Err()
-	case res = <-ch:
+	case <-ch:
 	}
 	return
 }

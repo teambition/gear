@@ -139,24 +139,23 @@ func TestGearContextWithContext(t *testing.T) {
 }
 
 func TestGearContextTiming(t *testing.T) {
-	data := []string{"hello"}
-
 	t.Run("should work", func(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
+		x := false
 		app.Use(func(ctx *Context) error {
-			res, err := ctx.Timing(time.Millisecond*15, func(c context.Context) interface{} {
+			err := ctx.Timing(time.Millisecond*15, func(c context.Context) {
 				go func() {
 					<-c.Done()
 					assert.Equal(context.Canceled, c.Err())
 				}()
 				time.Sleep(time.Millisecond * 10)
-				return data
+				x = true
 			})
-			assert.True(err == nil)
-			assert.Equal(data, res.([]string))
-			return ctx.JSON(200, res.([]string))
+			assert.Nil(err)
+			assert.True(x)
+			return ctx.End(204)
 		})
 
 		srv := app.Start()
@@ -164,8 +163,7 @@ func TestGearContextTiming(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(200, res.StatusCode)
-		assert.Equal(`["hello"]`, PickRes(res.Text()).(string))
+		assert.Equal(204, res.StatusCode)
 	})
 
 	t.Run("when fn panic", func(t *testing.T) {
@@ -173,7 +171,7 @@ func TestGearContextTiming(t *testing.T) {
 
 		app := New()
 		app.Use(func(ctx *Context) error {
-			res, err := ctx.Timing(time.Millisecond*15, func(c context.Context) interface{} {
+			err := ctx.Timing(time.Millisecond*15, func(c context.Context) {
 				go func() {
 					<-c.Done()
 					assert.Equal(context.Canceled, c.Err())
@@ -181,7 +179,6 @@ func TestGearContextTiming(t *testing.T) {
 				panic("some error")
 			})
 			assert.NotNil(err)
-			assert.Nil(res)
 			return err
 		})
 
@@ -199,15 +196,13 @@ func TestGearContextTiming(t *testing.T) {
 
 		app := New()
 		app.Use(func(ctx *Context) error {
-			res, err := ctx.Timing(time.Millisecond*10, func(c context.Context) interface{} {
+			err := ctx.Timing(time.Millisecond*10, func(c context.Context) {
 				go func() {
 					<-c.Done()
 					assert.Equal(context.DeadlineExceeded, c.Err())
 				}()
 				time.Sleep(time.Millisecond * 15)
-				return data
 			})
-			assert.True(res == nil)
 			assert.Equal(context.DeadlineExceeded, err)
 			return ctx.Error(err)
 		})
@@ -228,15 +223,13 @@ func TestGearContextTiming(t *testing.T) {
 
 		app.Set(SetTimeout, time.Millisecond*10)
 		app.Use(func(ctx *Context) error {
-			res, err := ctx.Timing(time.Millisecond*20, func(c context.Context) interface{} {
+			err := ctx.Timing(time.Millisecond*20, func(c context.Context) {
 				go func() {
 					<-c.Done()
 					assert.Equal(context.DeadlineExceeded, c.Err())
 				}()
 				time.Sleep(time.Millisecond * 15)
-				return data
 			})
-			assert.True(res == nil)
 			assert.Equal(context.DeadlineExceeded, err)
 			time.Sleep(time.Millisecond * 10)
 			return nil
