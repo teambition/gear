@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.0.5] - 2017-03-08
+
+**Fixed:**
+
+- Fix CORS middleware https://github.com/teambition/gear/pull/17 .
+
 ## [1.0.4] - 2017-03-05
 
 **Fixed:**
