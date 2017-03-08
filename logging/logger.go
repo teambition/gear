@@ -95,6 +95,12 @@ func Default() *Logger {
 	return std
 }
 // FileLogger return the file logger
+
+// logger := logging.FileLogger("/Users/willian/Desktop/project/go/gear/logs")
+// app.UseHandler(logger)
+// app.Use(func(ctx *Context) error {
+// 	return ctx.End(204)
+// })
 func FileLogger(dir string) *Logger {
 	mkdirlog(dir)
 	now := time.Now().Format("2006-01-02")
