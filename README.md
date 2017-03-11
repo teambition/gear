@@ -26,6 +26,11 @@ A lightweight, composable and high performance web service framework for Go.
 
 [Gear 框架设计考量](https://github.com/teambition/gear/blob/master/doc/design.md)
 
+## FAQ
+
+1. [如何从源码自动生成 Swagger v2 的文档？](https://github.com/teambition/gear/blob/master/doc/faq.md)
+1. Go 语言完整的应用项目结构最佳实践是怎样的？
+
 ## Documentation
 
 [Go-Documentation](https://godoc.org/github.com/teambition/gear)

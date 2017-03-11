@@ -201,7 +201,7 @@ func New() *App {
 		env = "development"
 	}
 	app.Set(SetEnv, env)
-	app.Set(SetBodyParser, DefaultBodyParser(1<<20))
+	app.Set(SetBodyParser, DefaultBodyParser(2<<20)) // 2MB
 	app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
 	return app
 }

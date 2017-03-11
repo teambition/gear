@@ -43,7 +43,7 @@ type Any interface {
 	New(ctx *Context) (interface{}, error)
 }
 
-// BodyTemplate interface is used by ctx.Any.
+// BodyTemplate interface is used by ctx.ParseBody.
 type BodyTemplate interface {
 	Validate() error
 }

@@ -21,6 +21,7 @@ Gear 框架在设计与实现的过程中充分参考了 Go 语言下多款知�
 - [5. 错误和异常处理](#5-错误和异常处理)
 - [6. After Hook 和 End Hook 的后置处理](#6-after-hook-和-end-hook-的后置处理)
 - [7. Any interface 无限的 gear.Context 状态扩展能力](#7-any-interface-无限的-gearcontext-状态扩展能力)
+- [8. 请求数据的解析和验证](#8-请求数据的解析和验证)
 - TODO
 
 
@@ -567,7 +568,86 @@ func (a *Auth) FromCtx(ctx *gear.Context) (josejwt.Claims, error) {
 
 这是相对复杂的一个 `Any` 用例，实际上 logging，gear-session，gear-tracing 甚至框架内的 `ctx.Param` 都使用了它。总之，当涉及到要在中间件之间进行状态传值时，就可以用它了，够强大，够安全。
 
-## ctx.ParseBody 请求 body 的解析和验证
+## 请求数据的解析和验证
+
+Go 语言原生提供了基于 Form 的请求数据解析，但这显然无法实际场景的需求。对于常规 RESTful API 而言，`application/json` 类型的请求数据会更加常见。Gear 框架提供了 `BodyParser interface` 来实现请求数据的解析，并提供了 `BodyTemplate interface` 配合进行数据验证。
+
+```go
+type BodyParser interface {
+  // Maximum allowed size for a request body
+  MaxBytes() int64
+  Parse(buf []byte, body interface{}, mediaType, charset string) error
+}
+```
+
+其中 `MaxBytes` 应该返回最大允许的数据长度，当请求数据长度超出限制时会响应 `413 Request entity too large` 错误。`Parse` 则为自定义的解析逻辑。Gear 框架实现了一个默认的 `BodyParser interface` 结构：
+
+```go
+type DefaultBodyParser int64
+
+func (d DefaultBodyParser) MaxBytes() int64 {
+  return int64(d)
+}
+
+func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charset string) error {
+  if len(buf) == 0 {
+    return &Error{Code: http.StatusBadRequest, Msg: "request entity empty"}
+  }
+  switch mediaType {
+  case MIMEApplicationJSON:
+    return json.Unmarshal(buf, body)
+  case MIMEApplicationXML:
+    return xml.Unmarshal(buf, body)
+  }
+  return &Error{Code: http.StatusUnsupportedMediaType, Msg: "unsupported media type"}
+}
+```
+
+`DefaultBodyParser` 支持 JSON 和 XML 的解析，这对于大部分场景而言已经足够使用了，并且它被框架默认启用，默认支持最大 2MB 的请求数据：
+
+```go
+app.Set(gear.SetBodyParser, gear.DefaultBodyParser(2<<20)) // 2MB
+```
+
+用于请求数据验证的 interface 定义则更简单：
+
+```go
+type BodyTemplate interface {
+  Validate() error
+}
+```
+
+把数据解析和数据验证结合在一起的是 `ctx.ParseBody(body BodyTemplate)`。它是惰性的：只有当你使用时才开始读取请求数据、解析数据并验证。下面是一个简单的使用示例——用户注册
+
+```go
+// https://github.com/seccom/kpass/blob/master/src/api/user.go#L32
+type tplUserJoin struct {
+  ID   string `json:"id"`
+  Pass string `json:"pass"`
+}
+
+func (t *tplUserJoin) Validate() error {
+  if len(t.ID) < 3 {
+    return &gear.Error{Code: 400, Msg: "invalid id, length of id should >= 3"}
+  }
+  if !util.IsHashString(t.Pass) {
+    return &gear.Error{Code: 400, Msg: "invalid pass, pass should be hashed by sha256"}
+  }
+  return nil
+}
+
+// @Router POST /api/join
+func (a *User) Join(ctx *gear.Context) error {
+  body := new(tplUserJoin)
+  if err := ctx.ParseBody(body); err != nil {
+    return ctx.Error(err)
+  }
+  if err := a.models.User.CheckID(body.ID); err != nil {
+    return ctx.Error(err)
+  }
+  // ... More logic
+}
+```
 
 ## ctx.Cookies 便捷的处理 cookie 或 signed cookie
 
