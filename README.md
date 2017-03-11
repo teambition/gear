@@ -28,8 +28,8 @@ A lightweight, composable and high performance web service framework for Go.
 
 ## FAQ
 
-1. [如何从源码自动生成 Swagger v2 的文档？](https://github.com/teambition/gear/blob/master/doc/faq.md)
-1. Go 语言完整的应用项目结构最佳实践是怎样的？
+1. [如何从源码自动生成 Swagger v2 的文档？](https://github.com/teambition/gear/blob/master/doc/faq.md#1-如何从源码自动生成-swagger-v2-的文档)
+1. Go 语言完整的应用项目结构最佳实践是怎样的？(https://github.com/teambition/gear/blob/master/doc/faq.md#2-go-语言完整的应用项目结构最佳实践是怎样的)
 
 ## Documentation
 

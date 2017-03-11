@@ -1,4 +1,4 @@
-# [Gear](https://github.com/teambition/gear) Frequently Asked Questions
+# Frequently Asked Questions for [Gear](https://github.com/teambition/gear)
 
 ## 1. 如何从源码自动生成 Swagger v2 的文档？
 
@@ -11,6 +11,8 @@
 ## 2. Go 语言完整的应用项目结构最佳实践是怎样的？
 
 由于特殊的包管理机制，用 Go 语言开发项目时项目结构会成为一个头疼的问题，不信可以 Google 一下 `golang application structure`。我们目前的最佳实践已经体现在 [KPass](https://github.com/seccom/kpass)。
+
+首先，项目下的目录和文件命名一律小写，有必要的用下划线 `_`，目录名一律单数形式，目录下的包名尽量与 目录名一致。
 
 `cmd` 目录存放用于编译可运行程序的 `main` 源码，它又分成了子级目录，主要是考虑一个项目可能有多种可运行程序。
 
