@@ -8,7 +8,7 @@ Gear 框架在设计与实现的过程中充分参考了 Go 语言下多款知�
 1. 框架级的错误和异常自动处理机制。开发者无需再担心业务逻辑中的每一个错误，只需在中间件返回错误，交给框架自动处理，也支持自定义处理逻辑
 1. 集成了便捷的读写 HTTP Request/Response 对象的方法，使得 Web 应用开发更加高效
 1. 高效而强大的路由处理器，能定义出各种路由规则满足业务逻辑需求
-1. 丰富的中间件生态，如 CORS, CSRF, Secure, Logging, Favicon, Session, Rate limiter, Tracing等
+1. 丰富的中间件生态，如 CORS, CSRF, Secure, Logging, Favicon, Session, Rate limiter, Tracing 等
 1. 完整的 HTTP/2.0 支持
 1. 超轻量级，框架只实现核心的、共性的需求，可选需求均通过外部中间件或库来满足，确保应用实现的灵活自由，不被框架绑定束缚
 
@@ -18,7 +18,7 @@ Gear 框架在设计与实现的过程中充分参考了 Go 语言下多款知�
 - [2. 通过 gear.Middleware 中间件模式扩展功能模块](#2-通过-gearmiddleware-中间件模式扩展功能模块)
 - [3. 中间件的单向顺序流程控制和级联流程控制](#3-中间件的单向顺序流程控制和级联流程控制)
 - [4. 功能强大，完美集成 context.Context 的 gear.Context](#4-功能强大完美集成-contextcontext-的-gearcontext)
-- [5. 错误和异常处理](#5-错误和异常处理)
+- [5. 集中、智能、可自定义的错误和异常处理](#5-集中智能可自定义的错误和异常处理)
 - [6. After Hook 和 End Hook 的后置处理](#6-after-hook-和-end-hook-的后置处理)
 - [7. Any interface 无限的 gear.Context 状态扩展能力](#7-any-interface-无限的-gearcontext-状态扩展能力)
 - [8. 请求数据的解析和验证](#8-请求数据的解析和验证)
@@ -244,7 +244,7 @@ func Logger() gin.HandlerFunc {
 更多的方法请参考 https://godoc.org/github.com/teambition/gear#Context，估计要翻墙访问。
 
 
-## 5. 错误和异常处理
+## 5. 集中、智能、可自定义的错误和异常处理
 
 `error` 是中间件 `func(ctx *gear.Context) error` 的另一个核心。这个由 Golang 语言层定义的、最简单的 `error` interface 在 Gear 框架下，其灵活度和强大的潜力超出你的想象。
 

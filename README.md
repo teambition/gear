@@ -11,7 +11,7 @@ A lightweight, composable and high performance web service framework for Go.
 
 - Effective and flexible middlewares flow control, create anything by middleware
 - Powerful and smart HTTP error handling
-- Trie base gear.Router, it is as faster as [HttpRouter](https://github.com/julienschmidt/httprouter), but more powerful
+- Trie base gear.Router, as faster as [HttpRouter](https://github.com/julienschmidt/httprouter), support regexp parameters and group routes
 - Integrated timeout context.Context
 - Integrated response content compress
 - Integrated structured logging middleware
@@ -22,18 +22,25 @@ A lightweight, composable and high performance web service framework for Go.
 - More useful methods on gear.Context to manipulate HTTP Request/Response
 - Completely HTTP/2.0 supported
 
+## Documentation
+
+[Go-Documentation](https://godoc.org/github.com/teambition/gear)
+
 ## Design
 
-[Gear 框架设计考量](https://github.com/teambition/gear/blob/master/doc/design.md)
+1. [Server 底层基于原生 net/http 而不是 fasthttp](https://github.com/teambition/gear/blob/master/doc/design.md#1-server-底层基于原生-nethttp-而不是-fasthttp)
+1. [通过 gear.Middleware 中间件模式扩展功能模块](https://github.com/teambition/gear/blob/master/doc/design.md#2-通过-gearmiddleware-中间件模式扩展功能模块)
+1. [中间件的单向顺序流程控制和级联流程控制](https://github.com/teambition/gear/blob/master/doc/design.md#3-中间件的单向顺序流程控制和级联流程控制)
+1. [功能强大，完美集成 context.Context 的 gear.Context](https://github.com/teambition/gear/blob/master/doc/design.md#4-功能强大完美集成-contextcontext-的-gearcontext)
+1. [集中、智能、可自定义的错误和异常处理](https://github.com/teambition/gear/blob/master/doc/design.md#5-集中智能可自定义的错误和异常处理)
+1. [After Hook 和 End Hook 的后置处理](https://github.com/teambition/gear/blob/master/doc/design.md#6-after-hook-和-end-hook-的后置处理)
+1. [Any interface 无限的 gear.Context 状态扩展能力](https://github.com/teambition/gear/blob/master/doc/design.md#7-any-interface-无限的-gearcontext-状态扩展能力)
+1. [请求数据的解析和验证](https://github.com/teambition/gear/blob/master/doc/design.md#8-请求数据的解析和验证)
 
 ## FAQ
 
 1. [如何从源码自动生成 Swagger v2 的文档？](https://github.com/teambition/gear/blob/master/doc/faq.md#1-如何从源码自动生成-swagger-v2-的文档)
 1. [Go 语言完整的应用项目结构最佳实践是怎样的？](https://github.com/teambition/gear/blob/master/doc/faq.md#2-go-语言完整的应用项目结构最佳实践是怎样的)
-
-## Documentation
-
-[Go-Documentation](https://godoc.org/github.com/teambition/gear)
 
 ## Demo
 
@@ -283,6 +290,7 @@ id   := matched.Params("ID")
 ## Applications with Gear
 
 - [KPass](https://github.com/seccom/kpass) - a web application to manage password safe.
+- [IP Service](https://github.com/zensh/ipservice) - a simple IP service.
 
 ## License
 
