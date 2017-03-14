@@ -14,7 +14,6 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
-	"sync/atomic"
 	"time"
 	"unicode/utf8"
 )
@@ -395,7 +394,7 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// recover panic error
 	defer func() {
 		if err := recover(); err != nil && err != http.ErrAbortHandler {
-			ctx.cleanAfterHooks()
+			ctx.Res.afterHooks = nil
 			ctx.Res.ResetHeader()
 			ctx.respondError(ErrorWithStack(err))
 		}
@@ -403,7 +402,7 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		<-ctx.Done()
-		ctx.ended.setTrue()
+		ctx.Res.ended.setTrue()
 	}()
 
 	// process app middleware
@@ -510,25 +509,11 @@ type middlewares []Middleware
 
 func (m middlewares) run(ctx *Context) (err error) {
 	for _, handle := range m {
-		if err = handle(ctx); !IsNil(err) || ctx.ended.isTrue() {
+		if err = handle(ctx); !IsNil(err) || ctx.Res.ended.isTrue() {
 			return err
 		}
 	}
 	return nil
-}
-
-type atomicBool int32
-
-func (b *atomicBool) isTrue() bool {
-	return atomic.LoadInt32((*int32)(b)) == 1
-}
-
-func (b *atomicBool) swapTrue() bool {
-	return atomic.SwapInt32((*int32)(b), 1) == 0
-}
-
-func (b *atomicBool) setTrue() {
-	atomic.StoreInt32((*int32)(b), 1)
 }
 
 // pruneStack make a thin conversion for stack information

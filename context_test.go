@@ -102,26 +102,26 @@ func TestGearContextWithContext(t *testing.T) {
 
 		go func() {
 			<-c1.Done()
-			assert.True(ctx.ended.isTrue())
+			assert.True(ctx.Res.ended.isTrue())
 			atomic.AddInt32(&count, 1)
 		}()
 
 		go func() {
 			<-c2.Done()
-			assert.True(ctx.ended.isTrue())
+			assert.True(ctx.Res.ended.isTrue())
 			atomic.AddInt32(&count, 1)
 		}()
 
 		go func() {
 			<-c3.Done()
-			assert.True(ctx.ended.isTrue())
+			assert.True(ctx.Res.ended.isTrue())
 			atomic.AddInt32(&count, 1)
 		}()
 
 		ctx.Status(404)
 		ctx.Cancel()
 
-		assert.True(ctx.ended.isTrue())
+		assert.True(ctx.Res.ended.isTrue())
 		time.Sleep(time.Millisecond)
 		return nil
 	})
@@ -1379,7 +1379,7 @@ func TestGearContextEnd(t *testing.T) {
 
 		app := New()
 		app.Use(func(ctx *Context) error {
-			ctx.ended.setTrue()
+			ctx.Res.ended.setTrue()
 			return ctx.End(200, []byte("OK"))
 		})
 
@@ -1444,7 +1444,7 @@ func TestGearContextAfter(t *testing.T) {
 			count++
 			assert.Equal(1, count)
 			ctx.Status(204)
-			ctx.ended.setTrue()
+			ctx.Res.ended.setTrue()
 			assert.Panics(func() {
 				ctx.After(func() {})
 			})
@@ -1521,7 +1521,7 @@ func TestGearContextOnEnd(t *testing.T) {
 			count++
 			assert.Equal(1, count)
 			ctx.Status(204)
-			ctx.ended.setTrue()
+			ctx.Res.ended.setTrue()
 			assert.Panics(func() {
 				ctx.OnEnd(func() {})
 			})

@@ -60,26 +60,27 @@ type Context struct {
 	Method string
 	Path   string
 
-	ended      atomicBool // indicate that app middlewares run out.
-	query      url.Values
-	afterHooks []func()
-	endHooks   []func()
-	ctx        context.Context
-	_ctx       context.Context
-	cancelCtx  context.CancelFunc
-	kv         map[interface{}]interface{}
+	query     url.Values
+	ctx       context.Context
+	_ctx      context.Context
+	cancelCtx context.CancelFunc
+	kv        map[interface{}]interface{}
 }
 
 // NewContext creates an instance of Context. Export for testing middleware.
 func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
-	ctx := &Context{app: app, Req: r}
-	ctx.Res = newResponse(ctx, w)
-	ctx.Cookies = cookie.New(w, r, app.keys...)
+	ctx := &Context{
+		app: app,
+		Req: r,
+		Res: &Response{w: w, rw: w},
 
-	ctx.Host = r.Host
-	ctx.Method = r.Method
-	ctx.Path = r.URL.Path
-	ctx.kv = make(map[interface{}]interface{})
+		Host:   r.Host,
+		Method: r.Method,
+		Path:   r.URL.Path,
+
+		Cookies: cookie.New(w, r, app.keys...),
+		kv:      make(map[interface{}]interface{}),
+	}
 
 	if app.timeout <= 0 {
 		ctx.ctx, ctx.cancelCtx = context.WithCancel(r.Context())
@@ -131,8 +132,8 @@ func (ctx *Context) Value(key interface{}) (val interface{}) {
 // Cancel cancel the ctx and all it' children context.
 // The ctx' process will ended too.
 func (ctx *Context) Cancel() {
-	ctx.ended.setTrue() // end the middleware process
-	ctx.cleanAfterHooks()
+	ctx.Res.ended.setTrue() // end the middleware process
+	ctx.Res.afterHooks = nil
 	ctx.cancelCtx()
 }
 
@@ -511,7 +512,7 @@ func (ctx *Context) Render(code int, name string, data interface{}) (err error) 
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error) {
-	if ctx.ended.swapTrue() {
+	if ctx.Res.ended.swapTrue() {
 		ctx.Status(code)
 		ctx.Type(contentType)
 		_, err = io.Copy(ctx.Res, r)
@@ -526,7 +527,7 @@ func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) Attachment(name string, modtime time.Time, content io.ReadSeeker, inline ...bool) (err error) {
-	if ctx.ended.swapTrue() {
+	if ctx.Res.ended.swapTrue() {
 		dispositionType := "attachment"
 		if len(inline) > 0 && inline[0] {
 			dispositionType = "inline"
@@ -543,7 +544,7 @@ func (ctx *Context) Attachment(name string, modtime time.Time, content io.ReadSe
 // "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) Redirect(url string) (err error) {
-	if ctx.ended.swapTrue() {
+	if ctx.Res.ended.swapTrue() {
 		if !isRedirectStatus(ctx.Res.status) {
 			ctx.Res.status = http.StatusFound
 		}
@@ -558,7 +559,7 @@ func (ctx *Context) Redirect(url string) (err error) {
 // "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) Error(e error) error {
-	ctx.cleanAfterHooks() // clear afterHooks when any error
+	ctx.Res.afterHooks = nil // clear afterHooks when any error
 	ctx.Res.ResetHeader()
 	err := ParseError(e, ctx.Res.status)
 	if err == nil {
@@ -591,7 +592,7 @@ func (ctx *Context) ErrorStatus(status int) (err error) {
 // But "after hooks" and "end hooks" will run normally.
 // Note that this will not stop the current handler.
 func (ctx *Context) End(code int, buf ...[]byte) (err error) {
-	if ctx.ended.swapTrue() {
+	if ctx.Res.ended.swapTrue() {
 		var body []byte
 		if len(buf) > 0 {
 			body = buf[0]
@@ -604,22 +605,18 @@ func (ctx *Context) End(code int, buf ...[]byte) (err error) {
 // After add a "after hook" to the ctx that will run after middleware process,
 // but before Response.WriteHeader.
 func (ctx *Context) After(hook func()) {
-	if ctx.ended.isTrue() { // should not add afterHooks if ctx.ended
+	if ctx.Res.ended.isTrue() { // should not add afterHooks if ctx.Res.ended
 		panic(NewAppError(`can't add "after hook" after context ended`))
 	}
-	ctx.afterHooks = append(ctx.afterHooks, hook)
-}
-
-func (ctx *Context) cleanAfterHooks() {
-	ctx.afterHooks = nil
+	ctx.Res.afterHooks = append(ctx.Res.afterHooks, hook)
 }
 
 // OnEnd add a "end hook" to the ctx that will run after Response.WriteHeader.
 func (ctx *Context) OnEnd(hook func()) {
-	if ctx.ended.isTrue() { // should not add endHooks if ctx.ended
+	if ctx.Res.ended.isTrue() { // should not add endHooks if ctx.Res.ended
 		panic(NewAppError(`can't add "end hook" after context ended`))
 	}
-	ctx.endHooks = append(ctx.endHooks, hook)
+	ctx.Res.endHooks = append(ctx.Res.endHooks, hook)
 }
 
 func (ctx *Context) respondError(err HTTPError) {

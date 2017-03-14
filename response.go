@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 )
 
 var defaultHeaderFilterReg = regexp.MustCompile(
@@ -20,17 +21,14 @@ var ErrPusherNotImplemented = NewAppError("http.Pusher not implemented")
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.
 type Response struct {
-	ctx         *Context
+	status      int // response Status Code
+	bodyLength  int // number of bytes to write, ignore stream body.
+	afterHooks  []func()
+	endHooks    []func()
+	ended       atomicBool // indicate that app middlewares run out.
+	wroteHeader atomicBool
 	w           http.ResponseWriter // the origin http.ResponseWriter, should not be override.
 	rw          http.ResponseWriter // maybe a http.ResponseWriter wrapper
-	wroteHeader atomicBool
-	responded   atomicBool
-	bodyLength  int // number of bytes to write, ignore stream body.
-	status      int // response Status Code
-}
-
-func newResponse(ctx *Context, w http.ResponseWriter) *Response {
-	return &Response{ctx: ctx, w: w, rw: w}
 }
 
 // Get gets the first value associated with the given key. If there are no values associated with the key, Get returns "". To access multiple values of a key, access the map directly with CanonicalHeaderKey.
@@ -101,7 +99,7 @@ func (r *Response) WriteHeader(code int) {
 		return
 	}
 	// ensure that ended is true
-	r.ctx.ended.setTrue()
+	r.ended.setTrue()
 
 	// set status before afterHooks
 	if code > 0 {
@@ -109,8 +107,8 @@ func (r *Response) WriteHeader(code int) {
 	}
 
 	// execute "after hooks" in LIFO order before Response.WriteHeader
-	for i := len(r.ctx.afterHooks) - 1; i >= 0; i-- {
-		r.ctx.afterHooks[i]()
+	for i := len(r.afterHooks) - 1; i >= 0; i-- {
+		r.afterHooks[i]()
 	}
 
 	// check status, r.status maybe changed in afterHooks
@@ -132,8 +130,8 @@ func (r *Response) WriteHeader(code int) {
 	}
 	r.rw.WriteHeader(r.status)
 	// execute "end hooks" in LIFO order after Response.WriteHeader
-	for i := len(r.ctx.endHooks) - 1; i >= 0; i-- {
-		r.ctx.endHooks[i]()
+	for i := len(r.endHooks) - 1; i >= 0; i-- {
+		r.endHooks[i]()
 	}
 }
 
@@ -175,15 +173,27 @@ func (r *Response) HeaderWrote() bool {
 }
 
 func (r *Response) respond(status int, body []byte) (err error) {
-	if r.responded.swapTrue() && !r.wroteHeader.isTrue() {
-		r.bodyLength = len(body)
-		r.WriteHeader(status)
-		// bodyLength will reset to 0 with empty status
-		if r.bodyLength > 0 {
-			_, err = r.Write(body)
-		}
+	r.bodyLength = len(body)
+	r.WriteHeader(status)
+	// bodyLength will reset to 0 with empty status
+	if r.bodyLength > 0 {
+		_, err = r.Write(body)
 	}
 	return
+}
+
+type atomicBool int32
+
+func (b *atomicBool) isTrue() bool {
+	return atomic.LoadInt32((*int32)(b)) == 1
+}
+
+func (b *atomicBool) swapTrue() bool {
+	return atomic.SwapInt32((*int32)(b), 1) == 0
+}
+
+func (b *atomicBool) setTrue() {
+	atomic.StoreInt32((*int32)(b), 1)
 }
 
 // IsStatusCode returns true if status is HTTP status code.
