@@ -3,15 +3,13 @@ package logging
 import (
 	"bytes"
 	"log"
+	"math"
 	"net/http"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
-
-	"strings"
-
-	"math"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/teambition/gear"
@@ -193,6 +191,15 @@ func TestGearLogger(t *testing.T) {
 		Println("Hello1")
 		assert.Equal(buf.String(), "Hello1\n")
 		buf.Reset()
+
+		logger.Output(time.Now(), InfoLevel, "Hello")
+		assert.True(strings.HasSuffix(buf.String(), "INFO Hello\n"))
+		buf.Reset()
+
+		logger.Output(time.Now(), InfoLevel, "")
+		assert.True(strings.HasSuffix(buf.String(), "INFO \n"))
+		buf.Reset()
+
 	})
 
 	t.Run("logger setting", func(t *testing.T) {
