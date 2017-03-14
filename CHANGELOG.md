@@ -5,6 +5,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.1.2] - 2017-03-14
+
+**Fixed:**
+
+- Fix Logging middleware https://github.com/teambition/gear/pull/19 .
+
+**Changed:**
+
+- Add more document.
+
 ## [1.1.1] - 2017-03-11
 
 **Changed:**
