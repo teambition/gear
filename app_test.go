@@ -20,6 +20,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/http2"
+
+
 )
 
 // ----- Test Helpers -----
@@ -105,6 +107,7 @@ func (resp *GearResponse) Text() (val string, err error) {
 	}
 	return string(b), err
 }
+
 
 //--------- End ---------
 func TestGearServer(t *testing.T) {
