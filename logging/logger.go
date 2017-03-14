@@ -271,7 +271,7 @@ func (l *Logger) Output(t time.Time, level Level, s string) (err error) {
 		s = gear.ErrorWithStack(s, 4).String()
 	}
 	_, err = fmt.Fprintf(l.Out, l.lf, t.UTC().Format(l.tf), levels[level], s)
-	if err == nil && s[len(s)-1] != '\n' {
+	if err == nil && (len(s) == 0 || s[len(s)-1] != '\n') {
 		l.Out.Write([]byte{'\n'})
 	}
 	return
