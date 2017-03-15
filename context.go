@@ -606,7 +606,7 @@ func (ctx *Context) End(code int, buf ...[]byte) (err error) {
 // but before Response.WriteHeader.
 func (ctx *Context) After(hook func()) {
 	if ctx.Res.ended.isTrue() { // should not add afterHooks if ctx.Res.ended
-		panic(NewAppError(`can't add "after hook" after context ended`))
+		panic(NewAppError(`can't add "after hook" after middleware process ended`))
 	}
 	ctx.Res.afterHooks = append(ctx.Res.afterHooks, hook)
 }
@@ -614,7 +614,7 @@ func (ctx *Context) After(hook func()) {
 // OnEnd add a "end hook" to the ctx that will run after Response.WriteHeader.
 func (ctx *Context) OnEnd(hook func()) {
 	if ctx.Res.ended.isTrue() { // should not add endHooks if ctx.Res.ended
-		panic(NewAppError(`can't add "end hook" after context ended`))
+		panic(NewAppError(`can't add "end hook" after middleware process ended`))
 	}
 	ctx.Res.endHooks = append(ctx.Res.endHooks, hook)
 }

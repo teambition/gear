@@ -165,7 +165,7 @@ func TestGearServer(t *testing.T) {
 		app.Use(func(ctx *Context) error {
 			return ctx.End(204)
 		})
-		srv := app.Start(":3323")
+		srv := app.Start("127.0.0.1:3323")
 		defer srv.Close()
 
 		app2 := New()
@@ -173,21 +173,21 @@ func TestGearServer(t *testing.T) {
 			return ctx.End(204)
 		})
 		assert.Panics(func() {
-			app2.Start(":3323")
+			app2.Start("127.0.0.1:3323")
 		})
 
 		app3 := New()
 		app3.Use(func(ctx *Context) error {
 			return ctx.End(204)
 		})
-		err := app3.Listen(":3323")
+		err := app3.Listen("127.0.0.1:3323")
 		assert.NotNil(err)
 
 		app4 := New()
 		app4.Use(func(ctx *Context) error {
 			return ctx.End(204)
 		})
-		err = app3.ListenTLS(":3323", "", "")
+		err = app3.ListenTLS("127.0.0.1:3323", "", "")
 		assert.NotNil(err)
 
 		go func() {

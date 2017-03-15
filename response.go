@@ -125,7 +125,7 @@ func (r *Response) WriteHeader(code int) {
 	}
 
 	// check and set Content-Length
-	if r.bodyLength > 0 && r.Get(HeaderContentLength) == "" {
+	if r.bodyLength > 0 {
 		r.Set(HeaderContentLength, strconv.Itoa(r.bodyLength))
 	}
 	r.rw.WriteHeader(r.status)
@@ -175,7 +175,7 @@ func (r *Response) HeaderWrote() bool {
 func (r *Response) respond(status int, body []byte) (err error) {
 	r.bodyLength = len(body)
 	r.WriteHeader(status)
-	// bodyLength will reset to 0 with empty status
+	// bodyLength maybe reset to 0 with empty status when WriteHeader.
 	if r.bodyLength > 0 {
 		_, err = r.Write(body)
 	}
