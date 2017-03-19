@@ -147,7 +147,7 @@ func TestGearResponse(t *testing.T) {
 		ctx.Res.respond(204, []byte("Hello"))
 
 		assert.Equal(true, ctx.Res.HeaderWrote())
-		assert.Equal(204, ctx.Status())
+		assert.Equal(204, ctx.Res.Status())
 		assert.Equal(204, CtxResult(ctx).StatusCode)
 		assert.Equal("", CtxResult(ctx).Header.Get(HeaderContentLength))
 		assert.Equal("", CtxBody(ctx))

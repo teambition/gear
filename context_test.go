@@ -729,10 +729,9 @@ func TestGearContextStatus(t *testing.T) {
 
 	app := New()
 	ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
-	assert.Equal(ctx.Status(), 0)
-	assert.Equal(ctx.Status(1), 0)
-	assert.Equal(ctx.Status(401), 401)
-	assert.Equal(ctx.Status(1), 401)
+	assert.Equal(ctx.Res.Status(), 0)
+	ctx.Status(401)
+	assert.Equal(ctx.Res.Status(), 401)
 }
 
 func TestGearContextType(t *testing.T) {
@@ -740,10 +739,10 @@ func TestGearContextType(t *testing.T) {
 
 	app := New()
 	ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
-	assert.Equal("", ctx.Type())
+	assert.Equal("", ctx.Res.Type())
 	ctx.Type(MIMEApplicationJSONCharsetUTF8)
 	assert.Equal(MIMEApplicationJSONCharsetUTF8, ctx.Res.Get(HeaderContentType))
-	assert.Equal(MIMEApplicationJSONCharsetUTF8, ctx.Type())
+	assert.Equal(MIMEApplicationJSONCharsetUTF8, ctx.Res.Type())
 }
 
 func TestGearContextHTML(t *testing.T) {
@@ -1057,7 +1056,7 @@ func TestGearContextStream(t *testing.T) {
 				panic(err)
 			}
 			ctx.Stream(200, MIMETextHTMLCharsetUTF8, file)
-			assert.Equal(204, ctx.Status())
+			assert.Equal(204, ctx.Res.Status())
 			return nil
 		})
 
@@ -1134,7 +1133,7 @@ func TestGearContextRedirect(t *testing.T) {
 		app.Use(func(ctx *Context) error {
 			if ctx.Path != "/ok" {
 				ctx.OnEnd(func() {
-					assert.Equal(ctx.Status(), 301)
+					assert.Equal(ctx.Res.Status(), 301)
 				})
 				redirected = true
 				ctx.Status(301)
@@ -1161,7 +1160,7 @@ func TestGearContextRedirect(t *testing.T) {
 		app.Use(func(ctx *Context) error {
 			if ctx.Path != "/ok" {
 				ctx.OnEnd(func() {
-					assert.Equal(ctx.Status(), 302)
+					assert.Equal(ctx.Res.Status(), 302)
 				})
 				redirected = true
 				return ctx.Redirect("/ok")

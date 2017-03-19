@@ -359,8 +359,8 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 		if len(log) == 0 {
 			return
 		}
-		log["Status"] = ctx.Status()
-		log["Type"] = ctx.Res.Get(gear.HeaderContentType)
+		log["Status"] = ctx.Res.Status()
+		log["Type"] = ctx.Res.Type()
 		log["Length"] = ctx.Res.Get(gear.HeaderContentLength)
 		// Don't block current process.
 		go l.consume(log, ctx)

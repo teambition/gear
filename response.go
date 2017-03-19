@@ -58,6 +58,16 @@ func (r *Response) Vary(field string) {
 	}
 }
 
+// Status returns the current status code.
+func (r *Response) Status() int {
+	return r.status
+}
+
+// Type returns the current content type.
+func (r *Response) Type() string {
+	return r.Get(HeaderContentType)
+}
+
 // ResetHeader reset headers. If keepSubset is true,
 // header matching `(?i)^(accept|allow|retry-after|warning|access-control-allow-)` will be keep
 func (r *Response) ResetHeader(filterReg ...*regexp.Regexp) {

@@ -395,20 +395,14 @@ func (ctx *Context) Set(key, value string) {
 	ctx.Res.Set(key, value)
 }
 
-// Status set a status code (optional) to the response, returns the new status code.
-func (ctx *Context) Status(code ...int) int {
-	if len(code) > 0 && IsStatusCode(code[0]) {
-		ctx.Res.status = code[0]
-	}
-	return ctx.Res.status
+// Status set a status code to the response, ctx.Res.Status() returns the status code.
+func (ctx *Context) Status(code int) {
+	ctx.Res.status = code
 }
 
-// Type set a content type (optional) to the response, returns the new content type.
-func (ctx *Context) Type(str ...string) string {
-	if len(str) > 0 {
-		ctx.Res.Set(HeaderContentType, str[0])
-	}
-	return ctx.Res.Get(HeaderContentType)
+// Type set a content type to the response, ctx.Res.Type() returns the content type.
+func (ctx *Context) Type(str string) {
+	ctx.Res.Set(HeaderContentType, str)
 }
 
 // HTML set an Html body with status code to response.
