@@ -598,12 +598,18 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
     return json.Unmarshal(buf, body)
   case MIMEApplicationXML:
     return xml.Unmarshal(buf, body)
+  case MIMEApplicationForm:
+    val, err := url.ParseQuery(string(buf))
+    if err == nil {
+      err = FormToStruct(val, body)
+    }
+    return err
   }
   return &Error{Code: http.StatusUnsupportedMediaType, Msg: "unsupported media type"}
 }
 ```
 
-`DefaultBodyParser` 支持 JSON 和 XML 的解析，这对于大部分场景而言已经足够使用了，并且它被框架默认启用，默认支持最大 2MB 的请求数据：
+`DefaultBodyParser` 支持 JSON、Form 和 XML 的解析，这对于大部分场景而言已经足够使用了，并且它被框架默认启用，默认支持最大 2MB 的请求数据：
 
 ```go
 app.Set(gear.SetBodyParser, gear.DefaultBodyParser(2<<20)) // 2MB
@@ -622,8 +628,8 @@ type BodyTemplate interface {
 ```go
 // https://github.com/seccom/kpass/blob/master/src/api/user.go#L32
 type tplUserJoin struct {
-  ID   string `json:"id"`
-  Pass string `json:"pass"`
+  ID   string `json:"id" form:"id"`
+  Pass string `json:"pass" form:"pass"`
 }
 
 func (t *tplUserJoin) Validate() error {
