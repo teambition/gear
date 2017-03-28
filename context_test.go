@@ -11,6 +11,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"reflect"
 	"strings"
@@ -570,8 +571,8 @@ func TestGearContextCookies(t *testing.T) {
 }
 
 type jsonBodyTemplate struct {
-	ID   string `json:"id"`
-	Pass string `json:"pass"`
+	ID   string `json:"id" form:"id"`
+	Pass string `json:"pass" form:"pass"`
 }
 
 func (b *jsonBodyTemplate) Validate() error {
@@ -605,6 +606,20 @@ func TestGearContextParseBody(t *testing.T) {
 		ctx := CtxTest(app, "POST", "http://example.com/foo",
 			bytes.NewBuffer([]byte(`{"id":"admin","pass":"password"}`)))
 		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+
+		body := &jsonBodyTemplate{}
+		assert.Nil(ctx.ParseBody(body))
+		assert.Equal("admin", body.ID)
+		assert.Equal("password", body.Pass)
+	})
+
+	t.Run("should parse Form content", func(t *testing.T) {
+		assert := assert.New(t)
+
+		data := url.Values{"id": {"admin"}, "pass": {"password"}}
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo", strings.NewReader(data.Encode()))
+		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationForm)
 
 		body := &jsonBodyTemplate{}
 		assert.Nil(ctx.ParseBody(body))

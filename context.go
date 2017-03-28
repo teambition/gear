@@ -332,13 +332,14 @@ func (ctx *Context) QueryAll(name string) []string {
 	return ctx.query[name]
 }
 
-// ParseBody parses request content with BodyParser, DefaultBodyParser support JSON and XML.
-// stores the result in the value pointed to by BodyTemplate body, and validate it.
+// ParseBody parses request content with BodyParser, stores the result in the value
+// pointed to by BodyTemplate body, and validate it.
+// DefaultBodyParser support JSON, Form and XML.
 //
 // Defaine a BodyTemplate type in some API:
 //  type jsonBodyTemplate struct {
-//  	ID   string `json:"id"`
-//  	Pass string `json:"pass"`
+//  	ID   string `json:"id" form:"id"`
+//  	Pass string `json:"pass" form:"pass"`
 //  }
 //
 //  func (b *jsonBodyTemplate) Validate() error {

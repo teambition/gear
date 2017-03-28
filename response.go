@@ -2,14 +2,10 @@ package gear
 
 import (
 	"bufio"
-	"fmt"
 	"net"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strconv"
-	"strings"
-	"sync/atomic"
 )
 
 var defaultHeaderFilterReg = regexp.MustCompile(
@@ -188,74 +184,6 @@ func (r *Response) respond(status int, body []byte) (err error) {
 	// bodyLength maybe reset to 0 with empty status when WriteHeader.
 	if r.bodyLength > 0 {
 		_, err = r.Write(body)
-	}
-	return
-}
-
-type atomicBool int32
-
-func (b *atomicBool) isTrue() bool {
-	return atomic.LoadInt32((*int32)(b)) == 1
-}
-
-func (b *atomicBool) swapTrue() bool {
-	return atomic.SwapInt32((*int32)(b), 1) == 0
-}
-
-func (b *atomicBool) setTrue() {
-	atomic.StoreInt32((*int32)(b), 1)
-}
-
-// IsStatusCode returns true if status is HTTP status code.
-// https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
-func IsStatusCode(status int) bool {
-	switch status {
-	case 100, 101, 102,
-		200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
-		300, 301, 302, 303, 304, 305, 306, 307, 308,
-		400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418,
-		421, 422, 423, 424, 426, 428, 429, 431, 440, 444, 449, 450, 451, 494, 495, 496, 497, 498, 499,
-		500, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 520, 521, 522, 523, 524, 525, 526, 527:
-		return true
-	default:
-		return false
-	}
-}
-
-func isRedirectStatus(status int) bool {
-	switch status {
-	case 300, 301, 302, 303, 305, 307, 308:
-		return true
-	default:
-		return false
-	}
-}
-
-func isEmptyStatus(status int) bool {
-	switch status {
-	case 204, 205, 304:
-		return true
-	default:
-		return false
-	}
-}
-
-var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
-
-// ContentDisposition implements a simple version of https://tools.ietf.org/html/rfc2183
-// Use mime.ParseMediaType to parse Content-Disposition header.
-func ContentDisposition(fileName, dispositionType string) (header string) {
-	if dispositionType == "" {
-		dispositionType = "attachment"
-	}
-	if fileName == "" {
-		return dispositionType
-	}
-
-	header = fmt.Sprintf(`%s; filename="%s"`, dispositionType, quoteEscaper.Replace(fileName))
-	fallbackName := url.PathEscape(fileName)
-	if len(fallbackName) != len(fileName) {
-		header = fmt.Sprintf(`%s; filename*=UTF-8''%s`, header, fallbackName)
 	}
 	return
 }

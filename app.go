@@ -9,11 +9,8 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/textproto"
+	"net/url"
 	"os"
-	"reflect"
-	"runtime"
-	"strings"
 	"time"
 	"unicode/utf8"
 )
@@ -62,6 +59,12 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 		return json.Unmarshal(buf, body)
 	case MIMEApplicationXML:
 		return xml.Unmarshal(buf, body)
+	case MIMEApplicationForm:
+		val, err := url.ParseQuery(string(buf))
+		if err == nil {
+			err = FormToStruct(val, body)
+		}
+		return err
 	}
 	return &Error{Code: http.StatusUnsupportedMediaType, Msg: "unsupported media type"}
 }
@@ -99,62 +102,6 @@ func (err *Error) String() string {
 	}
 	return fmt.Sprintf(`Error{Code:%3d, Msg:"%s", Meta:%#v, Stack:"%s"}`,
 		err.Code, err.Msg, err.Meta, err.Stack)
-}
-
-// NewAppError create a error instance with "Gear: " prefix.
-func NewAppError(err string) error {
-	return fmt.Errorf("Gear: %s", err)
-}
-
-// ParseError parse a error, textproto.Error or HTTPError to HTTPError
-func ParseError(e error, code ...int) HTTPError {
-	if IsNil(e) {
-		return nil
-	}
-
-	switch v := e.(type) {
-	case HTTPError:
-		return v
-	case *textproto.Error:
-		return &Error{v.Code, v.Msg, nil, ""}
-	default:
-		err := &Error{500, e.Error(), nil, ""}
-		if len(code) > 0 && code[0] > 0 {
-			err.Code = code[0]
-		}
-		return err
-	}
-}
-
-// ErrorWithStack create a error with stacktrace
-func ErrorWithStack(val interface{}, skip ...int) *Error {
-	var err *Error
-	if IsNil(val) {
-		return err
-	}
-
-	switch v := val.(type) {
-	case *Error:
-		err = v
-	case error:
-		e := ParseError(v)
-		err = &Error{e.Status(), e.Error(), nil, ""}
-	case string:
-		err = &Error{500, v, nil, ""}
-	default:
-		err = &Error{500, fmt.Sprintf("%#v", v), nil, ""}
-	}
-
-	if err.Stack == "" {
-		buf := make([]byte, 2048)
-		buf = buf[:runtime.Stack(buf, false)]
-		s := 1
-		if len(skip) != 0 {
-			s = skip[0]
-		}
-		err.Stack = pruneStack(buf, s)
-	}
-	return err
 }
 
 // App is the top-level framework app instance.
@@ -460,51 +407,6 @@ func (s *ServerListener) Wait() error {
 	return <-s.c
 }
 
-// WrapHandler wrap a http.Handler to Gear Middleware
-func WrapHandler(handler http.Handler) Middleware {
-	return func(ctx *Context) error {
-		handler.ServeHTTP(ctx.Res, ctx.Req)
-		return nil
-	}
-}
-
-// WrapHandlerFunc wrap a http.HandlerFunc to Gear Middleware
-func WrapHandlerFunc(fn http.HandlerFunc) Middleware {
-	return func(ctx *Context) error {
-		fn(ctx.Res, ctx.Req)
-		return nil
-	}
-}
-
-// IsNil checks if a specified object is nil or not, without Failing.
-func IsNil(val interface{}) bool {
-	if val == nil {
-		return true
-	}
-
-	value := reflect.ValueOf(val)
-	switch value.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr, reflect.Interface, reflect.Slice:
-		return value.IsNil()
-	default:
-		return false
-	}
-}
-
-// Compose composes a array of middlewares to one middleware
-func Compose(mds ...Middleware) Middleware {
-	switch len(mds) {
-	case 0:
-		return noOp
-	case 1:
-		return mds[0]
-	default:
-		return middlewares(mds).run
-	}
-}
-
-var noOp Middleware = func(ctx *Context) error { return nil }
-
 type middlewares []Middleware
 
 func (m middlewares) run(ctx *Context) (err error) {
@@ -514,60 +416,4 @@ func (m middlewares) run(ctx *Context) (err error) {
 		}
 	}
 	return nil
-}
-
-// pruneStack make a thin conversion for stack information
-// limit the count of lines to 5
-// src:
-// ```
-// goroutine 9 [running]:
-// runtime/debug.Stack(0x6, 0x6, 0xc42003c898)
-//     /usr/local/Cellar/go/1.7.4_2/libexec/src/runtime/debug/stack.go:24 +0x79
-// github.com/teambition/gear/logging.(*Logger).OutputWithStack(0xc420012a50, 0xed0092215, 0x573fdbb, 0x471f20, 0x0, 0xc42000dc1a, 0x6, 0xc42000dc01, 0xc42000dca0)
-//     /Users/xus/go/src/github.com/teambition/gear/logging/logger.go:267 +0x4e
-// github.com/teambition/gear/logging.(*Logger).Emerg(0xc420012a50, 0x2a9cc0, 0xc42000dca0)
-//     /Users/xus/go/src/github.com/teambition/gear/logging/logger.go:171 +0xd3
-// github.com/teambition/gear/logging.TestGearLogger.func2(0xc420018600)
-//     /Users/xus/go/src/github.com/teambition/gear/logging/logger_test.go:90 +0x3c1
-// testing.tRunner(0xc420018600, 0x33d240)
-//     /usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:610 +0x81
-// created by testing.(*T).Run
-//     /usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:646 +0x2ec
-// ```
-// dst:
-// ```
-// Stack:
-//     /usr/local/Cellar/go/1.7.4_2/libexec/src/runtime/debug/stack.go:24
-//     /Users/xus/go/src/github.com/teambition/gear/logging/logger.go:283
-//     /Users/xus/go/src/github.com/teambition/gear/logging/logger.go:171
-//     /Users/xus/go/src/github.com/teambition/gear/logging/logger_test.go:90
-//     /usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:610
-//     /usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:646
-// ```
-func pruneStack(stack []byte, skip int) string {
-	// remove first line
-	// `goroutine 1 [running]:`
-	lines := strings.Split(string(stack), "\n")[1:]
-	newLines := make([]string, 0, len(lines)/2)
-
-	num := 0
-	for idx, line := range lines {
-		if idx%2 == 0 {
-			continue
-		}
-		skip--
-		if skip >= 0 {
-			continue
-		}
-		num++
-
-		loc := strings.Split(line, " ")[0]
-		loc = strings.Replace(loc, "\t", "\\t", -1)
-		// only need odd line
-		newLines = append(newLines, loc)
-		if num == 10 {
-			break
-		}
-	}
-	return strings.Join(newLines, "\\n")
 }
