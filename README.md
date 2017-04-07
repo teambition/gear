@@ -90,9 +90,9 @@ import (
   "github.com/teambition/gear/middleware/favicon"
 )
 
-// go run app.go
+// go run example/http2/app.go
+// Visit: https://127.0.0.1:3000/
 func main() {
-
   const htmlBody = `
 <!DOCTYPE html>
 <html>
@@ -113,7 +113,7 @@ h1 {
   app := gear.New()
 
   app.UseHandler(logging.Default())
-  app.Use(favicon.New("../../testdata/favicon.ico"))
+  app.Use(favicon.New("./testdata/favicon.ico"))
 
   router := gear.NewRouter()
   router.Get("/", func(ctx *gear.Context) error {
@@ -125,7 +125,7 @@ h1 {
     return ctx.End(200, []byte(pushBody))
   })
   app.UseHandler(router)
-  app.Error(app.ListenTLS(":3000", "../../testdata/server.crt", "../../testdata/server.key"))
+  app.Error(app.ListenTLS(":3000", "./testdata/out/test.crt", "./testdata/out/test.key"))
 }
 ```
 
@@ -179,6 +179,12 @@ func main() {
   }
 }
 ```
+
+### HTTP2 & gRPC
+
+https://github.com/teambition/gear/tree/master/example/grpc_server
+
+https://github.com/teambition/gear/tree/master/example/grpc_client
 
 ## Import
 
