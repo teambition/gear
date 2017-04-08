@@ -23,18 +23,23 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 // Visit: https://127.0.0.1:3000/ or go run example/grpc_client/app.go
 func main() {
 
+	rpc := grpc.NewServer()
+	pb.RegisterGreeterServer(rpc, &server{})
+
 	app := gear.New()
 	app.UseHandler(logging.Default())
+
 	app.Use(func(ctx *gear.Context) error {
-		if !strings.HasPrefix(ctx.Path, "/helloworld.Greeter/SayHello") {
-			// HTTP request/response
-			return ctx.HTML(200, "<h1>gRPC</h1>")
+		// "application/grpc", "application/grpc+proto"
+		if strings.HasPrefix(ctx.Get(gear.HeaderContentType), "application/grpc") {
+			rpc.ServeHTTP(ctx.Res, ctx.Req)
 		}
 		return nil
 	})
+	app.Use(func(ctx *gear.Context) error {
+		// HTTP request/response
+		return ctx.HTML(200, "<h1>gRPC</h1>")
+	})
 
-	s := grpc.NewServer()
-	pb.RegisterGreeterServer(s, &server{})
-	app.Use(gear.WrapHandler(s))
 	log.Fatalln(app.ListenTLS(":3000", "./testdata/out/test.crt", "./testdata/out/test.key"))
 }
