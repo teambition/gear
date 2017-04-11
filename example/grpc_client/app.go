@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"strconv"
+	"sync"
+	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -31,4 +34,38 @@ func main() {
 		}
 		log.Printf("Greeting: %s", r.Message)
 	}
+
+	// bench(c)
+}
+
+func bench(c pb.GreeterClient) {
+	var total = 1000000
+	var cocurrency = 1000
+	var w sync.WaitGroup
+
+	w.Add(total)
+	co := make(chan int, cocurrency)
+
+	task := func(i int) {
+		defer w.Done()
+		_, err := c.SayHello(context.Background(), &pb.HelloRequest{Name: "Ping"})
+		if err != nil {
+			log.Fatalf("could not greet: %v", err)
+		}
+
+		<-co
+		if (i % 1000) == 0 {
+			fmt.Print(".")
+		}
+	}
+
+	t := time.Now()
+	for i := 0; i < total; i++ {
+		co <- i
+		go task(i)
+	}
+	log.Println("Wait")
+	w.Wait()
+	sec := int(time.Now().Sub(t) / 1e6)
+	log.Printf("\nFinished, cocurrency: %d, time: %d ms, %d ops", cocurrency, sec, (total / (sec / 1000)))
 }
