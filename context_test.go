@@ -135,7 +135,7 @@ func TestGearContextWithContext(t *testing.T) {
 
 	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
-	assert.Equal(504, res.StatusCode)
+	assert.Equal(500, res.StatusCode)
 	assert.Equal(atomic.LoadInt32(&count), int32(3))
 }
 

@@ -5,6 +5,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.3.1] - 2017-04-12
+
+**Changed:**
+
+- Ignored `"context canceled"` error.
+- Added more examples.
+
 ## [1.3.0] - 2017-03-28
 
 **Changed:**

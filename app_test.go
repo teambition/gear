@@ -261,7 +261,7 @@ func TestGearSetTimeout(t *testing.T) {
 		res.Body.Close()
 	})
 
-	t.Run("respond 504 when cancel", func(t *testing.T) {
+	t.Run("respond 500 when cancel", func(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
@@ -271,7 +271,7 @@ func TestGearSetTimeout(t *testing.T) {
 		app.Use(func(ctx *Context) error {
 			ctx.Cancel()
 			time.Sleep(time.Millisecond)
-			return ctx.End(500, []byte("some data"))
+			return ctx.End(200, []byte("some data"))
 		})
 		app.Use(func(ctx *Context) error {
 			panic("this middleware unreachable")
@@ -281,8 +281,7 @@ func TestGearSetTimeout(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(504, res.StatusCode)
-		assert.Equal("context canceled", PickRes(res.Text()).(string))
+		assert.Equal(500, res.StatusCode)
 		res.Body.Close()
 	})
 

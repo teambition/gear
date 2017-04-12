@@ -361,11 +361,13 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if IsNil(err) {
-		// if context canceled abnormally...
-		if err = ctx.Err(); err != nil {
-			err = &Error{http.StatusGatewayTimeout, err.Error(), nil, ""}
+	// if context canceled abnormally...
+	if e := ctx.Err(); e != nil {
+		if e == context.Canceled {
+			ctx.Res.WriteHeader(http.StatusInternalServerError)
+			return
 		}
+		err = &Error{http.StatusGatewayTimeout, e.Error(), nil, ""}
 	}
 
 	if !IsNil(err) {
