@@ -17,6 +17,7 @@ type server struct{}
 // SayHello implements helloworld.GreeterServer
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
 	return &pb.HelloReply{Message: "Hello " + in.Name}, nil
+	// return nil, errors.New("some error")
 }
 
 // go run example/grpc_server/app.go
@@ -34,10 +35,9 @@ func main() {
 		if strings.HasPrefix(ctx.Get(gear.HeaderContentType), "application/grpc") {
 			rpc.ServeHTTP(ctx.Res, ctx.Req)
 		}
-		return nil
+		return ctx.End(204) // Must end with 204 to handle rpc error
 	})
 	app.Use(func(ctx *gear.Context) error {
-		// HTTP request/response
 		return ctx.HTML(200, "<h1>gRPC</h1>")
 	})
 
