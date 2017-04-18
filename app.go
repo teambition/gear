@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"os"
 	"time"
-	"unicode/utf8"
 )
 
 // Middleware defines a function to process as middleware.
@@ -52,7 +51,7 @@ func (d DefaultBodyParser) MaxBytes() int64 {
 // Parse implemented BodyParser interface.
 func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charset string) error {
 	if len(buf) == 0 {
-		return &Error{Code: http.StatusBadRequest, Msg: "request entity empty"}
+		return HTTPErrBadRequest.WithMsg("request entity empty")
 	}
 	switch mediaType {
 	case MIMEApplicationJSON:
@@ -66,7 +65,7 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 		}
 		return err
 	}
-	return &Error{Code: http.StatusUnsupportedMediaType, Msg: "unsupported media type"}
+	return HTTPErrUnsupportedMediaType.WithMsg("unsupported media type")
 }
 
 // HTTPError interface is used to create a server error that include status code and error message.
@@ -75,33 +74,6 @@ type HTTPError interface {
 	Error() string
 	// Status returns error's http status code.
 	Status() int
-}
-
-// Error represents a numeric error with optional meta. It can be used in middleware as a return result.
-type Error struct {
-	Code  int         `json:"code"`
-	Msg   string      `json:"error"`
-	Meta  interface{} `json:"meta,omitempty"`
-	Stack string      `json:"-"`
-}
-
-// Status implemented HTTPError interface.
-func (err *Error) Status() int {
-	return err.Code
-}
-
-// Error implemented HTTPError interface.
-func (err *Error) Error() string {
-	return err.Msg
-}
-
-// String implemented fmt.Stringer interface, returns a Go-syntax string.
-func (err *Error) String() string {
-	if v, ok := err.Meta.([]byte); ok && utf8.Valid(v) {
-		err.Meta = string(v)
-	}
-	return fmt.Sprintf(`Error{Code:%3d, Msg:"%s", Meta:%#v, Stack:"%s"}`,
-		err.Code, err.Msg, err.Meta, err.Stack)
 }
 
 // App is the top-level framework app instance.
@@ -222,55 +194,55 @@ func (app *App) Set(key, val interface{}) {
 		switch key {
 		case SetBodyParser:
 			if bodyParser, ok := val.(BodyParser); !ok {
-				panic(NewAppError("SetBodyParser setting must implemented gear.BodyParser interface"))
+				panic(GearError.WithMsg("SetBodyParser setting must implemented gear.BodyParser interface"))
 			} else {
 				app.bodyParser = bodyParser
 			}
 		case SetCompress:
 			if compress, ok := val.(Compressible); !ok {
-				panic(NewAppError("SetCompress setting must implemented gear.Compressible interface"))
+				panic(GearError.WithMsg("SetCompress setting must implemented gear.Compressible interface"))
 			} else {
 				app.compress = compress
 			}
 		case SetKeys:
 			if keys, ok := val.([]string); !ok {
-				panic(NewAppError("SetKeys setting must be []string"))
+				panic(GearError.WithMsg("SetKeys setting must be []string"))
 			} else {
 				app.keys = keys
 			}
 		case SetLogger:
 			if logger, ok := val.(*log.Logger); !ok {
-				panic(NewAppError("SetLogger setting must be *log.Logger instance"))
+				panic(GearError.WithMsg("SetLogger setting must be *log.Logger instance"))
 			} else {
 				app.logger = logger
 			}
 		case SetOnError:
 			if onerror, ok := val.(func(ctx *Context, err HTTPError)); !ok {
-				panic(NewAppError("SetOnError setting must be func(ctx *Context, err *Error)"))
+				panic(GearError.WithMsg("SetOnError setting must be func(ctx *Context, err *Error)"))
 			} else {
 				app.onerror = onerror
 			}
 		case SetRenderer:
 			if renderer, ok := val.(Renderer); !ok {
-				panic(NewAppError("SetRenderer setting must implemented gear.Renderer interface"))
+				panic(GearError.WithMsg("SetRenderer setting must implemented gear.Renderer interface"))
 			} else {
 				app.renderer = renderer
 			}
 		case SetTimeout:
 			if timeout, ok := val.(time.Duration); !ok {
-				panic(NewAppError("SetTimeout setting must be time.Duration instance"))
+				panic(GearError.WithMsg("SetTimeout setting must be time.Duration instance"))
 			} else {
 				app.timeout = timeout
 			}
 		case SetWithContext:
 			if withContext, ok := val.(func(*http.Request) context.Context); !ok {
-				panic(NewAppError("SetWithContext setting must be func(*http.Request) context.Context"))
+				panic(GearError.WithMsg("SetWithContext setting must be func(*http.Request) context.Context"))
 			} else {
 				app.withContext = withContext
 			}
 		case SetEnv:
 			if _, ok := val.(string); !ok {
-				panic(NewAppError("SetEnv setting must be string"))
+				panic(GearError.WithMsg("SetEnv setting must be string"))
 			}
 		}
 		app.settings[k] = val
@@ -314,7 +286,7 @@ func (app *App) Start(addr ...string) *ServerListener {
 
 	l, err := net.Listen("tcp", laddr)
 	if err != nil {
-		panic(NewAppError(fmt.Sprintf("failed to listen on %v: %v", laddr, err)))
+		panic(GearError.WithMsg(fmt.Sprintf("failed to listen on %v: %v", laddr, err)))
 	}
 
 	c := make(chan error)
@@ -367,7 +339,7 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ctx.Res.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		err = &Error{http.StatusGatewayTimeout, e.Error(), nil, ""}
+		err = HTTPErrGatewayTimeout.WithMsg(e.Error())
 	}
 
 	if !IsNil(err) {

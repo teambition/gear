@@ -86,8 +86,7 @@ func New(options ...Options) gear.Middleware {
 		allowOrigin := opts.AllowOriginsValidator(origin, ctx)
 		// If the request Origin header is not allowed. Just terminate the following steps.
 		if allowOrigin == "" {
-			return ctx.Error(&gear.Error{Code: http.StatusForbidden,
-				Msg: fmt.Sprintf("Origin: %v is not allowed", origin)})
+			return gear.HTTPErrForbidden.WithMsg(fmt.Sprintf("Origin: %v is not allowed", origin))
 		}
 		if opts.Credentials {
 			// when responding to a credentialed request, server must specify a
@@ -109,8 +108,7 @@ func New(options ...Options) gear.Middleware {
 			if requestMethod == "" {
 				ctx.Res.Del(gear.HeaderAccessControlAllowOrigin)
 				ctx.Res.Del(gear.HeaderAccessControlAllowCredentials)
-				return ctx.Error(&gear.Error{Code: http.StatusForbidden,
-					Msg: "invalid preflighted request, missing Access-Control-Request-Method header"})
+				return gear.HTTPErrForbidden.WithMsg("invalid preflighted request, missing Access-Control-Request-Method header")
 			}
 			if len(opts.AllowMethods) > 0 {
 				ctx.Set(gear.HeaderAccessControlAllowMethods, strings.Join(opts.AllowMethods, ", "))

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"unicode/utf8"
 )
 
 // Compose composes a array of middlewares to one middleware
@@ -57,9 +58,77 @@ func IsNil(val interface{}) bool {
 	}
 }
 
-// NewAppError create a error instance with "Gear: " prefix.
-func NewAppError(err string) error {
-	return fmt.Errorf("Gear: %s", err)
+// Error represents a numeric error with optional meta. It can be used in middleware as a return result.
+type Error struct {
+	Code  int         `json:"-"`
+	Err   string      `json:"error"`
+	Msg   string      `json:"message"`
+	Data  interface{} `json:"data,omitempty"`
+	Stack string      `json:"-"`
+}
+
+// Status implemented HTTPError interface.
+func (err *Error) Status() int {
+	return err.Code
+}
+
+// Error implemented HTTPError interface.
+func (err *Error) Error() string {
+	return fmt.Sprintf("%s: %s", err.Err, err.Msg)
+}
+
+// String implemented fmt.Stringer interface, returns a Go-syntax string.
+func (err *Error) String() string {
+	if v, ok := err.Data.([]byte); ok && utf8.Valid(v) {
+		err.Data = string(v)
+	}
+	return fmt.Sprintf(`Error{Code:%d, Err:"%s", Msg:"%s", Data:%#v, Stack:"%s"}`,
+		err.Code, err.Err, err.Msg, err.Data, err.Stack)
+}
+
+// WithMsg returns a copy of err with given new messages.
+func (err Error) WithMsg(msgs ...string) *Error {
+	if len(msgs) > 0 {
+		err.Msg = strings.Join(msgs, ", ")
+	}
+	return &err
+}
+
+// WithCode returns a copy of err with given code.
+func (err Error) WithCode(code int) *Error {
+	err.Code = code
+	if text := http.StatusText(code); text != "" {
+		err.Err = text
+	}
+	return &err
+}
+
+// From returns a copy of err with given error. It will try to merge the given error.
+// If the given error is a *Error instance, it will be returned without copy.
+func (err Error) From(e error) *Error {
+	if IsNil(e) {
+		return nil
+	}
+
+	switch v := e.(type) {
+	case *Error:
+		return v
+	case HTTPError:
+		err.Code = v.Status()
+		err.Msg = v.Error()
+	case *textproto.Error:
+		err.Code = v.Code
+		err.Msg = v.Msg
+	default:
+		err.Msg = e.Error()
+	}
+
+	if err.Err == "" {
+		if text := http.StatusText(err.Code); text != "" {
+			err.Err = text
+		}
+	}
+	return &err
 }
 
 // ParseError parse a error, textproto.Error or HTTPError to HTTPError
@@ -72,11 +141,13 @@ func ParseError(e error, code ...int) HTTPError {
 	case HTTPError:
 		return v
 	case *textproto.Error:
-		return &Error{v.Code, v.Msg, nil, ""}
+		err := GearError.WithCode(v.Code)
+		err.Msg = v.Msg
+		return err
 	default:
-		err := &Error{500, e.Error(), nil, ""}
+		err := HTTPErrInternalServerError.WithMsg(e.Error())
 		if len(code) > 0 && code[0] > 0 {
-			err.Code = code[0]
+			err = err.WithCode(code[0])
 		}
 		return err
 	}
@@ -84,21 +155,18 @@ func ParseError(e error, code ...int) HTTPError {
 
 // ErrorWithStack create a error with stacktrace
 func ErrorWithStack(val interface{}, skip ...int) *Error {
-	var err *Error
 	if IsNil(val) {
-		return err
+		return nil
 	}
 
+	var err *Error
 	switch v := val.(type) {
-	case *Error:
-		err = v
 	case error:
-		e := ParseError(v)
-		err = &Error{e.Status(), e.Error(), nil, ""}
+		err = HTTPErrInternalServerError.From(v)
 	case string:
-		err = &Error{500, v, nil, ""}
+		err = HTTPErrInternalServerError.WithMsg(v)
 	default:
-		err = &Error{500, fmt.Sprintf("%#v", v), nil, ""}
+		err = HTTPErrInternalServerError.WithMsg(fmt.Sprintf("%#v", v))
 	}
 
 	if err.Stack == "" {

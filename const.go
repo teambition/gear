@@ -1,5 +1,7 @@
 package gear
 
+import "net/http"
+
 // MIME types
 const (
 	// Got from https://github.com/labstack/echo
@@ -103,4 +105,49 @@ const (
 	HeaderXCSRFToken                      = "X-CSRF-Token"                        // Responses
 	HeaderXDNSPrefetchControl             = "X-DNS-Prefetch-Control"              // Responses
 	HeaderXDownloadOptions                = "X-Download-Options"                  // Responses
+)
+
+// Predefined errors
+var (
+	GearError = Error{Code: http.StatusInternalServerError, Err: "Gear Error"}
+
+	HTTPErrBadRequest                   = *GearError.WithCode(http.StatusBadRequest)
+	HTTPErrUnauthorized                 = *GearError.WithCode(http.StatusUnauthorized)
+	HTTPErrPaymentRequired              = *GearError.WithCode(http.StatusPaymentRequired)
+	HTTPErrForbidden                    = *GearError.WithCode(http.StatusForbidden)
+	HTTPErrNotFound                     = *GearError.WithCode(http.StatusNotFound)
+	HTTPErrMethodNotAllowed             = *GearError.WithCode(http.StatusMethodNotAllowed)
+	HTTPErrNotAcceptable                = *GearError.WithCode(http.StatusNotAcceptable)
+	HTTPErrProxyAuthRequired            = *GearError.WithCode(http.StatusProxyAuthRequired)
+	HTTPErrRequestTimeout               = *GearError.WithCode(http.StatusRequestTimeout)
+	HTTPErrConflict                     = *GearError.WithCode(http.StatusConflict)
+	HTTPErrGone                         = *GearError.WithCode(http.StatusGone)
+	HTTPErrLengthRequired               = *GearError.WithCode(http.StatusLengthRequired)
+	HTTPErrPreconditionFailed           = *GearError.WithCode(http.StatusPreconditionFailed)
+	HTTPErrRequestEntityTooLarge        = *GearError.WithCode(http.StatusRequestEntityTooLarge)
+	HTTPErrRequestURITooLong            = *GearError.WithCode(http.StatusRequestURITooLong)
+	HTTPErrUnsupportedMediaType         = *GearError.WithCode(http.StatusUnsupportedMediaType)
+	HTTPErrRequestedRangeNotSatisfiable = *GearError.WithCode(http.StatusRequestedRangeNotSatisfiable)
+	HTTPErrExpectationFailed            = *GearError.WithCode(http.StatusExpectationFailed)
+	HTTPErrTeapot                       = *GearError.WithCode(http.StatusTeapot)
+	HTTPErrUnprocessableEntity          = *GearError.WithCode(http.StatusUnprocessableEntity)
+	HTTPErrLocked                       = *GearError.WithCode(http.StatusLocked)
+	HTTPErrFailedDependency             = *GearError.WithCode(http.StatusFailedDependency)
+	HTTPErrUpgradeRequired              = *GearError.WithCode(http.StatusUpgradeRequired)
+	HTTPErrPreconditionRequired         = *GearError.WithCode(http.StatusPreconditionRequired)
+	HTTPErrTooManyRequests              = *GearError.WithCode(http.StatusTooManyRequests)
+	HTTPErrRequestHeaderFieldsTooLarge  = *GearError.WithCode(http.StatusRequestHeaderFieldsTooLarge)
+	HTTPErrUnavailableForLegalReasons   = *GearError.WithCode(http.StatusUnavailableForLegalReasons)
+
+	HTTPErrInternalServerError           = *GearError.WithCode(http.StatusInternalServerError)
+	HTTPErrNotImplemented                = *GearError.WithCode(http.StatusNotImplemented)
+	HTTPErrBadGateway                    = *GearError.WithCode(http.StatusBadGateway)
+	HTTPErrServiceUnavailable            = *GearError.WithCode(http.StatusServiceUnavailable)
+	HTTPErrGatewayTimeout                = *GearError.WithCode(http.StatusGatewayTimeout)
+	HTTPErrHTTPVersionNotSupported       = *GearError.WithCode(http.StatusHTTPVersionNotSupported)
+	HTTPErrVariantAlsoNegotiates         = *GearError.WithCode(http.StatusVariantAlsoNegotiates)
+	HTTPErrInsufficientStorage           = *GearError.WithCode(http.StatusInsufficientStorage)
+	HTTPErrLoopDetected                  = *GearError.WithCode(http.StatusLoopDetected)
+	HTTPErrNotExtended                   = *GearError.WithCode(http.StatusNotExtended)
+	HTTPErrNetworkAuthenticationRequired = *GearError.WithCode(http.StatusNetworkAuthenticationRequired)
 )

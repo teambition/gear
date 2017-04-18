@@ -44,7 +44,7 @@ func TestGearRouter(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(0, called)
 		assert.Equal(501, res.StatusCode)
-		assert.Equal(`"/api" is not implemented`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"Not Implemented","message":"\"/api\" is not implemented"}`, PickRes(res.Text()).(string))
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/api/users")
@@ -239,8 +239,8 @@ func TestGearRouter(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(501, res.StatusCode)
 		assert.Equal("nosniff", res.Header.Get(HeaderXContentTypeOptions))
-		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal(`"/" is not implemented`, PickRes(res.Text()).(string))
+		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
+		assert.Equal(`{"error":"Not Implemented","message":"\"/\" is not implemented"}`, PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 
@@ -261,8 +261,8 @@ func TestGearRouter(t *testing.T) {
 		assert.Equal(405, res.StatusCode)
 		assert.Equal("GET", res.Header.Get(HeaderAllow))
 		assert.Equal("nosniff", res.Header.Get(HeaderXContentTypeOptions))
-		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal(`"PUT" is not allowed in "/abc"`, PickRes(res.Text()).(string))
+		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
+		assert.Equal(`{"error":"Method Not Allowed","message":"\"PUT\" is not allowed in \"/abc\""}`, PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 
@@ -591,8 +591,10 @@ func TestGearRouter(t *testing.T) {
 
 		ctx := CtxTest(app, "GET", "/abc//efg", nil)
 		err = r.Serve(ctx)
-		assert.Nil(err)
-		assert.Equal(501, ctx.Res.status)
+		assert.NotNil(err)
+		assert.Equal(501, err.(*Error).Code)
+		assert.Equal("Not Implemented", err.(*Error).Err)
+		assert.Equal(`"/abc//efg" is not implemented`, err.(*Error).Msg)
 	})
 
 	t.Run("router with TrailingSlashRedirect = true (defalut)", func(t *testing.T) {
@@ -736,8 +738,8 @@ func TestGearRouter(t *testing.T) {
 
 		ctx := CtxTest(app, "GET", "/abc/efg/", nil)
 		err = r.Serve(ctx)
-		assert.Nil(err)
-		assert.Equal(501, ctx.Res.status)
+		assert.NotNil(err)
+		assert.Equal(501, err.(*Error).Code)
 
 		res, err = RequestBy("PUT", host+"/abc/xyz/")
 		assert.Nil(err)
@@ -750,8 +752,7 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 
 		ctx = CtxTest(app, "PUT", "/abc/xyz", nil)
-		assert.Nil(r.Serve(ctx))
-		assert.Equal(501, ctx.Res.status)
+		assert.NotNil(r.Serve(ctx))
 	})
 
 	t.Run("when router middleware ended early", func(t *testing.T) {
@@ -794,7 +795,7 @@ func TestGearRouter(t *testing.T) {
 		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal("some error", PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"Internal Server Error","message":"some error"}`, PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 
@@ -836,7 +837,7 @@ func TestGearRouter(t *testing.T) {
 		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal("some error", PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"Internal Server Error","message":"some error"}`, PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 }

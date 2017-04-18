@@ -2,6 +2,7 @@ sudo: false
 language: go
 go:
   - 1.8
+  - 1.8.1
 before_install:
   - go get -t -v ./...
   - go get github.com/modocache/gover

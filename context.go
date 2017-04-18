@@ -27,16 +27,16 @@ const (
 )
 
 // ErrAnyKeyNonExistent is returned from Context.Any
-var ErrAnyKeyNonExistent = NewAppError("non-existent key")
+var ErrAnyKeyNonExistent = GearError.WithMsg("non-existent key")
 
 // ErrBodyParserNotRegistered is returned from Context.ParseBody
-var ErrBodyParserNotRegistered = NewAppError("bodyParser not registered")
+var ErrBodyParserNotRegistered = GearError.WithMsg("bodyParser not registered")
 
 // ErrMissingRequestBody is returned from Context.ParseBody
-var ErrMissingRequestBody = NewAppError("missing request body")
+var ErrMissingRequestBody = GearError.WithMsg("missing request body")
 
 // ErrRendererNotRegistered is returned from Context.Render
-var ErrRendererNotRegistered = NewAppError("renderer not registered")
+var ErrRendererNotRegistered = GearError.WithMsg("renderer not registered")
 
 // Any interface is used by ctx.Any.
 type Any interface {
@@ -92,7 +92,7 @@ func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	if app.withContext != nil {
 		ctx._ctx = app.withContext(r.WithContext(ctx.ctx))
 		if ctx._ctx.Value(isContext) == nil {
-			panic(NewAppError("the context is not created from gear.Context"))
+			panic(GearError.WithMsg("the context is not created from gear.Context"))
 		}
 	} else {
 		ctx._ctx = ctx.ctx
@@ -182,10 +182,10 @@ func (ctx *Context) Context() context.Context {
 //
 func (ctx *Context) WithContext(c context.Context) {
 	if c.Value(isRecursive) != nil {
-		panic(NewAppError("context recursive, please use ctx.Context() as parent context"))
+		panic(GearError.WithMsg("context recursive, please use ctx.Context() as parent context"))
 	}
 	if c.Value(isContext) == nil {
-		panic(NewAppError("the context is not created from gear.Context"))
+		panic(GearError.WithMsg("the context is not created from gear.Context"))
 	}
 	ctx._ctx = c
 }
@@ -344,14 +344,14 @@ func (ctx *Context) QueryAll(name string) []string {
 //
 //  func (b *jsonBodyTemplate) Validate() error {
 //  	if len(b.ID) < 3 || len(b.Pass) < 6 {
-//  		return &Error{Code: 400, Msg: "invalid id or pass"}
+//  		return HTTPErrBadRequest.WithMsg("invalid id or pass")
 //  	}
 //  	return nil
 //  }
 //
 // Use it in middleware:
-//  body := &jsonBodyTemplate{}
-//  if err := ctx.ParseBody(body) {
+//  body := jsonBodyTemplate{}
+//  if err := ctx.ParseBody(&body) {
 //  	return err
 //  }
 //
@@ -372,13 +372,13 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 		mediaType = MIMEOctetStream
 	}
 	if mediaType, params, err = mime.ParseMediaType(mediaType); err != nil {
-		return &Error{Code: http.StatusUnsupportedMediaType, Msg: err.Error()}
+		return HTTPErrUnsupportedMediaType.WithMsg(err.Error())
 	}
 
 	reader := http.MaxBytesReader(ctx.Res, ctx.Req.Body, ctx.app.bodyParser.MaxBytes())
 	if buf, err = ioutil.ReadAll(reader); err != nil {
 		// err may not be 413 Request entity too large, just make it to 413
-		return &Error{Code: http.StatusRequestEntityTooLarge, Msg: err.Error()}
+		return HTTPErrRequestEntityTooLarge.WithMsg(err.Error())
 	}
 	if err = ctx.app.bodyParser.Parse(buf, body, mediaType, params["charset"]); err != nil {
 		return err
@@ -409,7 +409,6 @@ func (ctx *Context) Type(str string) {
 // HTML set an Html body with status code to response.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" and "end hooks" will run normally.
-// Note that this will not stop the current handler.
 func (ctx *Context) HTML(code int, str string) error {
 	ctx.Type(MIMETextHTMLCharsetUTF8)
 	return ctx.End(code, []byte(str))
@@ -418,7 +417,6 @@ func (ctx *Context) HTML(code int, str string) error {
 // JSON set a JSON body with status code to response.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" (if no error) and "end hooks" will run normally.
-// Note that this will not stop the current handler.
 func (ctx *Context) JSON(code int, val interface{}) error {
 	buf, err := json.Marshal(val)
 	if err != nil {
@@ -430,7 +428,6 @@ func (ctx *Context) JSON(code int, val interface{}) error {
 // JSONBlob set a JSON blob body with status code to response.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" and "end hooks" will run normally.
-// Note that this will not stop the current handler.
 func (ctx *Context) JSONBlob(code int, buf []byte) error {
 	ctx.Type(MIMEApplicationJSONCharsetUTF8)
 	return ctx.End(code, buf)
@@ -439,7 +436,6 @@ func (ctx *Context) JSONBlob(code int, buf []byte) error {
 // JSONP sends a JSONP response with status code. It uses `callback` to construct the JSONP payload.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" (if no error) and "end hooks" will run normally.
-// Note that this will not stop the current handler.
 func (ctx *Context) JSONP(code int, callback string, val interface{}) error {
 	buf, err := json.Marshal(val)
 	if err != nil {
@@ -452,7 +448,6 @@ func (ctx *Context) JSONP(code int, callback string, val interface{}) error {
 // to construct the JSONP payload.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" and "end hooks" will run normally.
-// Note that this will not stop the current handler.
 func (ctx *Context) JSONPBlob(code int, callback string, buf []byte) error {
 	ctx.Type(MIMEApplicationJavaScriptCharsetUTF8)
 	ctx.Set(HeaderXContentTypeOptions, "nosniff")
@@ -467,7 +462,6 @@ func (ctx *Context) JSONPBlob(code int, callback string, buf []byte) error {
 // XML set an XML body with status code to response.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" (if no error) and "end hooks" will run normally.
-// Note that this will not stop the current handler.
 func (ctx *Context) XML(code int, val interface{}) error {
 	buf, err := xml.Marshal(val)
 	if err != nil {
@@ -479,7 +473,6 @@ func (ctx *Context) XML(code int, val interface{}) error {
 // XMLBlob set a XML blob body with status code to response.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" and "end hooks" will run normally.
-// Note that this will not stop the current handler.
 func (ctx *Context) XMLBlob(code int, buf []byte) error {
 	ctx.Type(MIMEApplicationXMLCharsetUTF8)
 	return ctx.End(code, buf)
@@ -489,7 +482,6 @@ func (ctx *Context) XMLBlob(code int, buf []byte) error {
 // code. Templates can be registered using `app.Renderer = Renderer`.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" (if no error) and "end hooks" will run normally.
-// Note that this will not stop the current handler.
 func (ctx *Context) Render(code int, name string, data interface{}) (err error) {
 	if ctx.app.renderer == nil {
 		return ErrRendererNotRegistered
@@ -505,7 +497,6 @@ func (ctx *Context) Render(code int, name string, data interface{}) (err error) 
 // Stream sends a streaming response with status code and content type.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" and "end hooks" will run normally.
-// Note that this will not stop the current handler.
 func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error) {
 	if ctx.Res.ended.swapTrue() {
 		ctx.Status(code)
@@ -520,7 +511,6 @@ func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error
 // opening the file in the browser.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" and "end hooks" will run normally.
-// Note that this will not stop the current handler.
 func (ctx *Context) Attachment(name string, modtime time.Time, content io.ReadSeeker, inline ...bool) (err error) {
 	if ctx.Res.ended.swapTrue() {
 		dispositionType := "attachment"
@@ -537,7 +527,6 @@ func (ctx *Context) Attachment(name string, modtime time.Time, content io.ReadSe
 // You can use other status code with ctx.Status method, It is a wrap of http.Redirect.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" and "end hooks" will run normally.
-// Note that this will not stop the current handler.
 func (ctx *Context) Redirect(url string) (err error) {
 	if ctx.Res.ended.swapTrue() {
 		if !isRedirectStatus(ctx.Res.status) {
@@ -548,17 +537,16 @@ func (ctx *Context) Redirect(url string) (err error) {
 	return
 }
 
-// Error send a error to response.
+// Error send a error with application/json type to response.
 // It will not reset response headers and not use app.OnError hook
 // It will end the ctx. The middlewares after current middleware and "after hooks" will not run.
 // "end hooks" will run normally.
-// Note that this will not stop the current handler.
 func (ctx *Context) Error(e error) error {
 	ctx.Res.afterHooks = nil // clear afterHooks when any error
 	ctx.Res.ResetHeader()
 	err := ParseError(e, ctx.Res.status)
 	if err == nil {
-		err = &Error{Code: http.StatusInternalServerError, Msg: NewAppError("nil error").Error()}
+		err = HTTPErrInternalServerError.WithMsg("nil error")
 	}
 	if ctx.app.onerror != nil {
 		ctx.app.onerror(ctx, err)
@@ -568,24 +556,20 @@ func (ctx *Context) Error(e error) error {
 	return nil
 }
 
-// ErrorStatus send a error by status code to response. The status should be 4xx or 5xx code.
+// ErrorStatus send a error by status code with application/json type  to response. The status should be 4xx or 5xx code.
 // It will not reset response headers and not use app.OnError hook
 // It will end the ctx. The middlewares after current middleware and "after hooks" will not run.
 // "end hooks" will run normally.
-// Note that this will not stop the current handler.
-func (ctx *Context) ErrorStatus(status int) (err error) {
+func (ctx *Context) ErrorStatus(status int) error {
 	if status >= 400 && status < 600 {
-		if msg := http.StatusText(status); msg != "" {
-			return ctx.Error(&Error{Code: status, Msg: msg})
-		}
+		return ctx.Error(GearError.WithCode(status))
 	}
-	return &Error{Code: http.StatusInternalServerError, Msg: NewAppError("invalid status").Error()}
+	return HTTPErrInternalServerError.WithMsg("invalid error status")
 }
 
 // End end the ctx with bytes and status code optionally.
 // After it's called, the rest of middleware handles will not run.
 // But "after hooks" and "end hooks" will run normally.
-// Note that this will not stop the current handler.
 func (ctx *Context) End(code int, buf ...[]byte) (err error) {
 	if ctx.Res.ended.swapTrue() {
 		var body []byte
@@ -601,7 +585,7 @@ func (ctx *Context) End(code int, buf ...[]byte) (err error) {
 // but before Response.WriteHeader.
 func (ctx *Context) After(hook func()) {
 	if ctx.Res.ended.isTrue() { // should not add afterHooks if ctx.Res.ended
-		panic(NewAppError(`can't add "after hook" after middleware process ended`))
+		panic(GearError.WithMsg(`can't add "after hook" after middleware process ended`))
 	}
 	ctx.Res.afterHooks = append(ctx.Res.afterHooks, hook)
 }
@@ -609,7 +593,7 @@ func (ctx *Context) After(hook func()) {
 // OnEnd add a "end hook" to the ctx that will run after Response.WriteHeader.
 func (ctx *Context) OnEnd(hook func()) {
 	if ctx.Res.ended.isTrue() { // should not add endHooks if ctx.Res.ended
-		panic(NewAppError(`can't add "end hook" after middleware process ended`))
+		panic(GearError.WithMsg(`can't add "end hook" after middleware process ended`))
 	}
 	ctx.Res.endHooks = append(ctx.Res.endHooks, hook)
 }
@@ -621,9 +605,12 @@ func (ctx *Context) respondError(err HTTPError) {
 		if code == 500 || code > 501 || code < 400 {
 			ctx.app.Error(err)
 		}
-		ctx.Set(HeaderContentType, MIMETextPlainCharsetUTF8)
+		// try to render error as json
+		ctx.Set(HeaderContentType, MIMEApplicationJSONCharsetUTF8)
 		ctx.Set(HeaderXContentTypeOptions, "nosniff")
-		ctx.Res.respond(code, []byte(err.Error()))
+
+		buf, _ := json.Marshal(err)
+		ctx.Res.respond(code, buf)
 	}
 }
 

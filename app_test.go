@@ -151,21 +151,22 @@ func TestGearError(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal("Some error", PickRes(res.Text()).(string))
+		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
+		assert.Equal(`{"error":"Internal Server Error","message":"Some error"}`, PickRes(res.Text()).(string))
 		assert.True(strings.Contains(buf.String(),
-			`TEST: Error{Code:500, Msg:"Some error", Meta:<nil>, Stack:"\t`))
+			`TEST: Error{Code:500, Err:"Internal Server Error", Msg:"Some error", Data:<nil>, Stack:"\t`))
 		res.Body.Close()
 	})
 
-	t.Run("return HTTPError as JSON", func(t *testing.T) {
+	t.Run("return HTTPError as text", func(t *testing.T) {
 		assert := assert.New(t)
 
 		var buf bytes.Buffer
 		app := New()
 		app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
 		app.Set(SetOnError, func(ctx *Context, err HTTPError) {
-			ctx.JSON(err.Status(), err)
+			ctx.Type(MIMETextPlainCharsetUTF8)
+			ctx.End(err.Status(), []byte(err.Error()))
 		})
 
 		app.Use(func(ctx *Context) error {
@@ -177,8 +178,8 @@ func TestGearError(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal(`{"code":500,"error":"some error"}`, PickRes(res.Text()).(string))
+		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
+		assert.Equal("Internal Server Error: some error", PickRes(res.Text()).(string))
 		assert.Equal("", buf.String())
 		res.Body.Close()
 	})
@@ -189,9 +190,6 @@ func TestGearError(t *testing.T) {
 		var buf bytes.Buffer
 		app := New()
 		app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
-		app.Set(SetOnError, func(ctx *Context, err HTTPError) {
-			ctx.JSON(err.Status(), err)
-		})
 		router := NewRouter()
 		router.Get("/", func(ctx *Context) error {
 			return errors.New("some error")
@@ -204,8 +202,9 @@ func TestGearError(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal(`{"code":500,"error":"some error"}`, PickRes(res.Text()).(string))
-		assert.Equal("", buf.String())
+		assert.Equal(`{"error":"Internal Server Error","message":"some error"}`, PickRes(res.Text()).(string))
+		assert.True(strings.Contains(buf.String(),
+			`TEST: Error{Code:500, Err:"Internal Server Error", Msg:"some error", Data:<nil>, Stack:"\t`))
 		res.Body.Close()
 	})
 
@@ -225,7 +224,7 @@ func TestGearError(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal("Some error", PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"Internal Server Error","message":"Some error"}`, PickRes(res.Text()).(string))
 
 		log := buf.String()
 		assert.True(strings.Contains(log, "github.com/teambition/gear"))
@@ -257,7 +256,7 @@ func TestGearSetTimeout(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(504, res.StatusCode)
-		assert.Equal("context deadline exceeded", PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"Gateway Timeout","message":"context deadline exceeded"}`, PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 

@@ -398,7 +398,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		res, err := RequestBy("POST", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		assert.Equal("application/json; charset=utf-8", res.Header.Get(gear.HeaderContentType))
 		time.Sleep(10 * time.Millisecond)
 		logger.mu.Lock()
 		log := buf.String()

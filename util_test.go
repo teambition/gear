@@ -209,7 +209,7 @@ func TestGearParseError(t *testing.T) {
 		err1 := &Error{Code: 400, Msg: "test"}
 		assert := assert.New(t)
 		assert.Equal(400, err1.Status())
-		assert.Equal("test", err1.Error())
+		assert.Equal(": test", err1.Error())
 
 		err := ParseError(err1)
 		EqualPtr(t, err1, err)
@@ -436,7 +436,7 @@ func TestErrorWithStack(t *testing.T) {
 		assert.Nil(ErrorWithStack(err))
 
 		// *Error type test
-		err = &Error{500, "hello", nil, ""}
+		err = HTTPErrInternalServerError.WithMsg("hello")
 		assert.NotZero(ErrorWithStack(err).Stack)
 		// string type test
 		str := "Some thing"
@@ -449,21 +449,22 @@ func TestErrorWithStack(t *testing.T) {
 		}
 		assert.NotZero(ErrorWithStack(v).Stack)
 		// test skip
-		errSkip := &Error{500, "hello", nil, ""}
+		errSkip := HTTPErrInternalServerError.WithMsg("hello")
 		assert.True(strings.Index(ErrorWithStack(errSkip, 0).Stack, "util.go") > 0)
 	})
 
 	t.Run("Error string", func(t *testing.T) {
 		assert := assert.New(t)
 
-		meta := []byte("服务异常")
-		err := &Error{500, "Some error", meta, ""}
-		assert.True(strings.Contains(err.String(), `, Meta:"服务异常",`))
+		data := []byte("服务异常")
+		err := HTTPErrInternalServerError.WithMsg("Some error")
+		err.Data = data
+		assert.True(strings.Contains(err.String(), `, Data:"服务异常",`))
 
-		meta = meta[0 : len(meta)-1] // invalid utf8 bytes
-		err = &Error{500, "Some error", meta, ""}
-		assert.False(strings.Contains(err.String(), `, Meta:"服务`))
-		assert.True(strings.Contains(err.String(), `, Meta:[]byte{`))
+		data = data[0 : len(data)-1] // invalid utf8 bytes
+		err.Data = data
+		assert.False(strings.Contains(err.String(), `, Data:"服务`))
+		assert.True(strings.Contains(err.String(), `, Data:[]byte{`))
 	})
 
 	t.Run("pruneStack", func(t *testing.T) {
