@@ -97,7 +97,7 @@ func DNSPrefetchControl(allow bool) gear.Middleware {
 // See https://en.wikipedia.org/wiki/Clickjacking and https://developer.mozilla.org/en-US/docs/Web/HTTP/X-Frame-Options .
 func FrameGuard(action FrameGuardAction, domains ...string) gear.Middleware {
 	if action == FrameGuardActionAllowFrom && len(domains) != 1 {
-		panic(gear.GearError.WithMsg("'X-Frame-Options: ALLOW-FROM' only support one domain"))
+		panic(gear.Err.WithMsg("'X-Frame-Options: ALLOW-FROM' only support one domain"))
 	}
 
 	return func(ctx *gear.Context) error {
@@ -138,7 +138,7 @@ type PublicKeyPinningOptions struct {
 // See https://developer.mozilla.org/en-US/docs/Web/HTTP/Public_Key_Pinning .
 func PublicKeyPinning(options PublicKeyPinningOptions) gear.Middleware {
 	if len(options.Sha256s) == 0 {
-		panic(gear.GearError.WithMsg("empty Public-Key-Pins sha256s"))
+		panic(gear.Err.WithMsg("empty Public-Key-Pins sha256s"))
 	}
 
 	return func(ctx *gear.Context) error {

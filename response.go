@@ -12,7 +12,7 @@ var defaultHeaderFilterReg = regexp.MustCompile(
 	`(?i)^(accept|allow|retry-after|warning|vary|access-control-allow-)`)
 
 // ErrPusherNotImplemented is return from Response.Push.
-var ErrPusherNotImplemented = GearError.WithMsg("http.Pusher not implemented")
+var ErrPusherNotImplemented = Err.WithMsg("http.Pusher not implemented")
 
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.

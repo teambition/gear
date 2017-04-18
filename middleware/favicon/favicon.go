@@ -41,11 +41,11 @@ func New(iconpath string) gear.Middleware {
 	}
 	info, _ := os.Stat(iconpath)
 	if info == nil || info.IsDir() {
-		panic(gear.GearError.WithMsg(fmt.Sprintf(`invalid favicon path: "%s"`, iconpath)))
+		panic(gear.Err.WithMsg(fmt.Sprintf(`invalid favicon path: "%s"`, iconpath)))
 	}
 	file, err := ioutil.ReadFile(iconpath)
 	if err != nil {
-		panic(gear.GearError.WithMsg(err.Error()))
+		panic(gear.Err.WithMsg(err.Error()))
 	}
 	return NewWithIco(file, info.ModTime())
 }

@@ -7,7 +7,6 @@ Example:
 
 	import (
 		"fmt"
-		"os"
 		"time"
 
 		"github.com/teambition/gear"
@@ -19,11 +18,11 @@ Example:
 		// Create app
 		app := gear.New()
 
-		// Use a default logging middleware
+		// Use a default logger middleware
 		app.UseHandler(logging.Default())
 
 		// Add a static middleware
-		// http://localhost:3000/middleware/static/static.go
+		// http://localhost:3000/middleware/static.go
 		app.Use(static.New(static.Options{
 			Root:        "./middleware",
 			Prefix:      "/middleware",
@@ -54,7 +53,7 @@ Example:
 		ViewRouter.Get("/view/:view", func(ctx *gear.Context) error {
 			view := ctx.Param("view")
 			if view == "" {
-				return &gear.Error{Code: 400, Msg: "Invalid view"}
+				return gear.ErrBadRequest.WithMsg("Invalid view")
 			}
 			return ctx.HTML(200, "View: "+view)
 		})
@@ -63,7 +62,7 @@ Example:
 		ViewRouter.Get("/:others*", func(ctx *gear.Context) error {
 			others := ctx.Param("others")
 			if others == "" {
-				return &gear.Error{Code: 400, Msg: "Invalid path"}
+				return gear.ErrBadRequest.WithMsg("Invalid path")
 			}
 			return ctx.HTML(200, "Request path: /"+others)
 		})
@@ -75,7 +74,7 @@ Example:
 		APIRouter.Get("/user/:id", func(ctx *gear.Context) error {
 			id := ctx.Param("id")
 			if id == "" {
-				return &gear.Error{Code: 400, Msg: "Invalid user id"}
+				return gear.ErrBadRequest.WithMsg("Invalid user id")
 			}
 			return ctx.JSON(200, map[string]string{
 				"Method": ctx.Method,

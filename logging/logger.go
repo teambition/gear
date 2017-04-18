@@ -283,7 +283,7 @@ func (l *Logger) SetLevel(level Level) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if level > DebugLevel {
-		panic(gear.GearError.WithMsg("invalid logger level"))
+		panic(gear.Err.WithMsg("invalid logger level"))
 	}
 	l.l = level
 }

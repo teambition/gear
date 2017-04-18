@@ -210,10 +210,10 @@ func (r *Router) Use(handle Middleware) {
 // communication with a proxy).
 func (r *Router) Handle(method, pattern string, handlers ...Middleware) {
 	if method == "" {
-		panic(GearError.WithMsg("invalid method"))
+		panic(Err.WithMsg("invalid method"))
 	}
 	if len(handlers) == 0 {
-		panic(GearError.WithMsg("invalid middleware"))
+		panic(Err.WithMsg("invalid middleware"))
 	}
 	r.trie.Define(pattern).Handle(strings.ToUpper(method), Compose(handlers...))
 }
@@ -257,7 +257,7 @@ func (r *Router) Options(pattern string, handlers ...Middleware) {
 // that will run if there is no other handler matching.
 func (r *Router) Otherwise(handlers ...Middleware) {
 	if len(handlers) == 0 {
-		panic(GearError.WithMsg("invalid middleware"))
+		panic(Err.WithMsg("invalid middleware"))
 	}
 	r.otherwise = Compose(handlers...)
 }
@@ -300,7 +300,7 @@ func (r *Router) Serve(ctx *Context) error {
 		}
 
 		if r.otherwise == nil {
-			return HTTPErrNotImplemented.WithMsg(fmt.Sprintf(`"%s" is not implemented`, ctx.Path))
+			return ErrNotImplemented.WithMsg(fmt.Sprintf(`"%s" is not implemented`, ctx.Path))
 		}
 		handler = r.otherwise
 	} else {
@@ -315,7 +315,7 @@ func (r *Router) Serve(ctx *Context) error {
 			if r.otherwise == nil {
 				// If no route handler is returned, it's a 405 error
 				ctx.Set(HeaderAllow, matched.Node.GetAllow())
-				return HTTPErrMethodNotAllowed.WithMsg(fmt.Sprintf(`"%s" is not allowed in "%s"`, method, ctx.Path))
+				return ErrMethodNotAllowed.WithMsg(fmt.Sprintf(`"%s" is not allowed in "%s"`, method, ctx.Path))
 			}
 			handler = r.otherwise
 		}

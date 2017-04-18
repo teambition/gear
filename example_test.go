@@ -48,7 +48,7 @@ func Example() {
 	ViewRouter.Get("/view/:view", func(ctx *gear.Context) error {
 		view := ctx.Param("view")
 		if view == "" {
-			return gear.HTTPErrBadRequest.WithMsg("Invalid view")
+			return gear.ErrBadRequest.WithMsg("Invalid view")
 		}
 		return ctx.HTML(200, "View: "+view)
 	})
@@ -57,7 +57,7 @@ func Example() {
 	ViewRouter.Get("/:others*", func(ctx *gear.Context) error {
 		others := ctx.Param("others")
 		if others == "" {
-			return gear.HTTPErrBadRequest.WithMsg("Invalid path")
+			return gear.ErrBadRequest.WithMsg("Invalid path")
 		}
 		return ctx.HTML(200, "Request path: /"+others)
 	})
@@ -69,7 +69,7 @@ func Example() {
 	APIRouter.Get("/user/:id", func(ctx *gear.Context) error {
 		id := ctx.Param("id")
 		if id == "" {
-			return gear.HTTPErrBadRequest.WithMsg("Invalid user id")
+			return gear.ErrBadRequest.WithMsg("Invalid user id")
 		}
 		return ctx.JSON(200, map[string]string{
 			"Method": ctx.Method,

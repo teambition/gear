@@ -27,16 +27,16 @@ const (
 )
 
 // ErrAnyKeyNonExistent is returned from Context.Any
-var ErrAnyKeyNonExistent = GearError.WithMsg("non-existent key")
+var ErrAnyKeyNonExistent = Err.WithMsg("non-existent key")
 
 // ErrBodyParserNotRegistered is returned from Context.ParseBody
-var ErrBodyParserNotRegistered = GearError.WithMsg("bodyParser not registered")
+var ErrBodyParserNotRegistered = Err.WithMsg("bodyParser not registered")
 
 // ErrMissingRequestBody is returned from Context.ParseBody
-var ErrMissingRequestBody = GearError.WithMsg("missing request body")
+var ErrMissingRequestBody = Err.WithMsg("missing request body")
 
 // ErrRendererNotRegistered is returned from Context.Render
-var ErrRendererNotRegistered = GearError.WithMsg("renderer not registered")
+var ErrRendererNotRegistered = Err.WithMsg("renderer not registered")
 
 // Any interface is used by ctx.Any.
 type Any interface {
@@ -92,7 +92,7 @@ func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	if app.withContext != nil {
 		ctx._ctx = app.withContext(r.WithContext(ctx.ctx))
 		if ctx._ctx.Value(isContext) == nil {
-			panic(GearError.WithMsg("the context is not created from gear.Context"))
+			panic(Err.WithMsg("the context is not created from gear.Context"))
 		}
 	} else {
 		ctx._ctx = ctx.ctx
@@ -182,10 +182,10 @@ func (ctx *Context) Context() context.Context {
 //
 func (ctx *Context) WithContext(c context.Context) {
 	if c.Value(isRecursive) != nil {
-		panic(GearError.WithMsg("context recursive, please use ctx.Context() as parent context"))
+		panic(Err.WithMsg("context recursive, please use ctx.Context() as parent context"))
 	}
 	if c.Value(isContext) == nil {
-		panic(GearError.WithMsg("the context is not created from gear.Context"))
+		panic(Err.WithMsg("the context is not created from gear.Context"))
 	}
 	ctx._ctx = c
 }
@@ -344,7 +344,7 @@ func (ctx *Context) QueryAll(name string) []string {
 //
 //  func (b *jsonBodyTemplate) Validate() error {
 //  	if len(b.ID) < 3 || len(b.Pass) < 6 {
-//  		return HTTPErrBadRequest.WithMsg("invalid id or pass")
+//  		return ErrBadRequest.WithMsg("invalid id or pass")
 //  	}
 //  	return nil
 //  }
@@ -372,13 +372,13 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 		mediaType = MIMEOctetStream
 	}
 	if mediaType, params, err = mime.ParseMediaType(mediaType); err != nil {
-		return HTTPErrUnsupportedMediaType.WithMsg(err.Error())
+		return ErrUnsupportedMediaType.WithMsg(err.Error())
 	}
 
 	reader := http.MaxBytesReader(ctx.Res, ctx.Req.Body, ctx.app.bodyParser.MaxBytes())
 	if buf, err = ioutil.ReadAll(reader); err != nil {
 		// err may not be 413 Request entity too large, just make it to 413
-		return HTTPErrRequestEntityTooLarge.WithMsg(err.Error())
+		return ErrRequestEntityTooLarge.WithMsg(err.Error())
 	}
 	if err = ctx.app.bodyParser.Parse(buf, body, mediaType, params["charset"]); err != nil {
 		return err
@@ -546,7 +546,7 @@ func (ctx *Context) Error(e error) error {
 	ctx.Res.ResetHeader()
 	err := ParseError(e, ctx.Res.status)
 	if err == nil {
-		err = HTTPErrInternalServerError.WithMsg("nil error")
+		err = ErrInternalServerError.WithMsg("nil error")
 	}
 	if ctx.app.onerror != nil {
 		ctx.app.onerror(ctx, err)
@@ -562,9 +562,9 @@ func (ctx *Context) Error(e error) error {
 // "end hooks" will run normally.
 func (ctx *Context) ErrorStatus(status int) error {
 	if status >= 400 && status < 600 {
-		return ctx.Error(GearError.WithCode(status))
+		return ctx.Error(Err.WithCode(status))
 	}
-	return HTTPErrInternalServerError.WithMsg("invalid error status")
+	return ErrInternalServerError.WithMsg("invalid error status")
 }
 
 // End end the ctx with bytes and status code optionally.
@@ -585,7 +585,7 @@ func (ctx *Context) End(code int, buf ...[]byte) (err error) {
 // but before Response.WriteHeader.
 func (ctx *Context) After(hook func()) {
 	if ctx.Res.ended.isTrue() { // should not add afterHooks if ctx.Res.ended
-		panic(GearError.WithMsg(`can't add "after hook" after middleware process ended`))
+		panic(Err.WithMsg(`can't add "after hook" after middleware process ended`))
 	}
 	ctx.Res.afterHooks = append(ctx.Res.afterHooks, hook)
 }
@@ -593,7 +593,7 @@ func (ctx *Context) After(hook func()) {
 // OnEnd add a "end hook" to the ctx that will run after Response.WriteHeader.
 func (ctx *Context) OnEnd(hook func()) {
 	if ctx.Res.ended.isTrue() { // should not add endHooks if ctx.Res.ended
-		panic(GearError.WithMsg(`can't add "end hook" after middleware process ended`))
+		panic(Err.WithMsg(`can't add "end hook" after middleware process ended`))
 	}
 	ctx.Res.endHooks = append(ctx.Res.endHooks, hook)
 }

@@ -153,7 +153,7 @@ func TestGearMiddlewareStatic(t *testing.T) {
 func TestGearMiddlewareStaticWithFileMap(t *testing.T) {
 	file, err := ioutil.ReadFile("../../testdata/hello.html")
 	if err != nil {
-		panic(gear.GearError.WithMsg(err.Error()))
+		panic(gear.Err.WithMsg(err.Error()))
 	}
 
 	app := gear.New()

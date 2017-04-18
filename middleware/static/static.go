@@ -59,7 +59,7 @@ func New(opts Options) gear.Middleware {
 	}
 	info, _ := os.Stat(root)
 	if info == nil || !info.IsDir() {
-		panic(gear.GearError.WithMsg(fmt.Sprintf("invalid root path: %s", root)))
+		panic(gear.Err.WithMsg(fmt.Sprintf("invalid root path: %s", root)))
 	}
 
 	if opts.Prefix == "" {

@@ -436,7 +436,7 @@ func TestErrorWithStack(t *testing.T) {
 		assert.Nil(ErrorWithStack(err))
 
 		// *Error type test
-		err = HTTPErrInternalServerError.WithMsg("hello")
+		err = ErrInternalServerError.WithMsg("hello")
 		assert.NotZero(ErrorWithStack(err).Stack)
 		// string type test
 		str := "Some thing"
@@ -449,7 +449,7 @@ func TestErrorWithStack(t *testing.T) {
 		}
 		assert.NotZero(ErrorWithStack(v).Stack)
 		// test skip
-		errSkip := HTTPErrInternalServerError.WithMsg("hello")
+		errSkip := ErrInternalServerError.WithMsg("hello")
 		assert.True(strings.Index(ErrorWithStack(errSkip, 0).Stack, "util.go") > 0)
 	})
 
@@ -457,7 +457,7 @@ func TestErrorWithStack(t *testing.T) {
 		assert := assert.New(t)
 
 		data := []byte("服务异常")
-		err := HTTPErrInternalServerError.WithMsg("Some error")
+		err := ErrInternalServerError.WithMsg("Some error")
 		err.Data = data
 		assert.True(strings.Contains(err.String(), `, Data:"服务异常",`))
 

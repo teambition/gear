@@ -141,11 +141,11 @@ func ParseError(e error, code ...int) HTTPError {
 	case HTTPError:
 		return v
 	case *textproto.Error:
-		err := GearError.WithCode(v.Code)
+		err := Err.WithCode(v.Code)
 		err.Msg = v.Msg
 		return err
 	default:
-		err := HTTPErrInternalServerError.WithMsg(e.Error())
+		err := ErrInternalServerError.WithMsg(e.Error())
 		if len(code) > 0 && code[0] > 0 {
 			err = err.WithCode(code[0])
 		}
@@ -162,11 +162,11 @@ func ErrorWithStack(val interface{}, skip ...int) *Error {
 	var err *Error
 	switch v := val.(type) {
 	case error:
-		err = HTTPErrInternalServerError.From(v)
+		err = ErrInternalServerError.From(v)
 	case string:
-		err = HTTPErrInternalServerError.WithMsg(v)
+		err = ErrInternalServerError.WithMsg(v)
 	default:
-		err = HTTPErrInternalServerError.WithMsg(fmt.Sprintf("%#v", v))
+		err = ErrInternalServerError.WithMsg(fmt.Sprintf("%#v", v))
 	}
 
 	if err.Stack == "" {

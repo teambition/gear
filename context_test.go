@@ -314,7 +314,7 @@ func TestGearContextAny(t *testing.T) {
 		ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
 		val, err := ctx.Any(struct{}{})
 		assert.Nil(val)
-		assert.Equal("Gear Error: non-existent key", err.Error())
+		assert.Equal("Error: non-existent key", err.Error())
 
 		ctx.SetAny(struct{}{}, true)
 		val, err = ctx.Any(struct{}{})
@@ -577,7 +577,7 @@ type jsonBodyTemplate struct {
 
 func (b *jsonBodyTemplate) Validate() error {
 	if len(b.ID) < 3 || len(b.Pass) < 6 {
-		return HTTPErrBadRequest.WithMsg("invalid id or pass")
+		return ErrBadRequest.WithMsg("invalid id or pass")
 	}
 	return nil
 }
@@ -589,7 +589,7 @@ type xmlBodyTemplate struct {
 
 func (b *xmlBodyTemplate) Validate() error {
 	if len(b.ID) < 3 || len(b.Pass) < 6 {
-		return HTTPErrBadRequest.WithMsg("invalid id or pass")
+		return ErrBadRequest.WithMsg("invalid id or pass")
 	}
 	return nil
 }
@@ -709,7 +709,7 @@ func TestGearContextParseBody(t *testing.T) {
 		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationJSON)
 		body := jsonBodyTemplate{}
 		err := ctx.ParseBody(&body)
-		assert.Equal("Gear Error: bodyParser not registered", err.Error())
+		assert.Equal("Error: bodyParser not registered", err.Error())
 	})
 
 	t.Run("should error when req.Body not exists", func(t *testing.T) {
@@ -723,7 +723,7 @@ func TestGearContextParseBody(t *testing.T) {
 		ctx.Req.Body = nil
 		body := jsonBodyTemplate{}
 		err := ctx.ParseBody(&body)
-		assert.Equal("Gear Error: missing request body", err.Error())
+		assert.Equal("Error: missing request body", err.Error())
 	})
 }
 
@@ -962,7 +962,7 @@ type RenderTest struct {
 
 func (t *RenderTest) Render(ctx *Context, w io.Writer, name string, data interface{}) (err error) {
 	if err = t.tpl.ExecuteTemplate(w, name, data); err != nil {
-		err = HTTPErrNotFound.WithMsg(err.Error())
+		err = ErrNotFound.WithMsg(err.Error())
 	}
 	return
 }
@@ -982,7 +982,7 @@ func TestGearContextRender(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal(`{"error":"Gear Error","message":"renderer not registered"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"Error","message":"renderer not registered"}`, PickRes(res.Text()).(string))
 	})
 
 	t.Run("should work", func(t *testing.T) {
@@ -1032,7 +1032,7 @@ func TestGearContextRender(t *testing.T) {
 func TestGearContextStream(t *testing.T) {
 	data, err := ioutil.ReadFile("testdata/hello.html")
 	if err != nil {
-		panic(GearError.WithMsg(err.Error()))
+		panic(Err.WithMsg(err.Error()))
 	}
 
 	t.Run("should work", func(t *testing.T) {
@@ -1088,7 +1088,7 @@ func TestGearContextStream(t *testing.T) {
 func TestGearContextAttachment(t *testing.T) {
 	data, err := ioutil.ReadFile("testdata/README.md")
 	if err != nil {
-		panic(GearError.WithMsg(err.Error()))
+		panic(Err.WithMsg(err.Error()))
 	}
 
 	t.Run("should work as attachment", func(t *testing.T) {
@@ -1204,7 +1204,7 @@ func TestGearContextError(t *testing.T) {
 			ctx.After(func() {
 				count++
 			})
-			err := HTTPErrUnauthorized.WithMsg("some error")
+			err := ErrUnauthorized.WithMsg("some error")
 			return ctx.Error(err)
 		})
 
