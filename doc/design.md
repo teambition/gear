@@ -265,22 +265,23 @@ type HTTPError interface {
 
 ```go
 type Error struct {
-  Code  int         `json:"code"`
-  Msg   string      `json:"error"`
-  Meta  interface{} `json:"meta,omitempty"`
+  Code  int         `json:"-"`
+  Err   string      `json:"error"`
+  Msg   string      `json:"message"`
+  Data  interface{} `json:"data,omitempty"`
   Stack string      `json:"-"`
 }
 ```
 
-它实现了 `gear.HTTPError` interface，并额外提供了 `Meta` 和 `Stack` 分别用于保存更具体的错误信息和错误堆栈，另外还有一个 `String` 方法：
+它实现了 `gear.HTTPError` interface，并额外提供了 `Data` 和 `Stack` 分别用于保存更具体的错误信息和错误堆栈，另外还有一个 `String` 方法：
 
 ```go
 func (err *Error) String() string {
-  if v, ok := err.Meta.([]byte); ok && utf8.Valid(v) {
-    err.Meta = string(v)
+  if v, ok := err.Data.([]byte); ok && utf8.Valid(v) {
+    err.Data = string(v)
   }
-  return fmt.Sprintf(`Error{Code:%3d, Msg:"%s", Meta:%#v, Stack:"%s"}`,
-    err.Code, err.Msg, err.Meta, err.Stack)
+  return fmt.Sprintf(`Error{Code:%d, Err:"%s", Msg:"%s", Data:%#v, Stack:"%s"}`,
+    err.Code, err.Err, err.Msg, err.Data, err.Stack)
 }
 ```
 
@@ -310,21 +311,18 @@ func (app *App) Error(err error) {
 
 ```go
 func ErrorWithStack(val interface{}, skip ...int) *Error {
-  var err *Error
   if IsNil(val) {
-    return err
+    return nil
   }
 
+  var err *Error
   switch v := val.(type) {
-  case *Error:
-    err = v
   case error:
-    e := ParseError(v)
-    err = &Error{e.Status(), e.Error(), nil, ""}
+    err = ErrInternalServerError.From(v)
   case string:
-    err = &Error{500, v, nil, ""}
+    err = ErrInternalServerError.WithMsg(v)
   default:
-    err = &Error{500, fmt.Sprintf("%#v", v), nil, ""}
+    err = ErrInternalServerError.WithMsg(fmt.Sprintf("%#v", v))
   }
 
   if err.Stack == "" {

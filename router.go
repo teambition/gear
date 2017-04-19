@@ -12,35 +12,35 @@ import (
 // dispatch requests to different handler functions.
 // A trivial example is:
 //
-//  package main
+// 	package main
 //
-//  import (
-//  	"fmt"
+// 	import (
+// 		"fmt"
 //
-//  	"github.com/teambition/gear"
-//  )
+// 		"github.com/teambition/gear"
+// 	)
 //
-//  func SomeRouterMiddleware(ctx *gear.Context) error {
-//  	// do some thing.
-//  	fmt.Println("Router middleware...")
-//  	return nil
-//  }
+// 	func SomeRouterMiddleware(ctx *gear.Context) error {
+// 		// do some thing.
+// 		fmt.Println("Router middleware...")
+// 		return nil
+// 	}
 //
-//  func ViewHello(ctx *gear.Context) error {
-//  	return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-//  }
+// 	func ViewHello(ctx *gear.Context) error {
+// 		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+// 	}
 //
-//  func main() {
-//  	app := gear.New()
-//  	// Add app middleware
+// 	func main() {
+// 		app := gear.New()
+// 		// Add app middleware
 //
-//  	router := gear.NewRouter()
-//  	router.Use(SomeRouterMiddleware) // Add router middleware, optionally
-//  	router.Get("/", ViewHello)
+// 		router := gear.NewRouter()
+// 		router.Use(SomeRouterMiddleware) // Add router middleware, optionally
+// 		router.Get("/", ViewHello)
 //
-//  	app.UseHandler(router)
-//  	app.Error(app.Listen(":3000"))
-//  }
+// 		app.UseHandler(router)
+// 		app.Error(app.Listen(":3000"))
+// 	}
 //
 // The router matches incoming requests by the request method and the path.
 // If a handle is registered for this path and method, the router delegates the
@@ -49,67 +49,62 @@ import (
 // The registered path, against which the router matches incoming requests, can
 // contain six types of parameters:
 //
-// | Syntax | Description |
-// |--------|------|
-// | `:name` | named parameter |
-// | `:name(regexp)` | named with regexp parameter |
-// | `:name+suffix` | named parameter with suffix matching |
-// | `:name(regexp)+suffix` | named with regexp parameter and suffix matching |
-// | `:name*` | named with catch-all parameter |
-// | `::name` | not named parameter, it is literal `:name` |
+//  | Syntax | Description |
+//  |--------|------|
+//  | `:name` | named parameter |
+//  | `:name(regexp)` | named with regexp parameter |
+//  | `:name+suffix` | named parameter with suffix matching |
+//  | `:name(regexp)+suffix` | named with regexp parameter and suffix matching |
+//  | `:name*` | named with catch-all parameter |
+//  | `::name` | not named parameter, it is literal `:name` |
 //
 // Named parameters are dynamic path segments. They match anything until the next '/' or the path end:
 //
 // Defined: `/api/:type/:ID`
-// ```
-// /api/user/123             matched: type="user", ID="123"
-// /api/user                 no match
-// /api/user/123/comments    no match
-// ```
+//
+//  /api/user/123             matched: type="user", ID="123"
+//  /api/user                 no match
+//  /api/user/123/comments    no match
 //
 // Named with regexp parameters match anything using regexp until the next '/' or the path end:
 //
 // Defined: `/api/:type/:ID(^\d+$)`
-// ```
-// /api/user/123             matched: type="user", ID="123"
-// /api/user                 no match
-// /api/user/abc             no match
-// /api/user/123/comments    no match
-// ```
+//
+//  /api/user/123             matched: type="user", ID="123"
+//  /api/user                 no match
+//  /api/user/abc             no match
+//  /api/user/123/comments    no match
 //
 // Named parameters with suffix, such as [Google API Design](https://cloud.google.com/apis/design/custom_methods):
 //
 // Defined: `/api/:resource/:ID+:undelete`
-// ```
-// /api/file/123                     no match
-// /api/file/123:undelete            matched: resource="file", ID="123"
-// /api/file/123:undelete/comments   no match
-// ```
+//
+//  /api/file/123                     no match
+//  /api/file/123:undelete            matched: resource="file", ID="123"
+//  /api/file/123:undelete/comments   no match
 //
 // Named with regexp parameters and suffix:
 //
 // Defined: `/api/:resource/:ID(^\d+$)+:cancel`
-// ```
-// /api/task/123                   no match
-// /api/task/123:cancel            matched: resource="task", ID="123"
-// /api/task/abc:cancel            no match
-// ```
+//
+//  /api/task/123                   no match
+//  /api/task/123:cancel            matched: resource="task", ID="123"
+//  /api/task/abc:cancel            no match
 //
 // Named with catch-all parameters match anything until the path end, including the directory index (the '/' before the catch-all). Since they match anything until the end, catch-all parameters must always be the final path element.
 //
 // Defined: `/files/:filepath*`
-// ```
-// /files                           no match
-// /files/LICENSE                   matched: filepath="LICENSE"
-// /files/templates/article.html    matched: filepath="templates/article.html"
-// ```
+//
+//  /files                           no match
+//  /files/LICENSE                   matched: filepath="LICENSE"
+//  /files/templates/article.html    matched: filepath="templates/article.html"
 //
 // The value of parameters is saved on the `Matched.Params`. Retrieve the value of a parameter by name:
-// ```
-// type := matched.Params("type")
-// id   := matched.Params("ID")
-// ```
 //
+//  type := matched.Params("type")
+//  id   := matched.Params("ID")
+//
+// More info: https://github.com/teambition/trie-mux
 type Router struct {
 	root       string
 	trie       *trie.Trie

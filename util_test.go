@@ -58,16 +58,19 @@ func RequestBy(method, url string) (*GearResponse, error) {
 	res, err := DefaultClient.Do(req)
 	return &GearResponse{res}, err
 }
+
 func DefaultClientDo(req *http.Request) (*GearResponse, error) {
 	res, err := DefaultClient.Do(req)
 	return &GearResponse{res}, err
 }
+
 func DefaultClientDoWithCookies(req *http.Request, cookies map[string]string) (*http.Response, error) {
 	for k, v := range cookies {
 		req.AddCookie(&http.Cookie{Name: k, Value: v})
 	}
 	return DefaultClient.Do(req)
 }
+
 func NewRequst(method, url string) (*http.Request, error) {
 	return http.NewRequest(method, url, nil)
 }
@@ -75,6 +78,7 @@ func NewRequst(method, url string) (*http.Request, error) {
 func (resp *GearResponse) OK() bool {
 	return resp.StatusCode < 400
 }
+
 func (resp *GearResponse) Content() (val []byte, err error) {
 	var b []byte
 	var reader io.ReadCloser
@@ -125,6 +129,94 @@ func HTTP2Transport(cert, key string) (*http2.Transport, error) {
 }
 
 //--------- End ---------
+
+func TestGearError(t *testing.T) {
+	t.Run("Predefined errors", func(t *testing.T) {
+		assert := assert.New(t)
+		assert.Equal(500, Err.Code)
+		assert.Equal("Error", Err.Err)
+		assert.Equal("", Err.Msg)
+		assert.Equal(500, Err.Status())
+		assert.Equal("Error: ", Err.Error())
+		assert.Equal(`Error{Code:500, Err:"Error", Msg:"", Data:<nil>, Stack:""}`, Err.String())
+	})
+
+	t.Run("Error.WithMsg", func(t *testing.T) {
+		assert := assert.New(t)
+
+		err := Err.WithMsg()
+		assert.Equal(500, err.Code)
+		assert.Equal("Error", err.Err)
+		assert.Equal("", err.Msg)
+		err.Msg = "Hello"
+		assert.Equal("", Err.Msg)
+
+		err = Err.WithMsg("Hello")
+		assert.Equal(500, err.Code)
+		assert.Equal("Error", err.Err)
+		assert.Equal("Hello", err.Msg)
+		assert.Equal("Error: Hello", err.Error())
+
+		err = Err.WithMsg("Hello", "world")
+		assert.Equal(500, err.Code)
+		assert.Equal("Error", err.Err)
+		assert.Equal("Hello, world", err.Msg)
+		assert.Equal("Error: Hello, world", err.Error())
+	})
+
+	t.Run("Error.WithCode", func(t *testing.T) {
+		assert := assert.New(t)
+
+		err := Err.WithCode(800)
+		assert.Equal(800, err.Code)
+		assert.Equal("Error", err.Err)
+		assert.Equal("", err.Msg)
+		err.Msg = "Hello"
+		assert.Equal("", Err.Msg)
+		assert.Equal(500, Err.Code)
+
+		err = Err.WithCode(400)
+		assert.Equal(400, err.Code)
+		assert.Equal("Bad Request", err.Err)
+		assert.Equal("", err.Msg)
+		err.Msg = "Some error"
+		assert.Equal("", Err.Msg)
+	})
+
+	t.Run("Error.From", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var err error
+		assert.Nil(Err.From(err))
+		err = errors.New("some error")
+
+		err1 := Err.From(err)
+		assert.Equal("some error", err1.Msg)
+		assert.Equal("Error: some error", err1.Error())
+
+		err2 := Err.From(err1)
+		EqualPtr(t, err1, err2)
+
+		err2 = Err.From(&testHTTPError1{c: 400, m: "testHTTPError1"})
+		assert.Equal(400, err2.Status())
+		assert.Equal("Error: testHTTPError1", err2.Error())
+		NotEqualPtr(t, err1, err2)
+
+		err2 = Err.From(&textproto.Error{Code: 400, Msg: "textproto.Error"})
+		assert.Equal(400, err2.Status())
+		assert.Equal("Error: textproto.Error", err2.Error())
+		NotEqualPtr(t, err1, err2)
+
+		err1 = &Error{}
+		err2 = err1.From(&textproto.Error{Code: 400, Msg: "textproto.Error"})
+		assert.Equal(400, err2.Status())
+		assert.Equal("Bad Request: textproto.Error", err2.Error())
+		NotEqualPtr(t, err1, err2)
+
+		err2 = err1.From(err1)
+		EqualPtr(t, err1, err2)
+	})
+}
 
 type testHTTPError1 struct {
 	c int

@@ -125,7 +125,7 @@ func TestGearAppHello(t *testing.T) {
 	})
 }
 
-func TestGearError(t *testing.T) {
+func TestGearAppOnError(t *testing.T) {
 	t.Run("ErrorLog and OnError", func(t *testing.T) {
 		assert := assert.New(t)
 

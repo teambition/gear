@@ -139,9 +139,7 @@ type appSetting uint8
 // Build-in app settings
 const (
 	// It will be used by `ctx.ParseBody`, value should implements `gear.BodyParser` interface, default to:
-	//
-	//   app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
-	//
+	//  app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
 	SetBodyParser appSetting = iota
 
 	// Enable compress for response, value should implements `gear.Compressible` interface, no default value.
@@ -150,20 +148,15 @@ const (
 	//
 	//  app := gear.New()
 	//  app.Set(gear.SetCompress, compressible.WithThreshold(1024))
-	//
 	SetCompress
 
 	// Set secret keys for signed cookies, it will be used by `ctx.Cookies`, value should be `[]string` type,
 	// no default value. More document https://github.com/go-http-utils/cookie, Example:
-	//
 	//  app.Set(gear.SetKeys, []string{"some key2", "some key1"})
-	//
 	SetKeys
 
 	// Set a logger to app, value should be `*log.Logger` instance, default to:
-	//
-	//   app.Set(gear.SetLogger, log.New(os.Stderr, "", log.LstdFlags))
-	//
+	//  app.Set(gear.SetLogger, log.New(os.Stderr, "", log.LstdFlags))
 	SetLogger
 
 	// Set a on-error hook to app, value should be `func(ctx *Context, err *Error)`, no default value.
@@ -175,9 +168,7 @@ const (
 
 	// Set a timeout to for the middleware process, value should be `time.Duration`. No default.
 	// Example:
-	//
 	//  app.Set(gear.SetTimeout, 3*time.Second)
-	//
 	SetTimeout
 
 	// Set a function that Wrap the gear.Context' underlayer context.Context. No default.
