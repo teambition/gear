@@ -13,6 +13,17 @@ import (
 	"unicode/utf8"
 )
 
+type middlewares []Middleware
+
+func (m middlewares) run(ctx *Context) (err error) {
+	for _, fn := range m {
+		if err = fn(ctx); !IsNil(err) || ctx.Res.ended.isTrue() {
+			return
+		}
+	}
+	return
+}
+
 // Compose composes a array of middlewares to one middleware
 func Compose(mds ...Middleware) Middleware {
 	switch len(mds) {
@@ -124,9 +135,7 @@ func (err Error) From(e error) *Error {
 	}
 
 	if err.Err == "" {
-		if text := http.StatusText(err.Code); text != "" {
-			err.Err = text
-		}
+		err.Err = http.StatusText(err.Code)
 	}
 	return &err
 }
@@ -267,7 +276,7 @@ func setRefField(fieldKind reflect.Kind, field reflect.Value, value string) erro
 	case reflect.Float64:
 		return setRefFloat(field, value, 64)
 	}
-	return fmt.Errorf("unknown field type: %#v", fieldKind)
+	return Err.WithMsg(fmt.Sprintf("unknown field type: %#v", fieldKind))
 }
 
 func setRefBool(field reflect.Value, value string) error {

@@ -69,7 +69,7 @@ type Context struct {
 
 // NewContext creates an instance of Context. Export for testing middleware.
 func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
-	ctx := &Context{
+	ctx := Context{
 		app: app,
 		Req: r,
 		Res: &Response{w: w, rw: w},
@@ -97,7 +97,7 @@ func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	} else {
 		ctx._ctx = ctx.ctx
 	}
-	return ctx
+	return &ctx
 }
 
 // ----- implement context.Context interface ----- //
@@ -201,7 +201,7 @@ func (ctx *Context) Timing(dt time.Duration, fn func(context.Context)) (err erro
 		// recover the fn call
 		defer func() {
 			if e := recover(); e != nil {
-				err = fmt.Errorf("Timing panic: %#v", e)
+				err = ErrInternalServerError.WithMsg(fmt.Sprintf("Timing panic: %#v", e))
 			}
 			close(ch)
 		}()

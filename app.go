@@ -371,14 +371,3 @@ func (s *ServerListener) Addr() net.Addr {
 func (s *ServerListener) Wait() error {
 	return <-s.c
 }
-
-type middlewares []Middleware
-
-func (m middlewares) run(ctx *Context) (err error) {
-	for _, handle := range m {
-		if err = handle(ctx); !IsNil(err) || ctx.Res.ended.isTrue() {
-			return err
-		}
-	}
-	return nil
-}
