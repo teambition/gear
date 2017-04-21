@@ -170,6 +170,8 @@ func ErrorWithStack(val interface{}, skip ...int) *Error {
 
 	var err *Error
 	switch v := val.(type) {
+	case *Error:
+		err = v.WithMsg() // must clone, should not change the origin *Error instance
 	case error:
 		err = ErrInternalServerError.From(v)
 	case string:

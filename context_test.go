@@ -962,7 +962,7 @@ type RenderTest struct {
 
 func (t *RenderTest) Render(ctx *Context, w io.Writer, name string, data interface{}) (err error) {
 	if err = t.tpl.ExecuteTemplate(w, name, data); err != nil {
-		err = ErrNotFound.WithMsg(err.Error())
+		err = ErrNotFound.From(err)
 	}
 	return
 }
@@ -1032,7 +1032,7 @@ func TestGearContextRender(t *testing.T) {
 func TestGearContextStream(t *testing.T) {
 	data, err := ioutil.ReadFile("testdata/hello.html")
 	if err != nil {
-		panic(Err.WithMsg(err.Error()))
+		panic(Err.From(err))
 	}
 
 	t.Run("should work", func(t *testing.T) {
@@ -1088,7 +1088,7 @@ func TestGearContextStream(t *testing.T) {
 func TestGearContextAttachment(t *testing.T) {
 	data, err := ioutil.ReadFile("testdata/README.md")
 	if err != nil {
-		panic(Err.WithMsg(err.Error()))
+		panic(Err.From(err))
 	}
 
 	t.Run("should work as attachment", func(t *testing.T) {

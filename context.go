@@ -372,13 +372,13 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 		mediaType = MIMEOctetStream
 	}
 	if mediaType, params, err = mime.ParseMediaType(mediaType); err != nil {
-		return ErrUnsupportedMediaType.WithMsg(err.Error())
+		return ErrUnsupportedMediaType.From(err)
 	}
 
 	reader := http.MaxBytesReader(ctx.Res, ctx.Req.Body, ctx.app.bodyParser.MaxBytes())
 	if buf, err = ioutil.ReadAll(reader); err != nil {
 		// err may not be 413 Request entity too large, just make it to 413
-		return ErrRequestEntityTooLarge.WithMsg(err.Error())
+		return ErrRequestEntityTooLarge.From(err)
 	}
 	if err = ctx.app.bodyParser.Parse(buf, body, mediaType, params["charset"]); err != nil {
 		return err
@@ -420,7 +420,7 @@ func (ctx *Context) HTML(code int, str string) error {
 func (ctx *Context) JSON(code int, val interface{}) error {
 	buf, err := json.Marshal(val)
 	if err != nil {
-		return ctx.Error(err)
+		return err
 	}
 	return ctx.JSONBlob(code, buf)
 }
@@ -439,7 +439,7 @@ func (ctx *Context) JSONBlob(code int, buf []byte) error {
 func (ctx *Context) JSONP(code int, callback string, val interface{}) error {
 	buf, err := json.Marshal(val)
 	if err != nil {
-		return ctx.Error(err)
+		return err
 	}
 	return ctx.JSONPBlob(code, callback, buf)
 }
@@ -465,7 +465,7 @@ func (ctx *Context) JSONPBlob(code int, callback string, buf []byte) error {
 func (ctx *Context) XML(code int, val interface{}) error {
 	buf, err := xml.Marshal(val)
 	if err != nil {
-		return ctx.Error(err)
+		return err
 	}
 	return ctx.XMLBlob(code, buf)
 }

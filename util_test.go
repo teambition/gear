@@ -145,6 +145,7 @@ func TestGearError(t *testing.T) {
 		assert := assert.New(t)
 
 		err := Err.WithMsg()
+		assert.True(*Err == *err)
 		assert.Equal(500, err.Code)
 		assert.Equal("Error", err.Err)
 		assert.Equal("", err.Msg)
@@ -543,6 +544,10 @@ func TestErrorWithStack(t *testing.T) {
 		// test skip
 		errSkip := ErrInternalServerError.WithMsg("hello")
 		assert.True(strings.Index(ErrorWithStack(errSkip, 0).Stack, "util.go") > 0)
+		// don't chang origin *Error
+		e := ErrorWithStack(Err)
+		assert.NotZero(e.Stack)
+		assert.Equal("", Err.Stack)
 	})
 
 	t.Run("Error string", func(t *testing.T) {

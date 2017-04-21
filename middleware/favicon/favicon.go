@@ -45,7 +45,7 @@ func New(iconpath string) gear.Middleware {
 	}
 	file, err := ioutil.ReadFile(iconpath)
 	if err != nil {
-		panic(gear.Err.WithMsg(err.Error()))
+		panic(gear.Err.From(err))
 	}
 	return NewWithIco(file, info.ModTime())
 }
