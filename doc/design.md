@@ -250,7 +250,7 @@ func Logger() gin.HandlerFunc {
 
 对于 Web 服务而言，`error` 中必须要包含两个信息：error message 和 error code。比如一个 `400 Bad request` 的 error，框架能提取 status code 和 message 的话，就能自动响应给客户端了。对于实际业务需求，这个 400 错误还需要包含更具体的错误信息，甚至包含 i18n 信息。
 
-### `gear.HTTPError`，`gear.Error`，`gear.ErrorWithStack`
+### `gear.HTTPError`，`gear.Error`
 
 所以 Gear 框架定义了一个核心的 `gear.HTTPError` interface：
 
@@ -273,17 +273,96 @@ type Error struct {
 }
 ```
 
-它实现了 `gear.HTTPError` interface，并额外提供了 `Data` 和 `Stack` 分别用于保存更具体的错误信息和错误堆栈，另外还有一个 `String` 方法：
+它实现了 `gear.HTTPError` interface，并额外提供了 `Data` 和 `Stack` 分别用于保存更具体的错误信息和错误堆栈，还提供了几个特别有用的方法：
 
-```go
-func (err *Error) String() string {
-  if v, ok := err.Data.([]byte); ok && utf8.Valid(v) {
-    err.Data = string(v)
-  }
-  return fmt.Sprintf(`Error{Code:%d, Err:"%s", Msg:"%s", Data:%#v, Stack:"%s"}`,
-    err.Code, err.Err, err.Msg, err.Data, err.Stack)
-}
-```
+1. 用于错误日志输出的 `String` 方法：
+
+    ```go
+    func (err *Error) String() string {
+      if v, ok := err.Data.([]byte); ok && utf8.Valid(v) {
+        err.Data = string(v)
+      }
+      return fmt.Sprintf(`Error{Code:%d, Err:"%s", Msg:"%s", Data:%#v, Stack:"%s"}`,
+        err.Code, err.Err, err.Msg, err.Data, err.Stack)
+    }
+    ```
+
+1. 用于从给定 error 模板和错误信息快速生成新 error 的 `WithMsg` 方法：
+
+    ```go
+    func (err Error) WithMsg(msgs ...string) *Error {
+      if len(msgs) > 0 {
+        err.Msg = strings.Join(msgs, ", ")
+      }
+      return &err
+    }
+    ```
+
+    其使用方法如下：
+
+    ```go
+    err := gear.ErrBadRequest.WithMsg() // 未提供 message 则相当于纯粹的 clone
+    err := gear.ErrBadRequest.WithMsg("invalid email")
+    err := gear.ErrBadRequest.WithMsg("invalid email", "invalid phone number") // 支持多个 message
+    ```
+
+    你也可以定义自己的 `400` 错误模板：
+
+    ```go
+    ErrParamRequire := &gear.Error{Code: http.StatusBadRequest, Err: "ParamRequired"}
+    err := ErrParamRequire.WithMsg("user name required")
+    ```
+
+1. 用于从给定 error 模板和错误码快速生成新 error 的 `WithCode` 方法：
+
+    ```go
+    func (err Error) WithCode(code int) *Error {
+      err.Code = code
+      if text := http.StatusText(code); text != "" {
+        err.Err = text
+      }
+      return &err
+    }
+    ```
+
+    比如 Gear 框架内建的 4xx 和 5xx error：
+
+    ```go
+    Err = &Error{Code: http.StatusInternalServerError, Err: "Error"}
+    ErrBadRequest                    = Err.WithCode(http.StatusBadRequest)
+    ErrUnauthorized                  = Err.WithCode(http.StatusUnauthorized)
+    ErrPaymentRequired               = Err.WithCode(http.StatusPaymentRequired)
+    ```
+
+1. 用于从给定 error 模板和错误速生成新 error 的 `From` 方法：
+
+    ```go
+    func (err Error) From(e error) *Error {
+      if IsNil(e) {
+        return nil
+      }
+
+      switch v := e.(type) {
+      case *Error:
+        return v
+      case HTTPError:
+        err.Code = v.Status()
+        err.Msg = v.Error()
+      case *textproto.Error:
+        err.Code = v.Code
+        err.Msg = v.Msg
+      default:
+        err.Msg = e.Error()
+      }
+
+      if err.Err == "" {
+        err.Err = http.StatusText(err.Code)
+      }
+      return &err
+    }
+    ```
+
+    该方法尝试把任何 `error interface` 对象转换成 `*gear.Error`
 
 `gear.Error` 类型既可以像传统错误一样直接响应给客户端：
 
@@ -295,6 +374,21 @@ ctx.End(err.Status(), []byte(err.Error()))
 
 ```go
 ctx.JSON(err.Status(), err.Error)
+```
+
+Gear 对捕获到的 error 会默认以 JSON 响应给请求方，如：
+
+```go
+// middle returns some error
+app.Use(func(ctx *Context) error {
+  return errors.New("some error")
+})
+```
+
+请求方会收到 `500 Internal Server Error` 的 JSON 响应:
+
+```json
+{"error":"Internal Server Error","message":"some error"}
 ```
 
 对于必要的（如 5xx 系列）错误会进入 `App.Error` 处理，这样也保留了错误堆栈。
@@ -317,6 +411,8 @@ func ErrorWithStack(val interface{}, skip ...int) *Error {
 
   var err *Error
   switch v := val.(type) {
+  case *Error:
+    err = v.WithMsg() // must clone, should not change the origin *Error instance
   case error:
     err = ErrInternalServerError.From(v)
   case string:
@@ -340,95 +436,43 @@ func ErrorWithStack(val interface{}, skip ...int) *Error {
 
 从其逻辑我们可以看出，如果 val 已经是 `gear.Error`，则直接使用，如果 err 没有包含 `Stack`，则追加。
 
-一般来说，`gear.Error` 即可满足常规需求，Gear 的其它中间件就使用了它，比如 `gear.Router` 中，当路由未定义时会：
+Gear 框架内建了一个 `gear.Error` 常量 `gear.Err`:
 
 ```go
-return ctx.Error(&Error{Code: http.StatusNotImplemented,
-  Msg: fmt.Sprintf(`"%s" is not implemented`, ctx.Path)})
+var Err = &Error{Code: http.StatusInternalServerError, Err: "Error"}
+```
+
+并从 `gear.Err` 派生了常用的 4xx 和 5xx 错误模板：
+
+```go
+// https://golang.org/pkg/net/http/#pkg-constants
+ErrBadRequest                    = Err.WithCode(http.StatusBadRequest)
+ErrUnauthorized                  = Err.WithCode(http.StatusUnauthorized)
+ErrPaymentRequired               = Err.WithCode(http.StatusPaymentRequired)
+ErrForbidden                     = Err.WithCode(http.StatusForbidden)
+ErrNotFound                      = Err.WithCode(http.StatusNotFound)
+// more...
+```
+
+这些内建的错误即可满足常规需求，Gear 的其它中间件就使用了它，比如 `gear.Router` 中，当路由未定义时会：
+
+```go
+if r.otherwise == nil {
+  return ErrNotImplemented.WithMsg(fmt.Sprintf(`"%s" is not implemented`, ctx.Path))
+}
 ```
 
 又比如 `cors` 中间件中，当跨域域名不允许时：
 
 ```go
-return ctx.Error(&gear.Error{Code: http.StatusForbidden,
-  Msg: fmt.Sprintf("Origin: %v is not allowed", origin)})
+if allowOrigin == "" {
+  return gear.ErrForbidden.WithMsg(fmt.Sprintf("Origin: %v is not allowed", origin))
+}
 ```
 
 ### `gear.ParseError`，`gear.SetOnError`
 
-那么，`func(ctx *gear.Context) error` 中的 `error` 是怎么变成我们期望的携带具体信息的 error 的呢？它又是怎样被自动化处理或输出自定义 JSON 错误的呢？
-
-我们先来个自定义的 error 类型：
-
-```go
-package errors
-// Error represents an error used by application.
-type Error struct {
-  Code int    `json:"code"`
-  Err  string `json:"error"`
-  Msg  string `json:"message"`
-}
-// Status is to implement gear.HTTPError interface.
-func (e Error) Status() int {
-  return e.Code
-}
-// Error is to implement gear.HTTPError interface.
-func (e Error) Error() string {
-  return e.Err
-}
-// SetMsg returns a new error with given new message.
-func (e Error) SetMsg(params ...string) Error {
-  if len(params) != 0 {
-    e.Msg = strings.Join(params, ", ")
-  }
-  return e
-}
-// Predefined errors.
-var (
-  InvalidParams = Error{
-    Code: http.StatusBadRequest,
-    Err:  "Invalid Parameters",
-  }
-  NotFound = Error{
-    Code: http.StatusNotFound,
-    Err:  "Resource Not Found",
-  }
-)
-```
-
-其中还包含了两个预定义的错误 `InvalidParams` 和 `NotFound`。然后我们定义一个自己的 error 处理逻辑：
-
-```go
-app.Set(gear.SetOnError, func(ctx *gear.Context, httpError gear.HTTPError) {
-  switch err := httpError.(type) {
-  case errors.Error, *errors.Error:
-    ctx.JSON(err.Code, err)
-  }
-})
-```
-
-这里我们通过 `switch type` 判断如果 `httpError` 是我们自定义的 `errors.Error` 类型（也就是我们预期的在业务逻辑中使用的）则用 `ctx.JSON` 主动处理，否则不处理，而是由框架自动处理。这个自定义 `Error` 在实际业务逻辑中用起来大概是：
-
-```go
-// GET /workspaces/:_workspaceId
-func (w *Workspace) GetByID(ctx *gear.Context) error {
-  workspaceID := ctx.Param("_workspaceId")
-  if !valid.IsMongoID(workspaceID) {
-    return errors.InvalidParams.SetMsg("_workspaceId")
-  }
-
-  workspace, err := w.Model.FindByID(workspaceID)
-  if err != nil {
-    return err
-  }
-  if workspace == nil {
-    return errors.NotFound.SetMsg("workspace")
-  }
-  return ctx.JSON(http.StatusOK, workspace)
-}
-```
-
-当然这只是一个相当简单的自定义的实现了 `gear.HTTPError` interface 的 error 类型。Gear 框架下完全可以自定义更复杂的，充满想象力的错误处理机制。
+如果你觉得 `gear.Error` 还无法满足需求，你完全可以参考它实现一个更复杂的 `gear.HTTPError` interface 的 error 类型。Gear 框架下完全可以自定义更复杂的，充满想象力的错误处理机制。
 
 框架内的任何 `error` interface 的错误，都会经过 `gear.ParseError` 处理成 `gear.HTTPError` interface，然后再交给 `gear.SetOnError` 做进一步自定义处理：
 
@@ -442,11 +486,13 @@ func ParseError(e error, code ...int) HTTPError {
   case HTTPError:
     return v
   case *textproto.Error:
-    return &Error{v.Code, v.Msg, nil, ""}
+    err := Err.WithCode(v.Code)
+    err.Msg = v.Msg
+    return err
   default:
-    err := &Error{500, e.Error(), nil, ""}
+    err := ErrInternalServerError.WithMsg(e.Error())
     if len(code) > 0 && code[0] > 0 {
-      err.Code = code[0]
+      err = err.WithCode(code[0])
     }
     return err
   }
@@ -454,6 +500,17 @@ func ParseError(e error, code ...int) HTTPError {
 ```
 
 从上面的处理逻辑我们可以看出，`gear.HTTPError` 会被直接返回，所以保留了原始错误的所有信息，如自定义的 json tag。其它错误会被加工处理，无法取得 status code 的错误则默认取 `500`。
+
+我们可以定义自己的 `MyError` 类型，然后通过设置 `gear.SetOnError` 对它进行特殊处理。下面我们通过 `switch type` 判断如果 `httpError` 是我们自定义的 `MyError` 类型（也就是我们预期的在业务逻辑中使用的）则用 `ctx.JSON` 主动处理，否则不处理，而是由框架自动处理：
+
+```go
+app.Set(gear.SetOnError, func(ctx *gear.Context, httpError gear.HTTPError) {
+  switch err := httpError.(type) {
+  case MyError, *MyError:
+    ctx.JSON(err.Code, err)
+  }
+})
+```
 
 这里再次强调，框架内捕捉的所有错误，包括 `ctx.Error(error)` 和 `ctx.ErrorStatus(statusCode)` 主动发起的，包括中间件 `return error` 返回的，包括 panic 的，也包括 `context.Context` cancel 引发的错误等，都是经过上面叙述的错误处理流程处理，响应给客户端，有必要的则输出到日志。
 

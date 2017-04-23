@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.4.0] - 2017-04-23
+
+**Changed:**
+
+- Refactor `gear.Error` type. It is more powerful!
+
 ## [1.3.1] - 2017-04-12
 
 **Changed:**

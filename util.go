@@ -98,6 +98,8 @@ func (err *Error) String() string {
 }
 
 // WithMsg returns a copy of err with given new messages.
+//  err := gear.Err.WithMsg() // just clone
+//  err := gear.ErrBadRequest.WithMsg("invalid email") // 400 Bad Request error with message invalid email"
 func (err Error) WithMsg(msgs ...string) *Error {
 	if len(msgs) > 0 {
 		err.Msg = strings.Join(msgs, ", ")
@@ -106,6 +108,7 @@ func (err Error) WithMsg(msgs ...string) *Error {
 }
 
 // WithCode returns a copy of err with given code.
+//  BadRequestErr := gear.Err.WithCode(400)
 func (err Error) WithCode(code int) *Error {
 	err.Code = code
 	if text := http.StatusText(code); text != "" {
@@ -116,6 +119,8 @@ func (err Error) WithCode(code int) *Error {
 
 // From returns a copy of err with given error. It will try to merge the given error.
 // If the given error is a *Error instance, it will be returned without copy.
+//  err := gear.ErrBadRequest.From(errors.New("invalid email"))
+//  err := gear.Err.From(someErr)
 func (err Error) From(e error) *Error {
 	if IsNil(e) {
 		return nil
