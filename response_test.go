@@ -269,7 +269,7 @@ func TestGearResponsePusher(t *testing.T) {
 		app := New()
 		app.Use(func(ctx *Context) error {
 			err := ctx.Res.Push("/test", &http.PushOptions{Method: "GET"})
-			assert.Equal(err, ErrPusherNotImplemented)
+			assert.Equal(err.Error(), "Error: http.Pusher not implemented")
 
 			return ctx.End(200, []byte("OK"))
 		})

@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.4.1] - 2017-04-24
+
+**Changed:**
+
+- Remove unnecessary error constants.
+
 ## [1.4.0] - 2017-04-23
 
 **Changed:**

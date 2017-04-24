@@ -26,18 +26,6 @@ const (
 	paramsKey
 )
 
-// ErrAnyKeyNonExistent is returned from Context.Any
-var ErrAnyKeyNonExistent = Err.WithMsg("non-existent key")
-
-// ErrBodyParserNotRegistered is returned from Context.ParseBody
-var ErrBodyParserNotRegistered = Err.WithMsg("bodyParser not registered")
-
-// ErrMissingRequestBody is returned from Context.ParseBody
-var ErrMissingRequestBody = Err.WithMsg("missing request body")
-
-// ErrRendererNotRegistered is returned from Context.Render
-var ErrRendererNotRegistered = Err.WithMsg("renderer not registered")
-
 // Any interface is used by ctx.Any.
 type Any interface {
 	New(ctx *Context) (interface{}, error)
@@ -245,7 +233,7 @@ func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
 				ctx.kv[any] = val
 			}
 		default:
-			return nil, ErrAnyKeyNonExistent
+			return nil, Err.WithMsg("non-existent key")
 		}
 	}
 	return
@@ -357,10 +345,10 @@ func (ctx *Context) QueryAll(name string) []string {
 //
 func (ctx *Context) ParseBody(body BodyTemplate) error {
 	if ctx.app.bodyParser == nil {
-		return ErrBodyParserNotRegistered
+		return Err.WithMsg("bodyParser not registered")
 	}
 	if ctx.Req.Body == nil {
-		return ErrMissingRequestBody
+		return Err.WithMsg("missing request body")
 	}
 
 	var err error
@@ -484,7 +472,7 @@ func (ctx *Context) XMLBlob(code int, buf []byte) error {
 // "after hooks" (if no error) and "end hooks" will run normally.
 func (ctx *Context) Render(code int, name string, data interface{}) (err error) {
 	if ctx.app.renderer == nil {
-		return ErrRendererNotRegistered
+		return Err.WithMsg("renderer not registered")
 	}
 	buf := new(bytes.Buffer)
 	if err = ctx.app.renderer.Render(ctx, buf, name, data); err == nil {
