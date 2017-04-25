@@ -5,6 +5,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.4.2] - 2017-04-25
+
+**Changed:**
+
+- Improve `Context.IP()`
+- Add `Context.Protocol()`
+
 ## [1.4.1] - 2017-04-24
 
 **Changed:**

@@ -307,6 +307,7 @@ h1 {
 		router := NewRouter()
 		router.Get("/", func(ctx *Context) error {
 			err := ctx.Res.Push("/hello.css", &http.PushOptions{Method: "GET"})
+			assert.Equal("https", ctx.Protocol())
 			assert.Equal(err, http.ErrNotSupported)
 			return ctx.HTML(200, htmlBody)
 		})

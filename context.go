@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-http-utils/cookie"
@@ -269,7 +270,24 @@ func (ctx *Context) IP() net.IP {
 	} else {
 		ra, _, _ = net.SplitHostPort(ra)
 	}
-	return net.ParseIP(ra)
+	if index := strings.IndexByte(ra, ','); index >= 0 {
+		ra = ra[0:index]
+	}
+	return net.ParseIP(strings.TrimSpace(ra))
+}
+
+// Protocol returns the protocol ("http" or "https") that a client used to connect to your proxy or load balancer.
+// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
+func (ctx *Context) Protocol() string {
+	if ctx.Req.TLS != nil {
+		return "https"
+	}
+	switch p := ctx.Get(HeaderXForwardedProto); p {
+	case "http", "https":
+		return p
+	default:
+		return "http"
+	}
 }
 
 // AcceptType returns the most preferred content type from the HTTP Accept header.

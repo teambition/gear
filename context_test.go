@@ -352,7 +352,7 @@ func TestGearContextIP(t *testing.T) {
 	app := New()
 	r := NewRouter()
 	r.Get("/XForwardedFor", func(ctx *Context) error {
-		assert.Equal("127.0.0.10", ctx.IP().String())
+		assert.Equal("192.168.0.99", ctx.IP().String())
 		return ctx.End(http.StatusNoContent)
 	})
 	r.Get("/XRealIP", func(ctx *Context) error {
@@ -374,7 +374,7 @@ func TestGearContextIP(t *testing.T) {
 
 	host := "http://" + srv.Addr().String()
 	req, _ := NewRequst("GET", host+"/XForwardedFor")
-	req.Header.Set("X-Forwarded-For", "127.0.0.10")
+	req.Header.Set("X-Forwarded-For", "192.168.0.99, 127.0.0.10")
 
 	res, err := DefaultClientDo(req)
 	assert.Nil(err)
@@ -395,6 +395,37 @@ func TestGearContextIP(t *testing.T) {
 	req, _ = NewRequst("GET", host+"/err")
 	req.Header.Set("X-Real-IP", "1.2.3")
 
+	res, err = DefaultClientDo(req)
+	assert.Nil(err)
+	assert.Equal(204, res.StatusCode)
+}
+
+func TestGearContextProtocol(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	r := NewRouter()
+	r.Get("/", func(ctx *Context) error {
+		assert.Equal("http", ctx.Protocol())
+		return ctx.End(http.StatusNoContent)
+	})
+	r.Get("/X-Forwarded-Proto", func(ctx *Context) error {
+		assert.Equal("https", ctx.Protocol())
+		return ctx.End(http.StatusNoContent)
+	})
+	app.UseHandler(r)
+
+	srv := app.Start()
+	defer srv.Close()
+
+	host := "http://" + srv.Addr().String()
+	req, _ := NewRequst("GET", host)
+	res, err := DefaultClientDo(req)
+	assert.Nil(err)
+	assert.Equal(204, res.StatusCode)
+
+	req, _ = NewRequst("GET", host+"/X-Forwarded-Proto")
+	req.Header.Set("X-Forwarded-Proto", "https")
 	res, err = DefaultClientDo(req)
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
