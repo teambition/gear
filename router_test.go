@@ -43,8 +43,8 @@ func TestGearRouter(t *testing.T) {
 		res, err = RequestBy("GET", host+"/api")
 		assert.Nil(err)
 		assert.Equal(0, called)
-		assert.Equal(501, res.StatusCode)
-		assert.Equal(`{"error":"Not Implemented","message":"\"/api\" is not implemented"}`, PickRes(res.Text()).(string))
+		assert.Equal(421, res.StatusCode)
+		assert.Equal("", PickRes(res.Text()).(string))
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/api/users")
@@ -838,6 +838,67 @@ func TestGearRouter(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.Equal(`{"error":"Internal Server Error","message":"some error"}`, PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
+
+	t.Run("multi-routers", func(t *testing.T) {
+		assert := assert.New(t)
+
+		r1 := NewRouter(RouterOptions{Root: "/abc"})
+		r1.Get("/:name", func(ctx *Context) error {
+			return ctx.End(200, []byte(ctx.Param("name")))
+		})
+
+		r2 := NewRouter(RouterOptions{Root: "/abcd"})
+		r2.Get("/:name", func(ctx *Context) error {
+			return ctx.End(200, []byte(ctx.Param("name")))
+		})
+
+		app := New()
+		app.UseHandler(r1)
+		app.UseHandler(r2)
+
+		srv := app.Start()
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := RequestBy("GET", host)
+		assert.Nil(err)
+		assert.Equal(421, res.StatusCode)
+		res.Body.Close()
+
+		res, err = RequestBy("GET", host+"/abc")
+		assert.Nil(err)
+		assert.Equal(421, res.StatusCode)
+		res.Body.Close()
+
+		res, err = RequestBy("GET", host+"/abcd")
+		assert.Nil(err)
+		assert.Equal(421, res.StatusCode)
+		res.Body.Close()
+
+		res, err = RequestBy("GET", host+"/abc/")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = RequestBy("GET", host+"/abc/123")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("123", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = RequestBy("GET", host+"/abcd/")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = RequestBy("GET", host+"/abcd/123")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("123", PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 }

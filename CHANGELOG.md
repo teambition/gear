@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.4.3] - 2017-04-26
+
+**Fixed:**
+
+- Fix for multi-routers
+
 ## [1.4.2] - 2017-04-25
 
 **Changed:**
@@ -28,8 +34,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 **Changed:**
 
-- Ignored `"context canceled"` error.
-- Added more examples.
+- Ignore `"context canceled"` error.
+- Add more examples.
 
 ## [1.3.0] - 2017-03-28
 

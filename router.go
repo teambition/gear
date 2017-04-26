@@ -175,8 +175,8 @@ func NewRouter(routerOptions ...RouterOptions) *Router {
 	if len(routerOptions) > 0 {
 		opts = routerOptions[0]
 	}
-	if opts.Root == "" {
-		opts.Root = "/"
+	if opts.Root == "" || opts.Root[len(opts.Root)-1] != '/' {
+		opts.Root += "/"
 	}
 
 	return &Router{
@@ -267,11 +267,8 @@ func (r *Router) Serve(ctx *Context) error {
 		return nil
 	}
 
-	if len(r.root) > 1 {
-		path = strings.TrimPrefix(path, r.root)
-		if path == "" {
-			path = "/"
-		}
+	if l := len(r.root); l > 1 {
+		path = path[l-1:]
 	}
 
 	matched := r.trie.Match(path)
@@ -283,7 +280,7 @@ func (r *Router) Serve(ctx *Context) error {
 				ctx.Req.URL.Path = matched.FPR
 			}
 			if len(r.root) > 1 {
-				ctx.Req.URL.Path = r.root + ctx.Req.URL.Path
+				ctx.Req.URL.Path = r.root + ctx.Req.URL.Path[1:]
 			}
 
 			code := http.StatusMovedPermanently
