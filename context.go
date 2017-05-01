@@ -342,7 +342,7 @@ func (ctx *Context) QueryAll(name string) []string {
 // pointed to by BodyTemplate body, and validate it.
 // DefaultBodyParser support JSON, Form and XML.
 //
-// Defaine a BodyTemplate type in some API:
+// Define a BodyTemplate type in some API:
 //  type jsonBodyTemplate struct {
 //  	ID   string `json:"id" form:"id"`
 //  	Pass string `json:"pass" form:"pass"`
@@ -392,10 +392,10 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 	return body.Validate()
 }
 
-// ParseQuery parses query with BodyParser, stores the result in the value
+// ParseQuery parses query with QueryParser, stores the result in the value
 // pointed to by BodyTemplate body, and validate it.
 //
-// Defaine a BodyTemplate type in some API:
+// Define a BodyTemplate type in some API:
 //  type jsonQueryTemplate struct {
 //  	ID   string `json:"id" form:"id"`
 //  	Pass string `json:"pass" form:"pass"`
@@ -409,7 +409,7 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 //  }
 //
 // Use it in middleware:
-//  body := jsonBodyTemplate{}
+//  body := jsonQueryTemplate{}
 //  if err := ctx.ParseQuery(&body) {
 //  	return err
 //  }
