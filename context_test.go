@@ -758,6 +758,78 @@ func TestGearContextParseBody(t *testing.T) {
 	})
 }
 
+type jsonQueryTemplate struct {
+	ID   string `json:"id" form:"id"`
+	Pass string `json:"pass" form:"pass"`
+}
+
+func (b *jsonQueryTemplate) Validate() error {
+	if len(b.ID) < 3 || len(b.Pass) < 6 {
+		return ErrBadRequest.WithMsg("invalid id or pass")
+	}
+	return nil
+}
+
+type invalidQueryTemplate struct {
+	ID   string  `json:"id" form:"id"`
+	Pass string  `json:"pass" form:"pass"`
+	Name *string `json:"name" form:"name"`
+}
+
+func (b *invalidQueryTemplate) Validate() error {
+	return nil
+}
+
+func TestGearContextParseQuery(t *testing.T) {
+	app := New()
+	assert.Panics(t, func() {
+		app.Set(SetQueryParser, 123)
+	})
+
+	t.Run("should error when queryParser not exists", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.queryParser = nil
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=123456789&id=foobar", nil)
+		body := jsonQueryTemplate{}
+		err := ctx.ParseQuery(&body)
+		assert.Equal("Error: queryParser not registered", err.Error())
+	})
+
+	t.Run("should 400 error when validate error", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=12&id=admin", nil)
+
+		body := jsonQueryTemplate{}
+		err := ctx.ParseQuery(&body)
+		assert.Equal(400, err.(*Error).Code)
+	})
+
+	t.Run("should parse query content", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin", nil)
+
+		body := jsonQueryTemplate{}
+		err := ctx.ParseQuery(&body)
+		assert.Nil(err)
+		assert.Equal("admin", body.ID)
+		assert.Equal("password", body.Pass)
+	})
+
+	t.Run("should parse error with invalid data type", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin&name=admin", nil)
+		body := invalidQueryTemplate{}
+		err := ctx.ParseQuery(&body)
+		assert.Equal(500, err.(*Error).Code)
+	})
+}
+
 func TestGearContextGetSet(t *testing.T) {
 	assert := assert.New(t)
 

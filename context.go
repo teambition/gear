@@ -392,6 +392,39 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 	return body.Validate()
 }
 
+// ParseQuery parses query with BodyParser, stores the result in the value
+// pointed to by BodyTemplate body, and validate it.
+//
+// Defaine a BodyTemplate type in some API:
+//  type jsonQueryTemplate struct {
+//  	ID   string `json:"id" form:"id"`
+//  	Pass string `json:"pass" form:"pass"`
+//  }
+//
+//  func (b *jsonQueryTemplate) Validate() error {
+//  	if len(b.ID) < 3 || len(b.Pass) < 6 {
+//  		return ErrBadRequest.WithMsg("invalid id or pass")
+//  	}
+//  	return nil
+//  }
+//
+// Use it in middleware:
+//  body := jsonBodyTemplate{}
+//  if err := ctx.ParseQuery(&body) {
+//  	return err
+//  }
+//
+func (ctx *Context) ParseQuery(body BodyTemplate) error {
+	if ctx.app.queryParser == nil {
+		return Err.WithMsg("queryParser not registered")
+	}
+	if err := ctx.app.queryParser.Parse(ctx.Req.URL.Query(), body); err != nil {
+		return err
+	}
+
+	return body.Validate()
+}
+
 // Get retrieves data from the request Header.
 func (ctx *Context) Get(key string) string {
 	return ctx.Req.Header.Get(key)

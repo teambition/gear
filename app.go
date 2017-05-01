@@ -27,6 +27,21 @@ type Renderer interface {
 	Render(ctx *Context, w io.Writer, name string, data interface{}) error
 }
 
+// QueryParser interface is used by ctx.ParseQuery. Default to:
+//  app.Set(gear.SetQueryParser, DefaultQueryParser)
+//
+type QueryParser interface {
+	Parse(val map[string][]string, body interface{}) error
+}
+
+// DefaultBodyParser is default QueryParser type.
+type DefaultQueryParser struct{}
+
+// Parse implemented QueryParser interface.
+func (d DefaultQueryParser) Parse(val map[string][]string, body interface{}) error {
+	return FormToStruct(val, body)
+}
+
 // BodyParser interface is used by ctx.ParseBody. Default to:
 //  app.Set(gear.SetBodyParser, DefaultBodyParser(1<<20))
 //
@@ -99,6 +114,7 @@ type App struct {
 	keys        []string
 	renderer    Renderer
 	bodyParser  BodyParser
+	queryParser QueryParser
 	compress    Compressible  // Default to nil, do not compress response content.
 	timeout     time.Duration // Default to 0, no time out.
 	logger      *log.Logger
@@ -120,6 +136,7 @@ func New() *App {
 	}
 	app.Set(SetEnv, env)
 	app.Set(SetBodyParser, DefaultBodyParser(2<<20)) // 2MB
+	app.Set(SetQueryParser, DefaultQueryParser{})
 	app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
 	return app
 }
@@ -141,6 +158,10 @@ const (
 	// It will be used by `ctx.ParseBody`, value should implements `gear.BodyParser` interface, default to:
 	//  app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
 	SetBodyParser appSetting = iota
+
+	// It will be used by `ctx.ParseQuery`, value should implements `gear.QueryParser` interface, default to:
+	//  app.Set(gear.SetQueryParser, gear.DefaultQueryParser)
+	SetQueryParser
 
 	// Enable compress for response, value should implements `gear.Compressible` interface, no default value.
 	// Example:
@@ -188,6 +209,12 @@ func (app *App) Set(key, val interface{}) {
 				panic(Err.WithMsg("SetBodyParser setting must implemented gear.BodyParser interface"))
 			} else {
 				app.bodyParser = bodyParser
+			}
+		case SetQueryParser:
+			if queryParser, ok := val.(QueryParser); !ok {
+				panic(Err.WithMsg("SetQueryParser setting must implemented gear.QueryParser interface"))
+			} else {
+				app.queryParser = queryParser
 			}
 		case SetCompress:
 			if compress, ok := val.(Compressible); !ok {
