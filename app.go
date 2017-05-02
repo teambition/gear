@@ -27,18 +27,18 @@ type Renderer interface {
 	Render(ctx *Context, w io.Writer, name string, data interface{}) error
 }
 
-// QueryParser interface is used by ctx.ParseQuery. Default to:
-//  app.Set(gear.SetQueryParser, DefaultQueryParser)
+// UrlParser interface is used by ctx.ParseUrl. Default to:
+//  app.Set(gear.SetUrlParser, DefaultUrlParser)
 //
-type QueryParser interface {
+type UrlParser interface {
 	Parse(val map[string][]string, body interface{}) error
 }
 
-// DefaultBodyParser is default QueryParser type.
-type DefaultQueryParser struct{}
+// DefaultUrlParser is default UrlParser type.
+type DefaultUrlParser struct{}
 
-// Parse implemented QueryParser interface.
-func (d DefaultQueryParser) Parse(val map[string][]string, body interface{}) error {
+// Parse implemented UrlParser interface.
+func (d DefaultUrlParser) Parse(val map[string][]string, body interface{}) error {
 	return FormToStruct(val, body)
 }
 
@@ -114,7 +114,7 @@ type App struct {
 	keys        []string
 	renderer    Renderer
 	bodyParser  BodyParser
-	queryParser QueryParser
+	urlParser   UrlParser
 	compress    Compressible  // Default to nil, do not compress response content.
 	timeout     time.Duration // Default to 0, no time out.
 	logger      *log.Logger
@@ -136,7 +136,7 @@ func New() *App {
 	}
 	app.Set(SetEnv, env)
 	app.Set(SetBodyParser, DefaultBodyParser(2<<20)) // 2MB
-	app.Set(SetQueryParser, DefaultQueryParser{})
+	app.Set(SetUrlParser, DefaultUrlParser{})
 	app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
 	return app
 }
@@ -159,9 +159,9 @@ const (
 	//  app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
 	SetBodyParser appSetting = iota
 
-	// It will be used by `ctx.ParseQuery`, value should implements `gear.QueryParser` interface, default to:
-	//  app.Set(gear.SetQueryParser, gear.DefaultQueryParser)
-	SetQueryParser
+	// It will be used by `ctx.ParseQuery`, value should implements `gear.UrlParser` interface, default to:
+	//  app.Set(gear.SetUrlParser, gear.DefaultUrlParser)
+	SetUrlParser
 
 	// Enable compress for response, value should implements `gear.Compressible` interface, no default value.
 	// Example:
@@ -210,11 +210,11 @@ func (app *App) Set(key, val interface{}) {
 			} else {
 				app.bodyParser = bodyParser
 			}
-		case SetQueryParser:
-			if queryParser, ok := val.(QueryParser); !ok {
-				panic(Err.WithMsg("SetQueryParser setting must implemented gear.QueryParser interface"))
+		case SetUrlParser:
+			if urlParser, ok := val.(UrlParser); !ok {
+				panic(Err.WithMsg("SetUrlParser setting must implemented gear.UrlParser interface"))
 			} else {
-				app.queryParser = queryParser
+				app.urlParser = urlParser
 			}
 		case SetCompress:
 			if compress, ok := val.(Compressible); !ok {

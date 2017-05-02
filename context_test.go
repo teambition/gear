@@ -780,22 +780,22 @@ func (b *invalidQueryTemplate) Validate() error {
 	return nil
 }
 
-func TestGearContextParseQuery(t *testing.T) {
+func TestGearContextParseUrl(t *testing.T) {
 	app := New()
 	assert.Panics(t, func() {
-		app.Set(SetQueryParser, 123)
+		app.Set(SetUrlParser, 123)
 	})
 
-	t.Run("should error when queryParser not exists", func(t *testing.T) {
+	t.Run("should error when urlParser not exists", func(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		app.queryParser = nil
+		app.urlParser = nil
 
 		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=123456789&id=foobar", nil)
 		body := jsonQueryTemplate{}
-		err := ctx.ParseQuery(&body)
-		assert.Equal("Error: queryParser not registered", err.Error())
+		err := ctx.ParseUrl(&body)
+		assert.Equal("Error: urlParser not registered", err.Error())
 	})
 
 	t.Run("should 400 error when validate error", func(t *testing.T) {
@@ -804,7 +804,7 @@ func TestGearContextParseQuery(t *testing.T) {
 		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=12&id=admin", nil)
 
 		body := jsonQueryTemplate{}
-		err := ctx.ParseQuery(&body)
+		err := ctx.ParseUrl(&body)
 		assert.Equal(400, err.(*Error).Code)
 	})
 
@@ -814,7 +814,7 @@ func TestGearContextParseQuery(t *testing.T) {
 		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin", nil)
 
 		body := jsonQueryTemplate{}
-		err := ctx.ParseQuery(&body)
+		err := ctx.ParseUrl(&body)
 		assert.Nil(err)
 		assert.Equal("admin", body.ID)
 		assert.Equal("password", body.Pass)
@@ -825,8 +825,37 @@ func TestGearContextParseQuery(t *testing.T) {
 
 		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin&name=admin", nil)
 		body := invalidQueryTemplate{}
-		err := ctx.ParseQuery(&body)
+		err := ctx.ParseUrl(&body)
 		assert.Equal(500, err.(*Error).Code)
+	})
+
+	t.Run("should parse url params", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin", nil)
+		ctx.SetAny(paramsKey, map[string]string{
+			"pass": "1234567",
+			"id":   "admin_id",
+		})
+		body := jsonQueryTemplate{}
+		err := ctx.ParseUrl(&body)
+		assert.Nil(err)
+		assert.Equal("admin_id", body.ID)
+		assert.Equal("1234567", body.Pass)
+	})
+
+	t.Run("should parse url params and query content", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin", nil)
+		ctx.SetAny(paramsKey, map[string]string{
+			"pass": "1234567",
+		})
+		body := jsonQueryTemplate{}
+		err := ctx.ParseUrl(&body)
+		assert.Nil(err)
+		assert.Equal("admin", body.ID)
+		assert.Equal("1234567", body.Pass)
 	})
 }
 
