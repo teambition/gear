@@ -397,8 +397,8 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 //
 // Define a BodyTemplate type in some API:
 //  type jsonQueryTemplate struct {
-//  	ID   string `json:"id" form:"id"`
-//  	Pass string `json:"pass" form:"pass"`
+//  	ID   string `json:"id" query:"id"`
+//  	Pass string `json:"pass" query:"pass"`
 //  }
 //
 //  func (b *jsonQueryTemplate) Validate() error {

@@ -795,12 +795,31 @@ func (b *jsonParamQueryTemplate) Validate() error {
 }
 
 type invalidQueryTemplate struct {
-	ID   string  `json:"id" query:"id"`
-	Pass string  `json:"pass" query:"pass"`
-	Name *string `json:"name" query:"name"`
+	ID   string    `json:"id" query:"id"`
+	Pass string    `json:"pass" query:"pass"`
+	Time time.Time `json:"time" query:"time"`
 }
 
 func (b *invalidQueryTemplate) Validate() error {
+	return nil
+}
+
+type invalidParamTemplate struct {
+	ID   string    `json:"id" param:"id"`
+	Pass string    `json:"pass" param:"pass"`
+	Time time.Time `json:"time" param:"time"`
+}
+
+func (b *invalidParamTemplate) Validate() error {
+	return nil
+}
+
+type jsonPointerQueryTemplate struct {
+	ID   *string `json:"id" query:"id"`
+	Pass *string `json:"pass" query:"pass"`
+}
+
+func (b *jsonPointerQueryTemplate) Validate() error {
 	return nil
 }
 
@@ -844,11 +863,25 @@ func TestGearContextParseUrl(t *testing.T) {
 		assert.Equal("password", body.Pass)
 	})
 
-	t.Run("should parse error with invalid data type", func(t *testing.T) {
+	t.Run("should parse query error with invalid data type", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin&name=admin&time=1898", nil)
+		body := invalidQueryTemplate{}
+		err := ctx.ParseUrl(&body)
+		assert.Equal(500, err.(*Error).Code)
+	})
+
+	t.Run("should parse param error with invalid data type", func(t *testing.T) {
 		assert := assert.New(t)
 
 		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin&name=admin", nil)
-		body := invalidQueryTemplate{}
+		ctx.SetAny(paramsKey, map[string]string{
+			"pass": "1234567",
+			"id":   "admin_id",
+			"time": "vdfvdf",
+		})
+		body := invalidParamTemplate{}
 		err := ctx.ParseUrl(&body)
 		assert.Equal(500, err.(*Error).Code)
 	})
@@ -895,6 +928,17 @@ func TestGearContextParseUrl(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal("admin_id", body.ID)
 		assert.Equal("1234567", body.Pass)
+	})
+
+	t.Run("shoud parse pointer query content", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo?id=admin&pass=password", nil)
+		body := jsonPointerQueryTemplate{}
+		err := ctx.ParseUrl(&body)
+		assert.Nil(err)
+		assert.Equal("admin", *body.ID)
+		assert.Equal("password", *body.Pass)
 	})
 }
 
