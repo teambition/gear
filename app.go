@@ -31,15 +31,15 @@ type Renderer interface {
 //  app.Set(gear.SetUrlParser, DefaultUrlParser)
 //
 type UrlParser interface {
-	Parse(val map[string][]string, body interface{}) error
+	Parse(val map[string][]string, body interface{}, tag string) error
 }
 
 // DefaultUrlParser is default UrlParser type.
 type DefaultUrlParser struct{}
 
 // Parse implemented UrlParser interface.
-func (d DefaultUrlParser) Parse(val map[string][]string, body interface{}) error {
-	return FormToStruct(val, body)
+func (d DefaultUrlParser) Parse(val map[string][]string, body interface{}, tag string) error {
+	return FormToStruct(val, body, tag)
 }
 
 // BodyParser interface is used by ctx.ParseBody. Default to:
@@ -76,7 +76,7 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 	case MIMEApplicationForm:
 		val, err := url.ParseQuery(string(buf))
 		if err == nil {
-			err = FormToStruct(val, body)
+			err = FormToStruct(val, body, "form")
 		}
 		return err
 	}

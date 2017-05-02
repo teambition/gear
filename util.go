@@ -198,7 +198,7 @@ func ErrorWithStack(val interface{}, skip ...int) *Error {
 }
 
 // FormToStruct converts form values into struct object.
-func FormToStruct(form map[string][]string, target interface{}) (err error) {
+func FormToStruct(form map[string][]string, target interface{}, tag string) (err error) {
 	if form == nil {
 		return fmt.Errorf("invalid form value: %#v", form)
 	}
@@ -216,7 +216,7 @@ func FormToStruct(form map[string][]string, target interface{}) (err error) {
 		if !fieldValue.CanSet() {
 			continue
 		}
-		fieldKey := fieldType.Tag.Get("form")
+		fieldKey := fieldType.Tag.Get(tag)
 		if fieldKey == "" {
 			continue
 		}

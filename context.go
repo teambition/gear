@@ -419,15 +419,20 @@ func (ctx *Context) ParseUrl(body BodyTemplate) error {
 		return Err.WithMsg("urlParser not registered")
 	}
 
-	urlValues := ctx.Req.URL.Query()
+	if err := ctx.app.urlParser.Parse(ctx.Req.URL.Query(), body, "query"); err != nil {
+		return err
+	}
+
+	paramValues := make(map[string][]string)
 	if res, _ := ctx.Any(paramsKey); res != nil {
 		if params, ok := res.(map[string]string); ok {
 			for k, v := range params {
-				urlValues.Set(k, v)
+				paramValues[k] = []string{v}
 			}
 		}
 	}
-	if err := ctx.app.urlParser.Parse(urlValues, body); err != nil {
+
+	if err := ctx.app.urlParser.Parse(paramValues, body, "param"); err != nil {
 		return err
 	}
 

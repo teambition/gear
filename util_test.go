@@ -662,33 +662,33 @@ func TestGearFormToStruct(t *testing.T) {
 	t.Run("Should error", func(t *testing.T) {
 		assert := assert.New(t)
 
-		assert.NotNil(FormToStruct(nil, nil))
-		assert.NotNil(FormToStruct(data, nil))
+		assert.NotNil(FormToStruct(nil, nil, "form"))
+		assert.NotNil(FormToStruct(data, nil, "form"))
 
 		var v1 formStruct
 		var v2 *formStruct
-		assert.NotNil(FormToStruct(data, v1))
-		assert.NotNil(FormToStruct(data, v2))
+		assert.NotNil(FormToStruct(data, v1, "form"))
+		assert.NotNil(FormToStruct(data, v2, "form"))
 
 		v1 = formStruct{}
-		assert.NotNil(FormToStruct(data, v1))
+		assert.NotNil(FormToStruct(data, v1, "form"))
 
 		v3 := struct {
 			String interface{} `form:"string"`
 		}{}
-		assert.NotNil(FormToStruct(data, &v3))
+		assert.NotNil(FormToStruct(data, &v3, "form"))
 
 		v4 := struct {
 			Slice []int `form:"slice"`
 		}{}
-		assert.NotNil(FormToStruct(url.Values{"slice": {"a"}}, &v4))
+		assert.NotNil(FormToStruct(url.Values{"slice": {"a"}}, &v4, "form"))
 	})
 
 	t.Run("Should work", func(t *testing.T) {
 		assert := assert.New(t)
 
 		s := formStruct{}
-		assert.Nil(FormToStruct(data, &s))
+		assert.Nil(FormToStruct(data, &s, "form"))
 		assert.Equal("string", s.String)
 		assert.Equal(true, s.Bool)
 		assert.Equal(int(-1), s.Int)
