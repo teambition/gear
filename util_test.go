@@ -618,77 +618,111 @@ func TestGearContentDisposition(t *testing.T) {
 }
 
 type formStruct struct {
-	String  string   `form:"string"`
-	Bool    bool     `form:"bool"`
-	Int     int      `form:"int"`
-	Int8    int8     `form:"int8"`
-	Int16   int16    `form:"int16"`
-	Int32   int32    `form:"int32"`
-	Int64   int64    `form:"int64"`
-	Uint    uint     `form:"uint"`
-	Uint8   uint8    `form:"uint8"`
-	Uint16  uint16   `form:"uint16"`
-	Uint32  uint32   `form:"uint32"`
-	Uint64  uint64   `form:"uint64"`
-	Float32 float32  `form:"float32"`
-	Float64 float64  `form:"float64"`
-	Slice1  []string `form:"slice1"`
-	Slice2  []int    `form:"slice2"`
-	Slice3  []int    `form:"slice3"`
-	Hide    string   `json:"hide"`
+	String   string    `form:"string"`
+	Bool     bool      `form:"bool"`
+	Int      int       `form:"int"`
+	Int8     int8      `form:"int8"`
+	Int16    int16     `form:"int16"`
+	Int32    int32     `form:"int32"`
+	Int64    int64     `form:"int64"`
+	Uint     uint      `form:"uint"`
+	Uint8    uint8     `form:"uint8"`
+	Uint16   uint16    `form:"uint16"`
+	Uint32   uint32    `form:"uint32"`
+	Uint64   uint64    `form:"uint64"`
+	Float32  float32   `form:"float32"`
+	Float64  float64   `form:"float64"`
+	Slice1   []string  `form:"pslice1"`
+	Slice2   []int     `form:"pslice2"`
+	Slice3   []int     `form:"slice3"`
+	Pstring  *string   `form:"pstring"`
+	Pbool    *bool     `form:"pbool"`
+	Pint     *int      `form:"pint"`
+	Pint8    *int8     `form:"pint8"`
+	Pint16   *int16    `form:"pint16"`
+	Pint32   *int32    `form:"pint32"`
+	Pint64   *int64    `form:"pint64"`
+	Puint    *uint     `form:"puint"`
+	Puint8   *uint8    `form:"puint8"`
+	Puint16  *uint16   `form:"puint16"`
+	Puint32  *uint32   `form:"puint32"`
+	Puint64  *uint64   `form:"puint64"`
+	Pfloat32 *float32  `form:"pfloat32"`
+	Pfloat64 *float64  `form:"pfloat64"`
+	Pslice1  []*string `form:"pslice1"`
+	Pslice2  []*int    `form:"pslice2"`
+	Pslice3  []*int    `form:"pslice3"`
+	Hide     string    `json:"hide"`
 }
 
 func TestGearFormToStruct(t *testing.T) {
 	data := url.Values{
-		"string":  {"string"},
-		"bool":    {"true"},
-		"int":     {"-1"},
-		"int8":    {"-1"},
-		"int16":   {"-1"},
-		"int32":   {"-1"},
-		"int64":   {"-1"},
-		"uint":    {"1"},
-		"uint8":   {"1"},
-		"uint16":  {"1"},
-		"uint32":  {"1"},
-		"uint64":  {"1"},
-		"float32": {"1.1"},
-		"float64": {"1.1"},
-		"slice1":  {"slice1"},
-		"slice2":  {"1"},
-		"slice3":  {},
+		"string":   {"string"},
+		"bool":     {"true"},
+		"int":      {"-1"},
+		"int8":     {"-1"},
+		"int16":    {"-1"},
+		"int32":    {"-1"},
+		"int64":    {"-1"},
+		"uint":     {"1"},
+		"uint8":    {"1"},
+		"uint16":   {"1"},
+		"uint32":   {"1"},
+		"uint64":   {"1"},
+		"float32":  {"1.1"},
+		"float64":  {"1.1"},
+		"slice1":   {"slice1"},
+		"slice2":   {"1"},
+		"slice3":   {},
+		"pstring":  {"string"},
+		"pbool":    {"true"},
+		"pint":     {"-1"},
+		"pint8":    {"-1"},
+		"pint16":   {"-1"},
+		"pint32":   {"-1"},
+		"pint64":   {"-1"},
+		"puint":    {"1"},
+		"puint8":   {"1"},
+		"puint16":  {"1"},
+		"puint32":  {"1"},
+		"puint64":  {"1"},
+		"pfloat32": {"1.1"},
+		"pfloat64": {"1.1"},
+		"pslice1":  {"slice1"},
+		"pslice2":  {"1"},
+		"pslice3":  {},
 	}
 
 	t.Run("Should error", func(t *testing.T) {
 		assert := assert.New(t)
 
-		assert.NotNil(FormToStruct(nil, nil))
-		assert.NotNil(FormToStruct(data, nil))
+		assert.NotNil(FormToStruct(nil, nil, "form"))
+		assert.NotNil(FormToStruct(data, nil, "form"))
 
 		var v1 formStruct
 		var v2 *formStruct
-		assert.NotNil(FormToStruct(data, v1))
-		assert.NotNil(FormToStruct(data, v2))
+		assert.NotNil(FormToStruct(data, v1, "form"))
+		assert.NotNil(FormToStruct(data, v2, "form"))
 
 		v1 = formStruct{}
-		assert.NotNil(FormToStruct(data, v1))
+		assert.NotNil(FormToStruct(data, v1, "form"))
 
 		v3 := struct {
 			String interface{} `form:"string"`
 		}{}
-		assert.NotNil(FormToStruct(data, &v3))
+		assert.NotNil(FormToStruct(data, &v3, "form"))
 
 		v4 := struct {
 			Slice []int `form:"slice"`
 		}{}
-		assert.NotNil(FormToStruct(url.Values{"slice": {"a"}}, &v4))
+		assert.NotNil(FormToStruct(url.Values{"slice": {"a"}}, &v4, "form"))
 	})
 
 	t.Run("Should work", func(t *testing.T) {
 		assert := assert.New(t)
 
 		s := formStruct{}
-		assert.Nil(FormToStruct(data, &s))
+		assert.Nil(FormToStruct(data, &s, "form"))
 		assert.Equal("string", s.String)
 		assert.Equal(true, s.Bool)
 		assert.Equal(int(-1), s.Int)
@@ -706,5 +740,25 @@ func TestGearFormToStruct(t *testing.T) {
 		assert.Equal([]string{"slice1"}, s.Slice1)
 		assert.Equal([]int{1}, s.Slice2)
 		assert.Equal([]int{}, s.Slice3)
+		assert.Nil(FormToStruct(data, &s, "form"))
+		assert.Equal("string", *s.Pstring)
+		assert.Equal(true, *s.Pbool)
+		assert.Equal(int(-1), *s.Pint)
+		assert.Equal(int8(-1), *s.Pint8)
+		assert.Equal(int16(-1), *s.Pint16)
+		assert.Equal(int32(-1), *s.Pint32)
+		assert.Equal(int64(-1), *s.Pint64)
+		assert.Equal(uint(1), *s.Puint)
+		assert.Equal(uint8(1), *s.Puint8)
+		assert.Equal(uint16(1), *s.Puint16)
+		assert.Equal(uint32(1), *s.Puint32)
+		assert.Equal(uint64(1), *s.Puint64)
+		assert.Equal(float32(1.1), *s.Pfloat32)
+		assert.Equal(float64(1.1), *s.Pfloat64)
+		slice1 := "slice1"
+		assert.Equal([]*string{&slice1}, s.Pslice1)
+		sliceint1 := 1
+		assert.Equal([]*int{&sliceint1}, s.Pslice2)
+		assert.Equal([]*int{}, s.Pslice3)
 	})
 }

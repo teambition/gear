@@ -342,7 +342,7 @@ func (ctx *Context) QueryAll(name string) []string {
 // pointed to by BodyTemplate body, and validate it.
 // DefaultBodyParser support JSON, Form and XML.
 //
-// Defaine a BodyTemplate type in some API:
+// Define a BodyTemplate type in some API:
 //  type jsonBodyTemplate struct {
 //  	ID   string `json:"id" form:"id"`
 //  	Pass string `json:"pass" form:"pass"`
@@ -389,6 +389,53 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 	if err = ctx.app.bodyParser.Parse(buf, body, mediaType, params["charset"]); err != nil {
 		return err
 	}
+	return body.Validate()
+}
+
+// ParseUrl parses query with UrlParser, stores the result in the value
+// pointed to by BodyTemplate body, and validate it.
+//
+// Define a BodyTemplate type in some API:
+//  type jsonQueryTemplate struct {
+//  	ID   string `json:"id" query:"id"`
+//  	Pass string `json:"pass" query:"pass"`
+//  }
+//
+//  func (b *jsonQueryTemplate) Validate() error {
+//  	if len(b.ID) < 3 || len(b.Pass) < 6 {
+//  		return ErrBadRequest.WithMsg("invalid id or pass")
+//  	}
+//  	return nil
+//  }
+//
+// Use it in middleware:
+//  body := jsonQueryTemplate{}
+//  if err := ctx.ParseQuery(&body) {
+//  	return err
+//  }
+//
+func (ctx *Context) ParseUrl(body BodyTemplate) error {
+	if ctx.app.urlParser == nil {
+		return Err.WithMsg("urlParser not registered")
+	}
+
+	if err := ctx.app.urlParser.Parse(ctx.Req.URL.Query(), body, "query"); err != nil {
+		return err
+	}
+
+	paramValues := make(map[string][]string)
+	if res, _ := ctx.Any(paramsKey); res != nil {
+		if params, ok := res.(map[string]string); ok {
+			for k, v := range params {
+				paramValues[k] = []string{v}
+			}
+		}
+	}
+
+	if err := ctx.app.urlParser.Parse(paramValues, body, "param"); err != nil {
+		return err
+	}
+
 	return body.Validate()
 }
 

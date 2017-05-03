@@ -27,6 +27,21 @@ type Renderer interface {
 	Render(ctx *Context, w io.Writer, name string, data interface{}) error
 }
 
+// UrlParser interface is used by ctx.ParseUrl. Default to:
+//  app.Set(gear.SetUrlParser, DefaultUrlParser)
+//
+type UrlParser interface {
+	Parse(val map[string][]string, body interface{}, tag string) error
+}
+
+// DefaultUrlParser is default UrlParser type.
+type DefaultUrlParser struct{}
+
+// Parse implemented UrlParser interface.
+func (d DefaultUrlParser) Parse(val map[string][]string, body interface{}, tag string) error {
+	return FormToStruct(val, body, tag)
+}
+
 // BodyParser interface is used by ctx.ParseBody. Default to:
 //  app.Set(gear.SetBodyParser, DefaultBodyParser(1<<20))
 //
@@ -61,7 +76,7 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 	case MIMEApplicationForm:
 		val, err := url.ParseQuery(string(buf))
 		if err == nil {
-			err = FormToStruct(val, body)
+			err = FormToStruct(val, body, "form")
 		}
 		return err
 	}
@@ -99,6 +114,7 @@ type App struct {
 	keys        []string
 	renderer    Renderer
 	bodyParser  BodyParser
+	urlParser   UrlParser
 	compress    Compressible  // Default to nil, do not compress response content.
 	timeout     time.Duration // Default to 0, no time out.
 	logger      *log.Logger
@@ -120,6 +136,7 @@ func New() *App {
 	}
 	app.Set(SetEnv, env)
 	app.Set(SetBodyParser, DefaultBodyParser(2<<20)) // 2MB
+	app.Set(SetUrlParser, DefaultUrlParser{})
 	app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
 	return app
 }
@@ -141,6 +158,10 @@ const (
 	// It will be used by `ctx.ParseBody`, value should implements `gear.BodyParser` interface, default to:
 	//  app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
 	SetBodyParser appSetting = iota
+
+	// It will be used by `ctx.ParseQuery`, value should implements `gear.UrlParser` interface, default to:
+	//  app.Set(gear.SetUrlParser, gear.DefaultUrlParser)
+	SetUrlParser
 
 	// Enable compress for response, value should implements `gear.Compressible` interface, no default value.
 	// Example:
@@ -188,6 +209,12 @@ func (app *App) Set(key, val interface{}) {
 				panic(Err.WithMsg("SetBodyParser setting must implemented gear.BodyParser interface"))
 			} else {
 				app.bodyParser = bodyParser
+			}
+		case SetUrlParser:
+			if urlParser, ok := val.(UrlParser); !ok {
+				panic(Err.WithMsg("SetUrlParser setting must implemented gear.UrlParser interface"))
+			} else {
+				app.urlParser = urlParser
 			}
 		case SetCompress:
 			if compress, ok := val.(Compressible); !ok {
