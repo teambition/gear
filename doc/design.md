@@ -625,6 +625,8 @@ func (a *Auth) FromCtx(ctx *gear.Context) (josejwt.Claims, error) {
 
 ## 请求数据的解析和验证
 
+### ctx.ParseBody
+
 Go 语言原生提供了基于 Form 的请求数据解析，但这显然无法实际场景的需求。对于常规 RESTful API 而言，`application/json` 类型的请求数据会更加常见。Gear 框架提供了 `BodyParser interface` 来实现请求数据的解析，并提供了 `BodyTemplate interface` 配合进行数据验证。
 
 ```go
@@ -709,6 +711,8 @@ func (a *User) Join(ctx *gear.Context) error {
   // ... More logic
 }
 ```
+
+### ctx.ParseURL
 
 ## ctx.Cookies 便捷的处理 cookie 或 signed cookie
 

@@ -392,24 +392,27 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 	return body.Validate()
 }
 
-// ParseURL parses query with UrlParser, stores the result in the value
-// pointed to by BodyTemplate body, and validate it.
+// ParseURL parses router params (like ctx.Param) and queries (like ctx.Query) in request URL,
+// stores the result in the struct object pointed to by BodyTemplate body, and validate it.
 //
 // Define a BodyTemplate type in some API:
-//  type jsonQueryTemplate struct {
-//  	ID   string `json:"id" query:"id"`
-//  	Pass string `json:"pass" query:"pass"`
+//  type taskTemplate struct {
+//  	ID      bson.ObjectId `json:"_taskID" param:"_taskID"` // router.Get("/tasks/:_taskID", APIhandler)
+//  	StartAt time.Time     `json:"startAt" query:"startAt"` // GET /tasks/50c32afae8cf1439d35a87e6?startAt=2017-05-03T10:06:45.319Z
 //  }
 //
-//  func (b *jsonQueryTemplate) Validate() error {
-//  	if len(b.ID) < 3 || len(b.Pass) < 6 {
-//  		return ErrBadRequest.WithMsg("invalid id or pass")
+//  func (b *taskTemplate) Validate() error {
+//  	if !b.ID.Valid() {
+//  		return gear.ErrBadRequest.WithMsg("invalid task id")
+//  	}
+//  	if b.StartAt.IsZero() {
+//  		return gear.ErrBadRequest.WithMsg("invalid task start time")
 //  	}
 //  	return nil
 //  }
 //
-// Use it in middleware:
-//  body := jsonQueryTemplate{}
+// Use it in APIhandler:
+//  body := taskTemplate{}
 //  if err := ctx.ParseURL(&body) {
 //  	return err
 //  }
@@ -423,17 +426,17 @@ func (ctx *Context) ParseURL(body BodyTemplate) error {
 		return err
 	}
 
-	paramValues := make(map[string][]string)
 	if res, _ := ctx.Any(paramsKey); res != nil {
-		if params, ok := res.(map[string]string); ok {
+		if params, _ := res.(map[string]string); len(params) > 0 {
+			paramValues := make(map[string][]string)
 			for k, v := range params {
 				paramValues[k] = []string{v}
 			}
-		}
-	}
 
-	if err := ctx.app.urlParser.Parse(paramValues, body, "param"); err != nil {
-		return err
+			if err := ctx.app.urlParser.Parse(paramValues, body, "param"); err != nil {
+				return err
+			}
+		}
 	}
 
 	return body.Validate()
