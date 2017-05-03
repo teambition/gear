@@ -27,19 +27,19 @@ type Renderer interface {
 	Render(ctx *Context, w io.Writer, name string, data interface{}) error
 }
 
-// UrlParser interface is used by ctx.ParseUrl. Default to:
-//  app.Set(gear.SetUrlParser, DefaultUrlParser)
+// URLParser interface is used by ctx.ParseUrl. Default to:
+//  app.Set(gear.SetURLParser, DefaultURLParser)
 //
-type UrlParser interface {
+type URLParser interface {
 	Parse(val map[string][]string, body interface{}, tag string) error
 }
 
-// DefaultUrlParser is default UrlParser type.
-type DefaultUrlParser struct{}
+// DefaultURLParser is default URLParser type.
+type DefaultURLParser struct{}
 
-// Parse implemented UrlParser interface.
-func (d DefaultUrlParser) Parse(val map[string][]string, body interface{}, tag string) error {
-	return FormToStruct(val, body, tag)
+// Parse implemented URLParser interface.
+func (d DefaultURLParser) Parse(val map[string][]string, body interface{}, tag string) error {
+	return ValuesToStruct(val, body, tag)
 }
 
 // BodyParser interface is used by ctx.ParseBody. Default to:
@@ -76,7 +76,7 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 	case MIMEApplicationForm:
 		val, err := url.ParseQuery(string(buf))
 		if err == nil {
-			err = FormToStruct(val, body, "form")
+			err = ValuesToStruct(val, body, "form")
 		}
 		return err
 	}
@@ -114,7 +114,7 @@ type App struct {
 	keys        []string
 	renderer    Renderer
 	bodyParser  BodyParser
-	urlParser   UrlParser
+	urlParser   URLParser
 	compress    Compressible  // Default to nil, do not compress response content.
 	timeout     time.Duration // Default to 0, no time out.
 	logger      *log.Logger
@@ -136,7 +136,7 @@ func New() *App {
 	}
 	app.Set(SetEnv, env)
 	app.Set(SetBodyParser, DefaultBodyParser(2<<20)) // 2MB
-	app.Set(SetUrlParser, DefaultUrlParser{})
+	app.Set(SetURLParser, DefaultURLParser{})
 	app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
 	return app
 }
@@ -159,9 +159,9 @@ const (
 	//  app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
 	SetBodyParser appSetting = iota
 
-	// It will be used by `ctx.ParseQuery`, value should implements `gear.UrlParser` interface, default to:
-	//  app.Set(gear.SetUrlParser, gear.DefaultUrlParser)
-	SetUrlParser
+	// It will be used by `ctx.ParseURL`, value should implements `gear.URLParser` interface, default to:
+	//  app.Set(gear.SetURLParser, gear.DefaultURLParser)
+	SetURLParser
 
 	// Enable compress for response, value should implements `gear.Compressible` interface, no default value.
 	// Example:
@@ -210,9 +210,9 @@ func (app *App) Set(key, val interface{}) {
 			} else {
 				app.bodyParser = bodyParser
 			}
-		case SetUrlParser:
-			if urlParser, ok := val.(UrlParser); !ok {
-				panic(Err.WithMsg("SetUrlParser setting must implemented gear.UrlParser interface"))
+		case SetURLParser:
+			if urlParser, ok := val.(URLParser); !ok {
+				panic(Err.WithMsg("SetURLParser setting must implemented gear.URLParser interface"))
 			} else {
 				app.urlParser = urlParser
 			}

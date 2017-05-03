@@ -5,6 +5,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.5.0] - 2017-05-03
+
+**Changed:**
+
+- Add `ctx.ParseURL(body BodyTemplate)` method.
+- Change `gear.FormToStruct(map[string][]string, interface{}) error` to `gear.ValuesToStruct(map[string][]string, interface{}, string) error`
+- `gear.ValuesToStruct` support pointer fields, so `ctx.ParseURL` and `ctx.ParseBody` support pointer fields too.
+
 ## [1.4.3] - 2017-04-26
 
 **Fixed:**
@@ -15,8 +23,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 **Changed:**
 
-- Improve `Context.IP()`
-- Add `Context.Protocol()`
+- Improve `ctx.IP()`
+- Add `ctx.Protocol()`
 
 ## [1.4.1] - 2017-04-24
 

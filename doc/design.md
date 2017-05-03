@@ -656,7 +656,7 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
   case MIMEApplicationForm:
     val, err := url.ParseQuery(string(buf))
     if err == nil {
-      err = FormToStruct(val, body)
+      err = ValuesToStruct(val, body, "form")
     }
     return err
   }

@@ -392,7 +392,7 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 	return body.Validate()
 }
 
-// ParseUrl parses query with UrlParser, stores the result in the value
+// ParseURL parses query with UrlParser, stores the result in the value
 // pointed to by BodyTemplate body, and validate it.
 //
 // Define a BodyTemplate type in some API:
@@ -410,11 +410,11 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 //
 // Use it in middleware:
 //  body := jsonQueryTemplate{}
-//  if err := ctx.ParseQuery(&body) {
+//  if err := ctx.ParseURL(&body) {
 //  	return err
 //  }
 //
-func (ctx *Context) ParseUrl(body BodyTemplate) error {
+func (ctx *Context) ParseURL(body BodyTemplate) error {
 	if ctx.app.urlParser == nil {
 		return Err.WithMsg("urlParser not registered")
 	}

@@ -823,10 +823,10 @@ func (b *jsonPointerQueryTemplate) Validate() error {
 	return nil
 }
 
-func TestGearContextParseUrl(t *testing.T) {
+func TestGearContextParseURL(t *testing.T) {
 	app := New()
 	assert.Panics(t, func() {
-		app.Set(SetUrlParser, 123)
+		app.Set(SetURLParser, 123)
 	})
 
 	t.Run("should error when urlParser not exists", func(t *testing.T) {
@@ -837,7 +837,7 @@ func TestGearContextParseUrl(t *testing.T) {
 
 		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=123456789&id=foobar", nil)
 		body := jsonQueryTemplate{}
-		err := ctx.ParseUrl(&body)
+		err := ctx.ParseURL(&body)
 		assert.Equal("Error: urlParser not registered", err.Error())
 	})
 
@@ -847,7 +847,7 @@ func TestGearContextParseUrl(t *testing.T) {
 		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=12&id=admin", nil)
 
 		body := jsonQueryTemplate{}
-		err := ctx.ParseUrl(&body)
+		err := ctx.ParseURL(&body)
 		assert.Equal(400, err.(*Error).Code)
 	})
 
@@ -857,7 +857,7 @@ func TestGearContextParseUrl(t *testing.T) {
 		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin", nil)
 
 		body := jsonQueryTemplate{}
-		err := ctx.ParseUrl(&body)
+		err := ctx.ParseURL(&body)
 		assert.Nil(err)
 		assert.Equal("admin", body.ID)
 		assert.Equal("password", body.Pass)
@@ -868,7 +868,7 @@ func TestGearContextParseUrl(t *testing.T) {
 
 		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin&name=admin&time=1898", nil)
 		body := invalidQueryTemplate{}
-		err := ctx.ParseUrl(&body)
+		err := ctx.ParseURL(&body)
 		assert.Equal(500, err.(*Error).Code)
 	})
 
@@ -882,7 +882,7 @@ func TestGearContextParseUrl(t *testing.T) {
 			"time": "vdfvdf",
 		})
 		body := invalidParamTemplate{}
-		err := ctx.ParseUrl(&body)
+		err := ctx.ParseURL(&body)
 		assert.Equal(500, err.(*Error).Code)
 	})
 
@@ -895,7 +895,7 @@ func TestGearContextParseUrl(t *testing.T) {
 			"id":   "admin_id",
 		})
 		body := jsonParamTemplate{}
-		err := ctx.ParseUrl(&body)
+		err := ctx.ParseURL(&body)
 		assert.Nil(err)
 		assert.Equal("admin_id", body.ID)
 		assert.Equal("1234567", body.Pass)
@@ -909,7 +909,7 @@ func TestGearContextParseUrl(t *testing.T) {
 			"pass": "1234567",
 		})
 		body := jsonParamQueryTemplate{}
-		err := ctx.ParseUrl(&body)
+		err := ctx.ParseURL(&body)
 		assert.Nil(err)
 		assert.Equal("admin", body.ID)
 		assert.Equal("1234567", body.Pass)
@@ -924,7 +924,7 @@ func TestGearContextParseUrl(t *testing.T) {
 			"id":   "admin_id",
 		})
 		body := jsonParamQueryTemplate{}
-		err := ctx.ParseUrl(&body)
+		err := ctx.ParseURL(&body)
 		assert.Nil(err)
 		assert.Equal("admin_id", body.ID)
 		assert.Equal("1234567", body.Pass)
@@ -935,7 +935,7 @@ func TestGearContextParseUrl(t *testing.T) {
 
 		ctx := CtxTest(app, "GET", "http://example.com/foo?id=admin&pass=password", nil)
 		body := jsonPointerQueryTemplate{}
-		err := ctx.ParseUrl(&body)
+		err := ctx.ParseURL(&body)
 		assert.Nil(err)
 		assert.Equal("admin", *body.ID)
 		assert.Equal("password", *body.Pass)

@@ -197,14 +197,27 @@ func ErrorWithStack(val interface{}, skip ...int) *Error {
 	return err
 }
 
-// FormToStruct converts form values into struct object.
-func FormToStruct(form map[string][]string, target interface{}, tag string) (err error) {
-	if form == nil {
-		return fmt.Errorf("invalid form value: %#v", form)
+// ValuesToStruct converts url.Values into struct object.
+//
+//  type jsonQueryTemplate struct {
+//  	ID   string `json:"id" form:"id"`
+//  	Pass string `json:"pass" form:"pass"`
+//  }
+//
+//  target := jsonQueryTemplate{}
+//
+//  ValuesToStruct(map[string][]string{
+//  	"id": []string{"some id"},
+//  	"pass": []string{"some pass"},
+//  }, &target, "form")
+//
+func ValuesToStruct(values map[string][]string, target interface{}, tag string) (err error) {
+	if values == nil {
+		return fmt.Errorf("invalid values: %#v", values)
 	}
 	rv := reflect.ValueOf(target)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return fmt.Errorf("invalid struct value: %#v", target)
+		return fmt.Errorf("invalid struct: %#v", target)
 	}
 
 	structValue := rv.Elem()
@@ -221,16 +234,16 @@ func FormToStruct(form map[string][]string, target interface{}, tag string) (err
 			continue
 		}
 
-		if formValue, ok := form[fieldKey]; ok {
+		if value, ok := values[fieldKey]; ok {
 			if fieldValue.Kind() == reflect.Slice {
-				err = setRefSlice(fieldValue, formValue)
-			} else if len(formValue) > 0 {
+				err = setRefSlice(fieldValue, value)
+			} else if len(value) > 0 {
 				fieldType := fieldValue.Kind()
 				isPtrType := fieldType == reflect.Ptr
 				if isPtrType {
 					fieldType = fieldValue.Type().Elem().Kind()
 				}
-				err = setRefField(fieldType, fieldValue, formValue[0], isPtrType)
+				err = setRefField(fieldType, fieldValue, value[0], isPtrType)
 			}
 			if err != nil {
 				return

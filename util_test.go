@@ -617,7 +617,7 @@ func TestGearContentDisposition(t *testing.T) {
 	})
 }
 
-type formStruct struct {
+type valuesStruct struct {
 	String   string    `form:"string"`
 	Bool     bool      `form:"bool"`
 	Int      int       `form:"int"`
@@ -655,7 +655,7 @@ type formStruct struct {
 	Hide     string    `json:"hide"`
 }
 
-func TestGearFormToStruct(t *testing.T) {
+func TestGearValuesToStruct(t *testing.T) {
 	data := url.Values{
 		"string":   {"string"},
 		"bool":     {"true"},
@@ -696,33 +696,33 @@ func TestGearFormToStruct(t *testing.T) {
 	t.Run("Should error", func(t *testing.T) {
 		assert := assert.New(t)
 
-		assert.NotNil(FormToStruct(nil, nil, "form"))
-		assert.NotNil(FormToStruct(data, nil, "form"))
+		assert.NotNil(ValuesToStruct(nil, nil, "form"))
+		assert.NotNil(ValuesToStruct(data, nil, "form"))
 
-		var v1 formStruct
-		var v2 *formStruct
-		assert.NotNil(FormToStruct(data, v1, "form"))
-		assert.NotNil(FormToStruct(data, v2, "form"))
+		var v1 valuesStruct
+		var v2 *valuesStruct
+		assert.NotNil(ValuesToStruct(data, v1, "form"))
+		assert.NotNil(ValuesToStruct(data, v2, "form"))
 
-		v1 = formStruct{}
-		assert.NotNil(FormToStruct(data, v1, "form"))
+		v1 = valuesStruct{}
+		assert.NotNil(ValuesToStruct(data, v1, "form"))
 
 		v3 := struct {
 			String interface{} `form:"string"`
 		}{}
-		assert.NotNil(FormToStruct(data, &v3, "form"))
+		assert.NotNil(ValuesToStruct(data, &v3, "form"))
 
 		v4 := struct {
 			Slice []int `form:"slice"`
 		}{}
-		assert.NotNil(FormToStruct(url.Values{"slice": {"a"}}, &v4, "form"))
+		assert.NotNil(ValuesToStruct(url.Values{"slice": {"a"}}, &v4, "form"))
 	})
 
 	t.Run("Should work", func(t *testing.T) {
 		assert := assert.New(t)
 
-		s := formStruct{}
-		assert.Nil(FormToStruct(data, &s, "form"))
+		s := valuesStruct{}
+		assert.Nil(ValuesToStruct(data, &s, "form"))
 		assert.Equal("string", s.String)
 		assert.Equal(true, s.Bool)
 		assert.Equal(int(-1), s.Int)
@@ -740,7 +740,7 @@ func TestGearFormToStruct(t *testing.T) {
 		assert.Equal([]string{"slice1"}, s.Slice1)
 		assert.Equal([]int{1}, s.Slice2)
 		assert.Equal([]int{}, s.Slice3)
-		assert.Nil(FormToStruct(data, &s, "form"))
+		assert.Nil(ValuesToStruct(data, &s, "form"))
 		assert.Equal("string", *s.Pstring)
 		assert.Equal(true, *s.Pbool)
 		assert.Equal(int(-1), *s.Pint)
