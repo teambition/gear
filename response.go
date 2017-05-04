@@ -14,8 +14,8 @@ var defaultHeaderFilterReg = regexp.MustCompile(
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.
 type Response struct {
-	status      int // response Status Code
-	bodyLength  int // number of bytes to write, ignore stream body.
+	status      int    // response Status Code
+	body        []byte // the response content.
 	afterHooks  []func()
 	endHooks    []func()
 	ended       atomicBool // indicate that app middlewares run out.
@@ -59,6 +59,11 @@ func (r *Response) Status() int {
 // Type returns the current content type.
 func (r *Response) Type() string {
 	return r.Get(HeaderContentType)
+}
+
+// Body returns the response content. If you use Response.Write directly, the content will not be captured.
+func (r *Response) Body() []byte {
+	return r.body
 }
 
 // ResetHeader reset headers. If keepSubset is true,
@@ -116,7 +121,7 @@ func (r *Response) WriteHeader(code int) {
 
 	// check status, r.status maybe changed in afterHooks
 	if !IsStatusCode(r.status) {
-		if r.bodyLength > 0 {
+		if r.body != nil {
 			r.status = http.StatusOK
 		} else {
 			// Misdirected request, http://tools.ietf.org/html/rfc7540#section-9.1.2
@@ -124,12 +129,12 @@ func (r *Response) WriteHeader(code int) {
 			r.status = 421
 		}
 	} else if isEmptyStatus(r.status) {
-		r.bodyLength = 0
+		r.body = nil
 	}
 
 	// check and set Content-Length
-	if r.bodyLength > 0 {
-		r.Set(HeaderContentLength, strconv.Itoa(r.bodyLength))
+	if r.body != nil {
+		r.Set(HeaderContentLength, strconv.Itoa(len(r.body)))
 	}
 	r.rw.WriteHeader(r.status)
 	// execute "end hooks" in LIFO order after Response.WriteHeader
@@ -176,11 +181,11 @@ func (r *Response) HeaderWrote() bool {
 }
 
 func (r *Response) respond(status int, body []byte) (err error) {
-	r.bodyLength = len(body)
+	r.body = body
 	r.WriteHeader(status)
-	// bodyLength maybe reset to 0 with empty status when WriteHeader.
-	if r.bodyLength > 0 {
-		_, err = r.Write(body)
+	// body maybe reset to nil when WriteHeader.
+	if r.body != nil {
+		_, err = r.Write(r.body)
 	}
 	return
 }

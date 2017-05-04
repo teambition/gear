@@ -71,7 +71,7 @@ func (cw *compressWriter) WriteHeader(code int) {
 	defer cw.rw.WriteHeader(code)
 
 	if !isEmptyStatus(code) &&
-		cw.compress.Compressible(cw.res.Get(HeaderContentType), cw.res.bodyLength) {
+		cw.compress.Compressible(cw.res.Get(HeaderContentType), len(cw.res.body)) {
 		var w io.WriteCloser
 
 		switch cw.encoding {

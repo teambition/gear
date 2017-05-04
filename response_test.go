@@ -104,7 +104,7 @@ func TestGearResponse(t *testing.T) {
 		assert.Equal(false, res.HeaderWrote())
 		assert.Equal(0, res.status)
 
-		res.bodyLength = len([]byte("Hello"))
+		res.body = []byte("Hello")
 		res.WriteHeader(0)
 		res.Write([]byte("Hello"))
 
@@ -196,6 +196,52 @@ func TestGearResponse(t *testing.T) {
 		assert.Equal(1, count)
 		assert.Equal(404, ctx.Res.status)
 		assert.Equal(404, ctx.Res.status)
+	})
+
+	t.Run("Body", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+		ctx.End(200, []byte{})
+
+		assert.Equal(200, ctx.Res.Status())
+		assert.Equal(200, CtxResult(ctx).StatusCode)
+		assert.Equal([]byte{}, ctx.Res.Body())
+		assert.Equal("0", CtxResult(ctx).Header.Get(HeaderContentLength))
+		assert.Equal("", CtxBody(ctx))
+
+		ctx = CtxTest(app, "GET", "http://example.com/foo", nil)
+		ctx.Res.respond(200, []byte("Hello"))
+
+		assert.Equal(true, ctx.Res.HeaderWrote())
+		assert.Equal(200, ctx.Res.Status())
+		assert.Equal(200, CtxResult(ctx).StatusCode)
+		assert.Equal([]byte("Hello"), ctx.Res.Body())
+		assert.Equal("5", CtxResult(ctx).Header.Get(HeaderContentLength))
+		assert.Equal("Hello", CtxBody(ctx))
+	})
+
+	t.Run("Body should be nil", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+		ctx.End(200)
+
+		assert.Equal(200, ctx.Res.Status())
+		assert.Equal(200, CtxResult(ctx).StatusCode)
+		assert.Nil(ctx.Res.Body())
+		assert.Equal("", CtxResult(ctx).Header.Get(HeaderContentLength))
+		assert.Equal("", CtxBody(ctx))
+
+		ctx = CtxTest(app, "GET", "http://example.com/foo", nil)
+		ctx.End(204, []byte("Hello"))
+
+		assert.Equal(true, ctx.Res.HeaderWrote())
+		assert.Equal(204, ctx.Res.Status())
+		assert.Equal(204, CtxResult(ctx).StatusCode)
+		assert.Nil(ctx.Res.Body())
+		assert.Equal("", CtxResult(ctx).Header.Get(HeaderContentLength))
+		assert.Equal("", CtxBody(ctx))
 	})
 }
 
