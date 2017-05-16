@@ -78,7 +78,7 @@ func TestGearMiddlewareCORS(t *testing.T) {
 		res, err := DefaultClient.Do(req)
 
 		assert.Nil(err)
-		assert.Equal("Origin", res.Header.Get(gear.HeaderVary))
+		assert.Equal([]string{"Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"}, res.Header["Vary"])
 		assert.Equal("", res.Header.Get(gear.HeaderAccessControlAllowOrigin))
 	})
 
@@ -92,7 +92,7 @@ func TestGearMiddlewareCORS(t *testing.T) {
 		res, err := DefaultClient.Do(req)
 
 		assert.Nil(err)
-		assert.Equal("Origin", res.Header.Get(gear.HeaderVary))
+		assert.Equal([]string{"Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"}, res.Header["Vary"])
 		assert.Equal("10", res.Header.Get(gear.HeaderAccessControlMaxAge))
 		assert.Equal("test.org", res.Header.Get(gear.HeaderAccessControlAllowOrigin))
 		assert.Equal("GET, PUT", res.Header.Get(gear.HeaderAccessControlAllowMethods))
@@ -135,7 +135,7 @@ func TestGearMiddlewareCORS(t *testing.T) {
 			res, err := DefaultClient.Do(req)
 
 			assert.Nil(err)
-			assert.Equal("Origin", res.Header.Get(gear.HeaderVary))
+			assert.Equal([]string{"Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"}, res.Header["Vary"])
 			assert.Equal("test.org", res.Header.Get(gear.HeaderAccessControlAllowOrigin))
 			assert.Equal("true", res.Header.Get(gear.HeaderAccessControlAllowCredentials))
 			assert.Equal(strings.Join(defaultAllowMethods, ", "),
