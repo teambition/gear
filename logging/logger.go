@@ -223,6 +223,13 @@ func (l *Logger) Debug(v interface{}) {
 	}
 }
 
+// Debugf produce a "Debug" log in the manner of fmt.Printf
+func (l *Logger) Debugf(format string, args ...interface{}) {
+	if l.checkLogLevel(DebugLevel) {
+		l.Output(time.Now(), DebugLevel, fmt.Sprintf(format, args...))
+	}
+}
+
 // Panic produce a "Emergency" log and then calls panic with the message
 func (l *Logger) Panic(v interface{}) {
 	s := fmt.Sprint(v)
@@ -406,6 +413,11 @@ func Info(v interface{}) {
 // Debug produce a "Debug" log with the default logger
 func Debug(v interface{}) {
 	std.Debug(v)
+}
+
+// Debugf produce a "Debug" log in the manner of fmt.Printf with the default logger
+func Debugf(format string, args ...interface{}) {
+	std.Debugf(format, args...)
 }
 
 // Panic produce a "Emergency" log with the default logger and then calls panic with the message

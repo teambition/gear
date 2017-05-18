@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.5.2] - 2017-05-18
+
+**Changed:**
+
+- Add `logging.Debugf(format string, args ...interface{})`.
+
 ## [1.5.1] - 2017-05-04
 
 **Changed:**

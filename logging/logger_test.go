@@ -85,67 +85,75 @@ func TestGearLogger(t *testing.T) {
 
 		logger.Out = &buf
 		logger.Emerg("Hello")
-		assert.True(strings.Index(buf.String(), "EMERG Error") > 0)
+		assert.True(strings.Index(buf.String(), "Z EMERG Error") > 0)
 		buf.Reset()
 
 		Emerg("Hello1")
-		assert.True(strings.Index(buf.String(), "EMERG Error") > 0)
+		assert.True(strings.Index(buf.String(), "Z EMERG Error") > 0)
 		buf.Reset()
 
 		logger.Alert("Hello")
-		assert.True(strings.Index(buf.String(), "ALERT Error") > 0)
+		assert.True(strings.Index(buf.String(), "Z ALERT Error") > 0)
 		buf.Reset()
 
 		Alert("Hello1")
-		assert.True(strings.Index(buf.String(), "ALERT Error") > 0)
+		assert.True(strings.Index(buf.String(), "Z ALERT Error") > 0)
 		buf.Reset()
 
 		logger.Crit("Hello")
-		assert.True(strings.Index(buf.String(), "CRIT Error") > 0)
+		assert.True(strings.Index(buf.String(), "Z CRIT Error") > 0)
 		buf.Reset()
 
 		Crit("Hello1")
-		assert.True(strings.Index(buf.String(), "CRIT Error") > 0)
+		assert.True(strings.Index(buf.String(), "Z CRIT Error") > 0)
 		buf.Reset()
 
 		logger.Err("Hello")
-		assert.True(strings.Index(buf.String(), "ERR Error") > 0)
+		assert.True(strings.Index(buf.String(), "Z ERR Error") > 0)
 		buf.Reset()
 
 		Err("Hello1")
-		assert.True(strings.Index(buf.String(), "ERR Error") > 0)
+		assert.True(strings.Index(buf.String(), "Z ERR Error") > 0)
 		buf.Reset()
 
 		logger.Warning("Hello")
-		assert.True(strings.HasSuffix(buf.String(), " WARNING Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z WARNING Hello\n"))
 		buf.Reset()
 
 		Warning("Hello1")
-		assert.True(strings.HasSuffix(buf.String(), " WARNING Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z WARNING Hello1\n"))
 		buf.Reset()
 
 		logger.Notice("Hello")
-		assert.True(strings.HasSuffix(buf.String(), " NOTICE Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z NOTICE Hello\n"))
 		buf.Reset()
 
 		Notice("Hello1")
-		assert.True(strings.HasSuffix(buf.String(), " NOTICE Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z NOTICE Hello1\n"))
 		buf.Reset()
 
 		logger.Info("Hello")
-		assert.True(strings.HasSuffix(buf.String(), " INFO Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z INFO Hello\n"))
 		buf.Reset()
 
 		Info("Hello1")
-		assert.True(strings.HasSuffix(buf.String(), " INFO Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z INFO Hello1\n"))
 		buf.Reset()
 
 		logger.Debug("Hello")
-		assert.True(strings.HasSuffix(buf.String(), " DEBUG Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z DEBUG Hello\n"))
 		buf.Reset()
 
 		Debug("Hello1")
-		assert.True(strings.HasSuffix(buf.String(), " DEBUG Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z DEBUG Hello1\n"))
+		buf.Reset()
+
+		logger.Debugf(":%s\n", "Hello")
+		assert.True(strings.HasSuffix(buf.String(), "Z DEBUG :Hello\n"))
+		buf.Reset()
+
+		Debugf(":%s\n", "Hello1")
+		assert.True(strings.HasSuffix(buf.String(), "Z DEBUG :Hello1\n"))
 		buf.Reset()
 
 		assert.Panics(func() {
