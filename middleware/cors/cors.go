@@ -1,7 +1,6 @@
 package cors
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -86,7 +85,7 @@ func New(options ...Options) gear.Middleware {
 		allowOrigin := opts.AllowOriginsValidator(origin, ctx)
 		// If the request Origin header is not allowed. Just terminate the following steps.
 		if allowOrigin == "" {
-			return gear.ErrForbidden.WithMsg(fmt.Sprintf("Origin: %v is not allowed", origin))
+			return gear.ErrForbidden.WithMsgf("Origin: %v is not allowed", origin)
 		}
 		if opts.Credentials {
 			// when responding to a credentialed request, server must specify a

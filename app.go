@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -304,7 +303,7 @@ func (app *App) Start(addr ...string) *ServerListener {
 
 	l, err := net.Listen("tcp", laddr)
 	if err != nil {
-		panic(Err.WithMsg(fmt.Sprintf("failed to listen on %v: %v", laddr, err)))
+		panic(Err.WithMsgf("failed to listen on %v: %v", laddr, err))
 	}
 
 	c := make(chan error)

@@ -2,7 +2,6 @@ package static
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -59,7 +58,7 @@ func New(opts Options) gear.Middleware {
 	}
 	info, _ := os.Stat(root)
 	if info == nil || !info.IsDir() {
-		panic(gear.Err.WithMsg(fmt.Sprintf("invalid root path: %s", root)))
+		panic(gear.Err.WithMsgf("invalid root path: %s", root))
 	}
 
 	if opts.Prefix == "" {

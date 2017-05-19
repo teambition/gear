@@ -1,6 +1,7 @@
 package secure
 
 // Inspire by https://github.com/helmetjs/helmet
+// More info https://httpsecurityreport.com/best_practice.html
 
 import (
 	"errors"

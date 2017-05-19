@@ -418,7 +418,7 @@ func ErrorWithStack(val interface{}, skip ...int) *Error {
   case string:
     err = ErrInternalServerError.WithMsg(v)
   default:
-    err = ErrInternalServerError.WithMsg(fmt.Sprintf("%#v", v))
+    err = ErrInternalServerError.WithMsgf("%#v", v)
   }
 
   if err.Stack == "" {
@@ -458,7 +458,7 @@ ErrNotFound                      = Err.WithCode(http.StatusNotFound)
 
 ```go
 if r.otherwise == nil {
-  return ErrNotImplemented.WithMsg(fmt.Sprintf(`"%s" is not implemented`, ctx.Path))
+  return ErrNotImplemented.WithMsgf(`"%s" is not implemented`, ctx.Path)
 }
 ```
 
@@ -466,7 +466,7 @@ if r.otherwise == nil {
 
 ```go
 if allowOrigin == "" {
-  return gear.ErrForbidden.WithMsg(fmt.Sprintf("Origin: %v is not allowed", origin))
+  return gear.ErrForbidden.WithMsgf("Origin: %v is not allowed", origin)
 }
 ```
 

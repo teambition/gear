@@ -1,7 +1,6 @@
 package gear
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -292,7 +291,7 @@ func (r *Router) Serve(ctx *Context) error {
 		}
 
 		if r.otherwise == nil {
-			return ErrNotImplemented.WithMsg(fmt.Sprintf(`"%s" is not implemented`, ctx.Path))
+			return ErrNotImplemented.WithMsgf(`"%s" is not implemented`, ctx.Path)
 		}
 		handler = r.otherwise
 	} else {
@@ -307,7 +306,7 @@ func (r *Router) Serve(ctx *Context) error {
 			if r.otherwise == nil {
 				// If no route handler is returned, it's a 405 error
 				ctx.Set(HeaderAllow, matched.Node.GetAllow())
-				return ErrMethodNotAllowed.WithMsg(fmt.Sprintf(`"%s" is not allowed in "%s"`, method, ctx.Path))
+				return ErrMethodNotAllowed.WithMsgf(`"%s" is not allowed in "%s"`, method, ctx.Path)
 			}
 			handler = r.otherwise
 		}

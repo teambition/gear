@@ -165,6 +165,16 @@ func TestGearError(t *testing.T) {
 		assert.Equal("Error: Hello, world", err.Error())
 	})
 
+	t.Run("Error.WithMsgf", func(t *testing.T) {
+		assert := assert.New(t)
+
+		err := Err.WithMsgf("test: %d", 123)
+		assert.Equal(500, err.Code)
+		assert.Equal("Error", err.Err)
+		assert.Equal("test: 123", err.Msg)
+		assert.Equal("Error: test: 123", err.Error())
+	})
+
 	t.Run("Error.WithCode", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -182,6 +192,17 @@ func TestGearError(t *testing.T) {
 		assert.Equal("", err.Msg)
 		err.Msg = "Some error"
 		assert.Equal("", Err.Msg)
+	})
+
+	t.Run("Error.WithStack", func(t *testing.T) {
+		assert := assert.New(t)
+
+		err := Err.WithMsg("error with stack").WithStack()
+		assert.Equal(500, err.Code)
+		assert.Equal("Error", err.Err)
+		assert.Equal("error with stack", err.Msg)
+		assert.True(strings.Contains(err.Stack, "/util.go"))
+		assert.True(strings.Contains(err.Stack, "github.com/teambition/gear/util_test.go"))
 	})
 
 	t.Run("Error.From", func(t *testing.T) {

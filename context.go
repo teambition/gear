@@ -190,7 +190,7 @@ func (ctx *Context) Timing(dt time.Duration, fn func(context.Context)) (err erro
 		// recover the fn call
 		defer func() {
 			if e := recover(); e != nil {
-				err = ErrInternalServerError.WithMsg(fmt.Sprintf("Timing panic: %#v", e))
+				err = ErrInternalServerError.WithMsgf("Timing panic: %#v", e)
 			}
 			close(ch)
 		}()

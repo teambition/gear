@@ -107,6 +107,12 @@ func (err Error) WithMsg(msgs ...string) *Error {
 	return &err
 }
 
+// WithMsgf returns a copy of err with given message in the manner of fmt.Printf.
+//  err := gear.ErrBadRequest.WithMsgf(`invalid email: "%s"`, email)
+func (err Error) WithMsgf(format string, args ...interface{}) *Error {
+	return err.WithMsg(fmt.Sprintf(format, args...))
+}
+
 // WithCode returns a copy of err with given code.
 //  BadRequestErr := gear.Err.WithCode(400)
 func (err Error) WithCode(code int) *Error {
@@ -115,6 +121,12 @@ func (err Error) WithCode(code int) *Error {
 		err.Err = text
 	}
 	return &err
+}
+
+// WithStack returns a copy of err with error stack.
+//  err := gear.Err.WithMsg("some error").WithStack()
+func (err Error) WithStack(skip ...int) *Error {
+	return ErrorWithStack(&err, skip...)
 }
 
 // From returns a copy of err with given error. It will try to merge the given error.
@@ -182,7 +194,7 @@ func ErrorWithStack(val interface{}, skip ...int) *Error {
 	case string:
 		err = ErrInternalServerError.WithMsg(v)
 	default:
-		err = ErrInternalServerError.WithMsg(fmt.Sprintf("%#v", v))
+		err = ErrInternalServerError.WithMsgf("%#v", v)
 	}
 
 	if err.Stack == "" {
@@ -308,7 +320,7 @@ func setRefField(fieldKind reflect.Kind, field reflect.Value, value string, isPt
 	case reflect.Float64:
 		return setRefFloat(field, value, 64, isPtrType)
 	}
-	return Err.WithMsg(fmt.Sprintf("unknown field type: %#v", fieldKind))
+	return Err.WithMsgf("unknown field type: %#v", fieldKind)
 }
 
 func setRefBool(field reflect.Value, value string, isPtrType bool) error {

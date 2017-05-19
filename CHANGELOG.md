@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.5.3] - 2017-05-19
+
+**Changed:**
+
+- Add `Error.WithStack(skip ...int) *Error` and `Error.WithMsgf(format string, args ...interface{}) *Error`.
+
 ## [1.5.2] - 2017-05-18
 
 **Changed:**
