@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/http2"
@@ -421,6 +422,8 @@ func TestGearWrapHandler(t *testing.T) {
 
 	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
+
+	time.Sleep(time.Millisecond)
 	assert.Equal(3, count.Int())
 	assert.Equal(404, res.StatusCode)
 	res.Body.Close()
@@ -456,6 +459,8 @@ func TestGearWrapHandlerFunc(t *testing.T) {
 
 	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
+
+	time.Sleep(time.Millisecond)
 	assert.Equal(3, count.Int())
 	assert.Equal(404, res.StatusCode)
 	res.Body.Close()
@@ -486,6 +491,8 @@ func TestGearCompose(t *testing.T) {
 
 	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
+
+	time.Sleep(time.Millisecond)
 	assert.Equal(2, count.Int())
 	assert.Equal(400, res.StatusCode)
 	res.Body.Close()

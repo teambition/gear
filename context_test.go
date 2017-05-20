@@ -145,6 +145,8 @@ func TestGearContextWithContext(t *testing.T) {
 
 	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
+
+	time.Sleep(time.Millisecond)
 	assert.Equal(500, res.StatusCode)
 	assert.Equal(3, count.Int())
 }
@@ -1008,6 +1010,8 @@ func TestGearContextHTML(t *testing.T) {
 
 	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
+
+	time.Sleep(time.Millisecond)
 	assert.Equal(200, res.StatusCode)
 	assert.Equal("Hello", PickRes(res.Text()).(string))
 	assert.Equal(2, count.Int())
@@ -1047,6 +1051,8 @@ func TestGearContextJSON(t *testing.T) {
 	host := "http://" + srv.Addr().String()
 	res, err := RequestBy("GET", host)
 	assert.Nil(err)
+
+	time.Sleep(time.Millisecond)
 	assert.Equal(200, res.StatusCode)
 	assert.Equal(`["Hello"]`, PickRes(res.Text()).(string))
 	assert.Equal(2, count.Int())
@@ -1054,6 +1060,8 @@ func TestGearContextJSON(t *testing.T) {
 
 	res, err = RequestBy("GET", host+"/error")
 	assert.Nil(err)
+
+	time.Sleep(time.Millisecond)
 	assert.Equal(500, res.StatusCode)
 	assert.True(strings.Contains(PickRes(res.Text()).(string), "json: unsupported value"))
 	assert.Equal(3, count.Int())
@@ -1094,6 +1102,8 @@ func TestGearContextJSONP(t *testing.T) {
 	host := "http://" + srv.Addr().String()
 	res, err := RequestBy("GET", host)
 	assert.Nil(err)
+
+	time.Sleep(time.Millisecond)
 	assert.Equal(200, res.StatusCode)
 	assert.Equal(`/**/ typeof cb123 === "function" && cb123(["Hello"]);`, PickRes(res.Text()).(string))
 	assert.Equal(2, count.Int())
@@ -1102,6 +1112,8 @@ func TestGearContextJSONP(t *testing.T) {
 
 	res, err = RequestBy("GET", host+"/error")
 	assert.Nil(err)
+
+	time.Sleep(time.Millisecond)
 	assert.Equal(500, res.StatusCode)
 	assert.True(strings.Contains(PickRes(res.Text()).(string), "json: unsupported value"))
 	assert.Equal(3, count.Int())
@@ -1157,6 +1169,8 @@ func TestGearContextXML(t *testing.T) {
 	host := "http://" + srv.Addr().String()
 	res, err := RequestBy("GET", host)
 	assert.Nil(err)
+
+	time.Sleep(time.Millisecond)
 	assert.Equal(200, res.StatusCode)
 	assert.Equal(`<XMLData type="test"><!--golang-->123</XMLData>`, PickRes(res.Text()).(string))
 	assert.Equal(2, count.Int())
@@ -1164,6 +1178,8 @@ func TestGearContextXML(t *testing.T) {
 
 	res, err = RequestBy("GET", host+"/error")
 	assert.Nil(err)
+
+	time.Sleep(time.Millisecond)
 	assert.Equal(500, res.StatusCode)
 	assert.True(strings.Contains(PickRes(res.Text()).(string), "xml: unsupported type"))
 	assert.Equal(3, count.Int())
@@ -1427,6 +1443,8 @@ func TestGearContextError(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
+
+		time.Sleep(time.Millisecond)
 		assert.Equal(0, count.Int())
 		assert.Equal(401, res.StatusCode)
 		assert.Equal(`{"error":"Unauthorized","message":"some error"}`, PickRes(res.Text()).(string))
@@ -1449,6 +1467,8 @@ func TestGearContextError(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
+
+		time.Sleep(time.Millisecond)
 		assert.Equal(0, count.Int())
 		assert.Equal(500, res.StatusCode)
 		assert.Equal(`{"error":"Internal Server Error","message":"some error"}`, PickRes(res.Text()).(string))
@@ -1472,6 +1492,8 @@ func TestGearContextError(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
+
+		time.Sleep(time.Millisecond)
 		assert.Equal(0, count.Int())
 		assert.Equal(500, res.StatusCode)
 		assert.Equal(`{"error":"Internal Server Error","message":"nil error"}`, PickRes(res.Text()).(string))
@@ -1525,6 +1547,8 @@ func TestGearContextErrorStatus(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
+
+		time.Sleep(time.Millisecond)
 		assert.Equal(0, count.Int())
 		assert.Equal(401, res.StatusCode)
 		assert.Equal(`{"error":"Unauthorized","message":""}`, PickRes(res.Text()).(string))
@@ -1647,6 +1671,8 @@ func TestGearContextAfter(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
+
+		time.Sleep(time.Millisecond)
 		assert.Equal(4, count.Int())
 		assert.Equal(204, res.StatusCode)
 	})
@@ -1679,6 +1705,8 @@ func TestGearContextAfter(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
+
+		time.Sleep(time.Millisecond)
 		assert.Equal(2, count.Int())
 		assert.Equal(204, res.StatusCode)
 	})
@@ -1711,6 +1739,8 @@ func TestGearContextOnEnd(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
+
+		time.Sleep(time.Millisecond)
 		assert.Equal(4, count.Int())
 		assert.Equal(204, res.StatusCode)
 	})
@@ -1749,6 +1779,8 @@ func TestGearContextOnEnd(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
+
+		time.Sleep(time.Millisecond)
 		assert.Equal(3, count.Int())
 		assert.Equal(204, res.StatusCode)
 	})
