@@ -530,8 +530,7 @@ func (l *Logger) Serve(ctx *gear.Context) error {
     log["Status"] = ctx.Res.Status()
     log["Type"] = ctx.Res.Type()
     log["Length"] = ctx.Res.Get(gear.HeaderContentLength)
-    // Don't block current process.
-    go l.consume(log, ctx)
+    l.consume(log, ctx)
   })
   return nil
 }
@@ -541,7 +540,7 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 
  开发者可以在中间件处理流过程中动态的添加 After Hooks 和 End Hooks。中间件处理流完成后则不能再添加，否则会 panic 异常。
 
- After Hooks 将在中间件处理流结束后，`http.ResponseWriter` 的 `w.WriteHeader` 调用之前执行，End Hooks 则是在 `w.WriteHeader` 调用之后，`w.Write` 之前执行，执行顺序与 Go 语言的 `defer` 一致，是 LIFO（后进先出）模式。所以，After Hooks 中仍然有修改 Response 内容的能力，比如修改 Headers, 或者 Cookie Session 的 Save 行为等。End Hooks 则不能再修改任何内容，只能做纯粹的后置处理逻辑，如写入日志，发起对外的 web hook 等。
+ After Hooks 将在中间件处理流结束后，`http.ResponseWriter` 的 `w.WriteHeader` 调用之前执行，End Hooks 则是在 `w.WriteHeader` 调用之后，一个独立的 **goroutine** 中执行（不阻塞当前处理进程），执行顺序与 Go 语言的 `defer` 一致，是 LIFO（后进先出）模式。所以，After Hooks 中仍然有修改 Response 内容的能力，比如修改 Headers, 或者 Cookie Session 的 Save 行为等。End Hooks 则不能再修改任何内容，只能做纯粹的后置处理逻辑，如写入日志，发起对外的 web hook 等。
 
  当中间件处理流出现错误或异常导致中断时，表明中间件处理流不再是预期的正常行为，After Hooks 队列将被清空，不会执行。但 End Hooks 仍会照样执行，这也是为什么 Gear logging 中间件的 `l.consume` 逻辑放在了 End Hook。
 

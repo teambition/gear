@@ -23,6 +23,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type Counter int32
+
+func (c *Counter) Int() int {
+	return int(atomic.LoadInt32((*int32)(c)))
+}
+
+func (c *Counter) Add() int {
+	return int(atomic.AddInt32((*int32)(c), 1))
+}
+
 func CtxTest(app *App, method, url string, body io.Reader) *Context {
 	req := httptest.NewRequest(method, url, body)
 	res := httptest.NewRecorder()
@@ -76,8 +86,8 @@ func TestGearContextContextInterface(t *testing.T) {
 
 func TestGearContextWithContext(t *testing.T) {
 	assert := assert.New(t)
-	var count int32
 
+	count := Counter(0)
 	app := New()
 	app.Use(func(ctx *Context) error {
 		assert.Panics(func() {
@@ -104,19 +114,19 @@ func TestGearContextWithContext(t *testing.T) {
 		go func() {
 			<-c1.Done()
 			assert.True(ctx.Res.ended.isTrue())
-			atomic.AddInt32(&count, 1)
+			count.Add()
 		}()
 
 		go func() {
 			<-c2.Done()
 			assert.True(ctx.Res.ended.isTrue())
-			atomic.AddInt32(&count, 1)
+			count.Add()
 		}()
 
 		go func() {
 			<-c3.Done()
 			assert.True(ctx.Res.ended.isTrue())
-			atomic.AddInt32(&count, 1)
+			count.Add()
 		}()
 
 		ctx.Status(404)
@@ -136,7 +146,7 @@ func TestGearContextWithContext(t *testing.T) {
 	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
 	assert.Equal(500, res.StatusCode)
-	assert.Equal(atomic.LoadInt32(&count), int32(3))
+	assert.Equal(3, count.Int())
 }
 
 func TestGearContextTiming(t *testing.T) {
@@ -978,16 +988,14 @@ func TestGearContextType(t *testing.T) {
 func TestGearContextHTML(t *testing.T) {
 	assert := assert.New(t)
 
+	count := Counter(0)
 	app := New()
-	count := 0
 	app.Use(func(ctx *Context) error {
 		ctx.OnEnd(func() {
-			count++
-			assert.Equal(2, count)
+			assert.Equal(2, count.Add())
 		})
 		ctx.After(func() {
-			count++
-			assert.Equal(1, count)
+			assert.Equal(1, count.Add())
 		})
 		return ctx.HTML(http.StatusOK, "Hello")
 	})
@@ -1002,19 +1010,18 @@ func TestGearContextHTML(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(200, res.StatusCode)
 	assert.Equal("Hello", PickRes(res.Text()).(string))
-	assert.Equal(2, count)
+	assert.Equal(2, count.Int())
 }
 
 func TestGearContextJSON(t *testing.T) {
 	assert := assert.New(t)
 
+	count := Counter(0)
 	app := New()
-	count := 0
 	app.Use(func(ctx *Context) error {
 		if ctx.Path == "/error" {
 			ctx.OnEnd(func() {
-				count++
-				assert.Equal(3, count)
+				assert.Equal(3, count.Add())
 			})
 			ctx.After(func() {
 				panic("this hook unreachable")
@@ -1023,12 +1030,10 @@ func TestGearContextJSON(t *testing.T) {
 		}
 
 		ctx.OnEnd(func() {
-			count++
-			assert.Equal(2, count)
+			assert.Equal(2, count.Add())
 		})
 		ctx.After(func() {
-			count++
-			assert.Equal(1, count)
+			assert.Equal(1, count.Add())
 		})
 		return ctx.JSON(http.StatusOK, []string{"Hello"})
 	})
@@ -1044,27 +1049,26 @@ func TestGearContextJSON(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(200, res.StatusCode)
 	assert.Equal(`["Hello"]`, PickRes(res.Text()).(string))
-	assert.Equal(2, count)
+	assert.Equal(2, count.Int())
 	assert.Equal(MIMEApplicationJSONCharsetUTF8, res.Header.Get(HeaderContentType))
 
 	res, err = RequestBy("GET", host+"/error")
 	assert.Nil(err)
 	assert.Equal(500, res.StatusCode)
 	assert.True(strings.Contains(PickRes(res.Text()).(string), "json: unsupported value"))
-	assert.Equal(3, count)
+	assert.Equal(3, count.Int())
 	assert.Equal(MIMEApplicationJSONCharsetUTF8, res.Header.Get(HeaderContentType))
 }
 
 func TestGearContextJSONP(t *testing.T) {
 	assert := assert.New(t)
 
+	count := Counter(0)
 	app := New()
-	count := 0
 	app.Use(func(ctx *Context) error {
 		if ctx.Path == "/error" {
 			ctx.OnEnd(func() {
-				count++
-				assert.Equal(3, count)
+				assert.Equal(3, count.Add())
 			})
 			ctx.After(func() {
 				panic("this hook unreachable")
@@ -1073,12 +1077,10 @@ func TestGearContextJSONP(t *testing.T) {
 		}
 
 		ctx.OnEnd(func() {
-			count++
-			assert.Equal(2, count)
+			assert.Equal(2, count.Add())
 		})
 		ctx.After(func() {
-			count++
-			assert.Equal(1, count)
+			assert.Equal(1, count.Add())
 		})
 		return ctx.JSONP(http.StatusOK, "cb123", []string{"Hello"})
 	})
@@ -1094,7 +1096,7 @@ func TestGearContextJSONP(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(200, res.StatusCode)
 	assert.Equal(`/**/ typeof cb123 === "function" && cb123(["Hello"]);`, PickRes(res.Text()).(string))
-	assert.Equal(2, count)
+	assert.Equal(2, count.Int())
 	assert.Equal("nosniff", res.Header.Get(HeaderXContentTypeOptions))
 	assert.Equal(MIMEApplicationJavaScriptCharsetUTF8, res.Header.Get(HeaderContentType))
 
@@ -1102,7 +1104,7 @@ func TestGearContextJSONP(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(500, res.StatusCode)
 	assert.True(strings.Contains(PickRes(res.Text()).(string), "json: unsupported value"))
-	assert.Equal(3, count)
+	assert.Equal(3, count.Int())
 	assert.Equal(MIMEApplicationJSONCharsetUTF8, res.Header.Get(HeaderContentType))
 }
 
@@ -1115,13 +1117,12 @@ type XMLData struct {
 func TestGearContextXML(t *testing.T) {
 	assert := assert.New(t)
 
+	count := Counter(0)
 	app := New()
-	count := 0
 	app.Use(func(ctx *Context) error {
 		if ctx.Path == "/error" {
 			ctx.OnEnd(func() {
-				count++
-				assert.Equal(3, count)
+				assert.Equal(3, count.Add())
 			})
 			ctx.After(func() {
 				panic("this hook unreachable")
@@ -1139,12 +1140,10 @@ func TestGearContextXML(t *testing.T) {
 		}
 
 		ctx.OnEnd(func() {
-			count++
-			assert.Equal(2, count)
+			assert.Equal(2, count.Add())
 		})
 		ctx.After(func() {
-			count++
-			assert.Equal(1, count)
+			assert.Equal(1, count.Add())
 		})
 		return ctx.XML(http.StatusOK, XMLData{"test", "golang", "123"})
 	})
@@ -1160,14 +1159,14 @@ func TestGearContextXML(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(200, res.StatusCode)
 	assert.Equal(`<XMLData type="test"><!--golang-->123</XMLData>`, PickRes(res.Text()).(string))
-	assert.Equal(2, count)
+	assert.Equal(2, count.Int())
 	assert.Equal(MIMEApplicationXMLCharsetUTF8, res.Header.Get(HeaderContentType))
 
 	res, err = RequestBy("GET", host+"/error")
 	assert.Nil(err)
 	assert.Equal(500, res.StatusCode)
 	assert.True(strings.Contains(PickRes(res.Text()).(string), "xml: unsupported type"))
-	assert.Equal(3, count)
+	assert.Equal(3, count.Int())
 	assert.Equal(MIMEApplicationJSONCharsetUTF8, res.Header.Get(HeaderContentType))
 }
 
@@ -1413,11 +1412,11 @@ func TestGearContextError(t *testing.T) {
 	t.Run("should work with *Error", func(t *testing.T) {
 		assert := assert.New(t)
 
+		count := Counter(0)
 		app := New()
-		count := 0
 		app.Use(func(ctx *Context) error {
 			ctx.After(func() {
-				count++
+				count.Add()
 			})
 			err := ErrUnauthorized.WithMsg("some error")
 			return ctx.Error(err)
@@ -1428,7 +1427,7 @@ func TestGearContextError(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(0, count)
+		assert.Equal(0, count.Int())
 		assert.Equal(401, res.StatusCode)
 		assert.Equal(`{"error":"Unauthorized","message":"some error"}`, PickRes(res.Text()).(string))
 	})
@@ -1436,11 +1435,11 @@ func TestGearContextError(t *testing.T) {
 	t.Run("should work with error", func(t *testing.T) {
 		assert := assert.New(t)
 
+		count := Counter(0)
 		app := New()
-		count := 0
 		app.Use(func(ctx *Context) error {
 			ctx.After(func() {
-				count++
+				count.Add()
 			})
 			return ctx.Error(errors.New("some error"))
 		})
@@ -1450,7 +1449,7 @@ func TestGearContextError(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(0, count)
+		assert.Equal(0, count.Int())
 		assert.Equal(500, res.StatusCode)
 		assert.Equal(`{"error":"Internal Server Error","message":"some error"}`, PickRes(res.Text()).(string))
 	})
@@ -1459,11 +1458,11 @@ func TestGearContextError(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		count := 0
+		count := Counter(0)
 		app.Use(func(ctx *Context) error {
 			var err error
 			ctx.After(func() {
-				count++
+				count.Add()
 			})
 			return ctx.Error(err)
 		})
@@ -1473,7 +1472,7 @@ func TestGearContextError(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(0, count)
+		assert.Equal(0, count.Int())
 		assert.Equal(500, res.StatusCode)
 		assert.Equal(`{"error":"Internal Server Error","message":"nil error"}`, PickRes(res.Text()).(string))
 	})
@@ -1513,10 +1512,10 @@ func TestGearContextErrorStatus(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		count := 0
+		count := Counter(0)
 		app.Use(func(ctx *Context) error {
 			ctx.After(func() {
-				count++
+				count.Add()
 			})
 			return ctx.ErrorStatus(401)
 		})
@@ -1526,7 +1525,7 @@ func TestGearContextErrorStatus(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(0, count)
+		assert.Equal(0, count.Int())
 		assert.Equal(401, res.StatusCode)
 		assert.Equal(`{"error":"Unauthorized","message":""}`, PickRes(res.Text()).(string))
 	})
@@ -1627,23 +1626,19 @@ func TestGearContextAfter(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		count := 0
+		count := Counter(0)
 		app.Use(func(ctx *Context) error {
 			ctx.After(func() {
-				count++
-				assert.Equal(4, count)
+				assert.Equal(4, count.Add())
 				ctx.Status(204)
 			})
 			ctx.After(func() {
-				count++
-				assert.Equal(3, count)
+				assert.Equal(3, count.Add())
 			})
 			ctx.After(func() {
-				count++
-				assert.Equal(2, count)
+				assert.Equal(2, count.Add())
 			})
-			count++
-			assert.Equal(1, count)
+			assert.Equal(1, count.Add())
 			return ctx.End(400)
 		})
 
@@ -1652,7 +1647,7 @@ func TestGearContextAfter(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(4, count)
+		assert.Equal(4, count.Int())
 		assert.Equal(204, res.StatusCode)
 	})
 
@@ -1660,18 +1655,17 @@ func TestGearContextAfter(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		count := 0
+		count := Counter(0)
 		app.Use(func(ctx *Context) error {
 			ctx.After(func() {
 				assert.Panics(func() {
 					ctx.After(func() {})
 				})
-				count++
-				assert.Equal(2, count)
+				assert.Equal(2, count.Add())
 			})
 
-			count++
-			assert.Equal(1, count)
+			count.Add()
+			assert.Equal(1, count.Int())
 			ctx.Status(204)
 			ctx.Res.ended.setTrue()
 			assert.Panics(func() {
@@ -1685,7 +1679,7 @@ func TestGearContextAfter(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(2, count)
+		assert.Equal(2, count.Int())
 		assert.Equal(204, res.StatusCode)
 	})
 }
@@ -1695,24 +1689,20 @@ func TestGearContextOnEnd(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		count := 0
+		count := Counter(0)
 		app.Use(func(ctx *Context) error {
 			ctx.OnEnd(func() {
-				count++
-				assert.Equal(4, count)
+				assert.Equal(4, count.Add())
 				ctx.Status(500)
 			})
 			ctx.After(func() {
-				count++
-				assert.Equal(2, count)
+				assert.Equal(2, count.Add())
 				ctx.Status(204)
 			})
 			ctx.OnEnd(func() {
-				count++
-				assert.Equal(3, count)
+				assert.Equal(3, count.Add())
 			})
-			count++
-			assert.Equal(1, count)
+			assert.Equal(1, count.Add())
 			return ctx.End(400)
 		})
 
@@ -1721,7 +1711,7 @@ func TestGearContextOnEnd(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(4, count)
+		assert.Equal(4, count.Int())
 		assert.Equal(204, res.StatusCode)
 	})
 
@@ -1729,26 +1719,23 @@ func TestGearContextOnEnd(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		count := 0
+		count := Counter(0)
 		app.Use(func(ctx *Context) error {
 			ctx.After(func() {
 				assert.Panics(func() {
 					ctx.OnEnd(func() {})
 				})
-				count++
-				assert.Equal(2, count)
+				assert.Equal(2, count.Add())
 			})
 
 			ctx.OnEnd(func() {
 				assert.Panics(func() {
 					ctx.OnEnd(func() {})
 				})
-				count++
-				assert.Equal(3, count)
+				assert.Equal(3, count.Add())
 			})
 
-			count++
-			assert.Equal(1, count)
+			assert.Equal(1, count.Add())
 			ctx.Status(204)
 			ctx.Res.ended.setTrue()
 			assert.Panics(func() {
@@ -1762,7 +1749,7 @@ func TestGearContextOnEnd(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(3, count)
+		assert.Equal(3, count.Int())
 		assert.Equal(204, res.StatusCode)
 	})
 }

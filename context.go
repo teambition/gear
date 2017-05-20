@@ -186,16 +186,18 @@ func (ctx *Context) Timing(dt time.Duration, fn func(context.Context)) (err erro
 	defer cancel()
 
 	ch := make(chan struct{})
-	go func() {
+	defFn := func() {
 		// recover the fn call
-		defer func() {
-			if e := recover(); e != nil {
-				err = ErrInternalServerError.WithMsgf("Timing panic: %#v", e)
-			}
-			close(ch)
-		}()
+		if e := recover(); e != nil {
+			err = ErrInternalServerError.WithMsgf("Timing panic: %#v", e)
+		}
+		close(ch)
+	}
+	go func() {
+		defer defFn()
 		fn(ct)
 	}()
+
 	select {
 	case <-ct.Done():
 		err = ct.Err()

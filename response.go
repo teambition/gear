@@ -114,10 +114,8 @@ func (r *Response) WriteHeader(code int) {
 		r.status = code
 	}
 
-	// execute "after hooks" in LIFO order before Response.WriteHeader
-	for i := len(r.afterHooks) - 1; i >= 0; i-- {
-		r.afterHooks[i]()
-	}
+	// execute "after hooks" with LIFO order before Response.WriteHeader
+	runHooks(r.afterHooks)
 
 	// check status, r.status maybe changed in afterHooks
 	if !IsStatusCode(r.status) {
@@ -137,9 +135,10 @@ func (r *Response) WriteHeader(code int) {
 		r.Set(HeaderContentLength, strconv.Itoa(len(r.body)))
 	}
 	r.rw.WriteHeader(r.status)
-	// execute "end hooks" in LIFO order after Response.WriteHeader
-	for i := len(r.endHooks) - 1; i >= 0; i-- {
-		r.endHooks[i]()
+	// execute "end hooks" with LIFO order after Response.WriteHeader.
+	// they run in a goroutine, in order to not block current process.
+	if len(r.endHooks) > 0 {
+		go runHooks(r.endHooks)
 	}
 }
 
@@ -188,4 +187,11 @@ func (r *Response) respond(status int, body []byte) (err error) {
 		_, err = r.Write(r.body)
 	}
 	return
+}
+
+func runHooks(hooks []func()) {
+	// run hooks in LIFO order
+	for i := len(hooks) - 1; i >= 0; i-- {
+		hooks[i]()
+	}
 }

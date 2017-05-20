@@ -398,18 +398,15 @@ func TestGearWrapHandler(t *testing.T) {
 	assert := assert.New(t)
 
 	app := New()
-	count := 0
+	count := Counter(0)
 	app.Use(func(ctx *Context) error {
 		ctx.After(func() {
-			count++
-			assert.Equal(2, count)
+			assert.Equal(2, count.Add())
 		})
 		ctx.OnEnd(func() {
-			count++
-			assert.Equal(3, count)
+			assert.Equal(3, count.Add())
 		})
-		count++
-		assert.Equal(1, count)
+		assert.Equal(1, count.Add())
 		ctx.Status(400)
 		return nil
 	})
@@ -424,7 +421,7 @@ func TestGearWrapHandler(t *testing.T) {
 
 	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
-	assert.Equal(3, count)
+	assert.Equal(3, count.Int())
 	assert.Equal(404, res.StatusCode)
 	res.Body.Close()
 }
@@ -433,18 +430,15 @@ func TestGearWrapHandlerFunc(t *testing.T) {
 	assert := assert.New(t)
 
 	app := New()
-	count := 0
+	count := Counter(0)
 	app.Use(func(ctx *Context) error {
 		ctx.After(func() {
-			count++
-			assert.Equal(2, count)
+			assert.Equal(2, count.Add())
 		})
 		ctx.OnEnd(func() {
-			count++
-			assert.Equal(3, count)
+			assert.Equal(3, count.Add())
 		})
-		count++
-		assert.Equal(1, count)
+		assert.Equal(1, count.Add())
 		ctx.Status(400)
 		return nil
 	})
@@ -462,7 +456,7 @@ func TestGearWrapHandlerFunc(t *testing.T) {
 
 	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
-	assert.Equal(3, count)
+	assert.Equal(3, count.Int())
 	assert.Equal(404, res.StatusCode)
 	res.Body.Close()
 }
@@ -471,17 +465,15 @@ func TestGearCompose(t *testing.T) {
 	assert := assert.New(t)
 
 	app := New()
-	count := 0
+	count := Counter(0)
 	app.Use(Compose(
 		func(ctx *Context) error {
 			assert.Nil(Compose()(ctx))
-			count++
-			assert.Equal(1, count)
+			assert.Equal(1, count.Add())
 			return nil
 		},
 		func(ctx *Context) error {
-			count++
-			assert.Equal(2, count)
+			assert.Equal(2, count.Add())
 			return ctx.End(400)
 		},
 		func(ctx *Context) error {
@@ -494,7 +486,7 @@ func TestGearCompose(t *testing.T) {
 
 	res, err := RequestBy("GET", "http://"+srv.Addr().String())
 	assert.Nil(err)
-	assert.Equal(2, count)
+	assert.Equal(2, count.Int())
 	assert.Equal(400, res.StatusCode)
 	res.Body.Close()
 }

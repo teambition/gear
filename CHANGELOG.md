@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.6.0] - 2017-05-20
+
+**Changed:**
+
+- Run "end hooks" in a goroutine, in order to not block current process.
+
 ## [1.5.3] - 2017-05-19
 
 **Changed:**
