@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.6.1] - 2017-05-22
+
+**Fixed:**
+
+- Add `X-Ratelimit-` to `defaultHeaderFilterReg`.
+
 ## [1.6.0] - 2017-05-20
 
 **Changed:**

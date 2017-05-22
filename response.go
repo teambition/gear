@@ -9,7 +9,7 @@ import (
 )
 
 var defaultHeaderFilterReg = regexp.MustCompile(
-	`(?i)^(accept|allow|retry-after|warning|vary|access-control-allow-)`)
+	`(?i)^(accept|allow|retry-after|warning|vary|access-control-allow-|x-ratelimit-)`)
 
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.

@@ -47,6 +47,7 @@ func TestGearResponse(t *testing.T) {
 		res := ctx.Res
 		res.Set("accept", "text/plain")
 		res.Set("allow", "GET")
+		res.Set("X-Ratelimit-Limit", "10")
 		res.Set("retry-after", "3 seconds")
 		res.Set("warning", "some warning")
 		res.Set("access-control-allow-origin", "*")
@@ -55,6 +56,7 @@ func TestGearResponse(t *testing.T) {
 		res.ResetHeader()
 		assert.Equal("text/plain", res.Get(HeaderAccept))
 		assert.Equal("GET", res.Get(HeaderAllow))
+		assert.Equal("10", res.Get("X-Ratelimit-Limit"))
 		assert.Equal("3 seconds", res.Get(HeaderRetryAfter))
 		assert.Equal("some warning", res.Get(HeaderWarning))
 		assert.Equal("*", res.Get(HeaderAccessControlAllowOrigin))
