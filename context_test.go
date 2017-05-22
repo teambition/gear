@@ -860,6 +860,7 @@ func TestGearContextParseURL(t *testing.T) {
 
 		body := jsonQueryTemplate{}
 		err := ctx.ParseURL(&body)
+		assert.NotNil(err)
 		assert.Equal(400, err.(*Error).Code)
 	})
 
@@ -881,7 +882,8 @@ func TestGearContextParseURL(t *testing.T) {
 		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin&name=admin&time=1898", nil)
 		body := invalidQueryTemplate{}
 		err := ctx.ParseURL(&body)
-		assert.Equal(500, err.(*Error).Code)
+		assert.NotNil(err)
+		assert.Equal(400, err.(*Error).Code)
 	})
 
 	t.Run("should parse param error with invalid data type", func(t *testing.T) {
@@ -895,7 +897,8 @@ func TestGearContextParseURL(t *testing.T) {
 		})
 		body := invalidParamTemplate{}
 		err := ctx.ParseURL(&body)
-		assert.Equal(500, err.(*Error).Code)
+		assert.NotNil(err)
+		assert.Equal(400, err.(*Error).Code)
 	})
 
 	t.Run("should parse url params", func(t *testing.T) {

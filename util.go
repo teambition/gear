@@ -1,6 +1,8 @@
 package gear
 
 import (
+	"encoding"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/textproto"
@@ -227,6 +229,9 @@ func ValuesToStruct(values map[string][]string, target interface{}, tag string) 
 	if values == nil {
 		return fmt.Errorf("invalid values: %#v", values)
 	}
+	if len(values) == 0 {
+		return nil
+	}
 	rv := reflect.ValueOf(target)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
 		return fmt.Errorf("invalid struct: %#v", target)
@@ -319,8 +324,9 @@ func setRefField(fieldKind reflect.Kind, field reflect.Value, value string, isPt
 		return setRefFloat(field, value, 32, isPtrType)
 	case reflect.Float64:
 		return setRefFloat(field, value, 64, isPtrType)
+	default:
+		return tryUnmarshalValue(fieldKind, field, value)
 	}
-	return Err.WithMsgf("unknown field type: %#v", fieldKind)
 }
 
 func setRefBool(field reflect.Value, value string, isPtrType bool) error {
@@ -408,6 +414,26 @@ func setRefFloat(field reflect.Value, value string, size int, isPtrType bool) er
 		}
 	}
 	return err
+}
+
+func tryUnmarshalValue(fieldKind reflect.Kind, field reflect.Value, value string) error {
+	if field.Kind() != reflect.Ptr && field.Type().Name() != "" && field.CanAddr() {
+		field = field.Addr()
+	}
+	if field.Type().NumMethod() > 0 {
+		if field.IsNil() {
+			field.Set(reflect.New(field.Type().Elem()))
+		}
+
+		i := field.Interface()
+		if u, ok := i.(encoding.TextUnmarshaler); ok {
+			return u.UnmarshalText([]byte(value))
+		}
+		if u, ok := i.(json.Unmarshaler); ok {
+			return u.UnmarshalJSON([]byte(value))
+		}
+	}
+	return Err.WithMsgf("unknown field type: %#v", fieldKind)
 }
 
 // pruneStack make a thin conversion for stack information

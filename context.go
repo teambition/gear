@@ -389,7 +389,7 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 		return ErrRequestEntityTooLarge.From(err)
 	}
 	if err = ctx.app.bodyParser.Parse(buf, body, mediaType, params["charset"]); err != nil {
-		return err
+		return ErrBadRequest.From(err)
 	}
 	return body.Validate()
 }
@@ -425,7 +425,7 @@ func (ctx *Context) ParseURL(body BodyTemplate) error {
 	}
 
 	if err := ctx.app.urlParser.Parse(ctx.Req.URL.Query(), body, "query"); err != nil {
-		return err
+		return ErrBadRequest.From(err)
 	}
 
 	if res, _ := ctx.Any(paramsKey); res != nil {
@@ -436,7 +436,7 @@ func (ctx *Context) ParseURL(body BodyTemplate) error {
 			}
 
 			if err := ctx.app.urlParser.Parse(paramValues, body, "param"); err != nil {
-				return err
+				return ErrBadRequest.From(err)
 			}
 		}
 	}
