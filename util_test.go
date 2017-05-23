@@ -768,7 +768,7 @@ func TestGearValuesToStruct(t *testing.T) {
 		assert.Equal([]string{"slice1"}, s.Slice1)
 		assert.Equal([]int{1}, s.Slice2)
 		assert.Equal([]int{}, s.Slice3)
-		assert.Equal(timeVal, s.Time)
+		assert.Equal(timeVal.Unix(), s.Time.Unix())
 
 		assert.Nil(ValuesToStruct(data, &s, "form"))
 		assert.Equal("string", *s.Pstring)
@@ -790,6 +790,6 @@ func TestGearValuesToStruct(t *testing.T) {
 		sliceint1 := 1
 		assert.Equal([]*int{&sliceint1}, s.Pslice2)
 		assert.Equal([]*int{}, s.Pslice3)
-		assert.Equal(timeVal, *s.PTime)
+		assert.Equal(timeVal.Unix(), (*s.PTime).Unix())
 	})
 }
