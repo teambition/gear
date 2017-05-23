@@ -227,40 +227,35 @@ func ErrorWithStack(val interface{}, skip ...int) *Error {
 //
 func ValuesToStruct(values map[string][]string, target interface{}, tag string) (err error) {
 	if values == nil {
-		return fmt.Errorf("invalid values: %#v", values)
+		return fmt.Errorf("invalid values: %v", values)
 	}
 	if len(values) == 0 {
-		return nil
+		return
 	}
 	rv := reflect.ValueOf(target)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return fmt.Errorf("invalid struct: %#v", target)
+		return fmt.Errorf("invalid struct: %v", rv)
 	}
 
-	structValue := rv.Elem()
-	structType := reflect.TypeOf(target).Elem()
-
-	for i := 0; i < structType.NumField(); i++ {
-		fieldType := structType.Field(i)
-		fieldValue := structValue.Field(i)
-		if !fieldValue.CanSet() {
-			continue
-		}
-		fieldKey := fieldType.Tag.Get(tag)
-		if fieldKey == "" {
+	rv = rv.Elem()
+	rt := rv.Type()
+	n := rv.NumField()
+	for i := 0; i < n; i++ {
+		fv := rv.Field(i)
+		if !fv.CanSet() {
 			continue
 		}
 
-		if value, ok := values[fieldKey]; ok {
-			if fieldValue.Kind() == reflect.Slice {
-				err = setRefSlice(fieldValue, value)
-			} else if len(value) > 0 {
-				fieldType := fieldValue.Kind()
-				isPtrType := fieldType == reflect.Ptr
-				if isPtrType {
-					fieldType = fieldValue.Type().Elem().Kind()
-				}
-				err = setRefField(fieldType, fieldValue, value[0], isPtrType)
+		fk := rt.Field(i).Tag.Get(tag)
+		if fk == "" {
+			continue
+		}
+
+		if vals, ok := values[fk]; ok {
+			if fv.Kind() == reflect.Slice {
+				err = setRefSlice(fv, vals)
+			} else if len(vals) > 0 {
+				err = setRefField(fv, vals[0])
 			}
 			if err != nil {
 				return
@@ -271,169 +266,105 @@ func ValuesToStruct(values map[string][]string, target interface{}, tag string) 
 	return
 }
 
-func setRefSlice(field reflect.Value, value []string) error {
-	lenValue := len(value)
-	sliceKind := field.Type().Elem().Kind()
-	slice := reflect.MakeSlice(field.Type(), lenValue, lenValue)
-	isPtrType := sliceKind == reflect.Ptr
-	if isPtrType {
-		sliceKind = field.Type().Elem().Elem().Kind()
+func shouldDeref(k reflect.Kind) bool {
+	switch k {
+	case reflect.String, reflect.Bool, reflect.Float32, reflect.Float64,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return true
+	default:
+		return false
 	}
-	for i := 0; i < lenValue; i++ {
-		if err := setRefField(sliceKind, slice.Index(i), value[i], isPtrType); err != nil {
+}
+
+func setRefSlice(v reflect.Value, vals []string) error {
+	l := len(vals)
+	slice := reflect.MakeSlice(v.Type(), l, l)
+
+	for i := 0; i < l; i++ {
+		if err := setRefField(slice.Index(i), vals[i]); err != nil {
 			return err
 		}
 	}
 
-	field.Set(slice)
+	v.Set(slice)
 	return nil
 }
 
-func setRefField(fieldKind reflect.Kind, field reflect.Value, value string, isPtrType bool) error {
-	switch fieldKind {
+func setRefField(v reflect.Value, str string) error {
+	if v.Kind() == reflect.Ptr && shouldDeref(v.Type().Elem().Kind()) {
+		v.Set(reflect.New(v.Type().Elem()))
+		v = v.Elem()
+	}
+
+	switch v.Kind() {
 	case reflect.String:
-		if isPtrType {
-			field.Set(reflect.ValueOf(&value))
-		} else {
-			field.SetString(value)
-		}
+		v.SetString(str)
 		return nil
 	case reflect.Bool:
-		return setRefBool(field, value, isPtrType)
-	case reflect.Int:
-		return setRefInt(field, value, 0, isPtrType)
-	case reflect.Int8:
-		return setRefInt(field, value, 8, isPtrType)
-	case reflect.Int16:
-		return setRefInt(field, value, 16, isPtrType)
-	case reflect.Int32:
-		return setRefInt(field, value, 32, isPtrType)
-	case reflect.Int64:
-		return setRefInt(field, value, 64, isPtrType)
-	case reflect.Uint:
-		return setRefUint(field, value, 0, isPtrType)
-	case reflect.Uint8:
-		return setRefUint(field, value, 8, isPtrType)
-	case reflect.Uint16:
-		return setRefUint(field, value, 16, isPtrType)
-	case reflect.Uint32:
-		return setRefUint(field, value, 32, isPtrType)
-	case reflect.Uint64:
-		return setRefUint(field, value, 64, isPtrType)
-	case reflect.Float32:
-		return setRefFloat(field, value, 32, isPtrType)
-	case reflect.Float64:
-		return setRefFloat(field, value, 64, isPtrType)
+		return setRefBool(v, str)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return setRefInt(v, str, v.Type().Bits())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return setRefUint(v, str, v.Type().Bits())
+	case reflect.Float32, reflect.Float64:
+		return setRefFloat(v, str, v.Type().Bits())
 	default:
-		return tryUnmarshalValue(fieldKind, field, value)
+		return tryUnmarshalValue(v, str)
 	}
 }
 
-func setRefBool(field reflect.Value, value string, isPtrType bool) error {
-	val, err := strconv.ParseBool(value)
+func setRefBool(v reflect.Value, str string) error {
+	val, err := strconv.ParseBool(str)
 	if err == nil {
-		if isPtrType {
-			field.Set(reflect.ValueOf(&val))
-		} else {
-			field.SetBool(val)
-		}
+		v.SetBool(val)
 	}
 	return err
 }
 
-func setRefInt(field reflect.Value, value string, size int, isPtrType bool) error {
-	val, err := strconv.ParseInt(value, 10, size)
+func setRefInt(v reflect.Value, str string, size int) error {
+	val, err := strconv.ParseInt(str, 10, size)
 	if err == nil {
-		if isPtrType {
-			switch size {
-			case 8:
-				pVal := int8(val)
-				field.Set(reflect.ValueOf(&pVal))
-			case 16:
-				pVal := int16(val)
-				field.Set(reflect.ValueOf(&pVal))
-			case 32:
-				pVal := int32(val)
-				field.Set(reflect.ValueOf(&pVal))
-			case 64:
-				pVal := int64(val)
-				field.Set(reflect.ValueOf(&pVal))
-			default:
-				pVal := int(val)
-				field.Set(reflect.ValueOf(&pVal))
-			}
-		} else {
-			field.SetInt(val)
-		}
+		v.SetInt(val)
 	}
 	return err
 }
 
-func setRefUint(field reflect.Value, value string, size int, isPtrType bool) error {
-	val, err := strconv.ParseUint(value, 10, size)
+func setRefUint(v reflect.Value, str string, size int) error {
+	val, err := strconv.ParseUint(str, 10, size)
 	if err == nil {
-		if isPtrType {
-			switch size {
-			case 8:
-				pVal := uint8(val)
-				field.Set(reflect.ValueOf(&pVal))
-			case 16:
-				pVal := uint16(val)
-				field.Set(reflect.ValueOf(&pVal))
-			case 32:
-				pVal := uint32(val)
-				field.Set(reflect.ValueOf(&pVal))
-			case 64:
-				pVal := uint64(val)
-				field.Set(reflect.ValueOf(&pVal))
-			default:
-				pVal := uint(val)
-				field.Set(reflect.ValueOf(&pVal))
-			}
-		} else {
-			field.SetUint(val)
-		}
+		v.SetUint(val)
 	}
 	return err
 }
 
-func setRefFloat(field reflect.Value, value string, size int, isPtrType bool) error {
-	val, err := strconv.ParseFloat(value, size)
+func setRefFloat(v reflect.Value, str string, size int) error {
+	val, err := strconv.ParseFloat(str, size)
 	if err == nil {
-		if isPtrType {
-			switch size {
-			case 32:
-				pVal := float32(val)
-				field.Set(reflect.ValueOf(&pVal))
-			case 64:
-				pVal := float64(val)
-				field.Set(reflect.ValueOf(&pVal))
-			}
-		} else {
-			field.SetFloat(val)
-		}
+		v.SetFloat(val)
 	}
 	return err
 }
 
-func tryUnmarshalValue(fieldKind reflect.Kind, field reflect.Value, value string) error {
-	if field.Kind() != reflect.Ptr && field.Type().Name() != "" && field.CanAddr() {
-		field = field.Addr()
+func tryUnmarshalValue(v reflect.Value, str string) error {
+	if v.Kind() != reflect.Ptr && v.Type().Name() != "" && v.CanAddr() {
+		v = v.Addr()
 	}
-	if field.Type().NumMethod() > 0 {
-		if field.IsNil() {
-			field.Set(reflect.New(field.Type().Elem()))
+
+	if v.Type().NumMethod() > 0 {
+		if v.IsNil() {
+			v.Set(reflect.New(v.Type().Elem()))
 		}
 
-		i := field.Interface()
+		i := v.Interface()
 		if u, ok := i.(encoding.TextUnmarshaler); ok {
-			return u.UnmarshalText([]byte(value))
+			return u.UnmarshalText([]byte(str))
 		}
 		if u, ok := i.(json.Unmarshaler); ok {
-			return u.UnmarshalJSON([]byte(value))
+			return u.UnmarshalJSON([]byte(str))
 		}
 	}
-	return Err.WithMsgf("unknown field type: %#v", fieldKind)
+	return Err.WithMsgf("unknown field type: %v", v.Type())
 }
 
 // pruneStack make a thin conversion for stack information
