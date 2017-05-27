@@ -8,17 +8,27 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/teambition/gear"
 )
 
+var crlfEscaper = strings.NewReplacer("\r", "\\r", "\n", "\\n")
+
+// Messager is implemented by any value that has a Format method and a String method.
+// They are using by Logger to format value to string.
+type Messager interface {
+	fmt.Stringer
+	Format() (string, error)
+}
+
 // Log records key-value pairs for structured logging.
 type Log map[string]interface{}
 
-// JSON try to marshal the structured log with json.Marshal.
-func (l Log) JSON() (string, error) {
+// Format try to marshal the structured log with json.Marshal.
+func (l Log) Format() (string, error) {
 	res, err := json.Marshal(l)
 	if err == nil {
 		return string(res), nil
@@ -26,8 +36,8 @@ func (l Log) JSON() (string, error) {
 	return "", err
 }
 
-// String implemented fmt.Stringer interface, returns a Go-syntax string.
-func (l Log) String() string {
+// GoString implemented fmt.GoStringer interface, returns a Go-syntax string.
+func (l Log) GoString() string {
 	count := len(l)
 	buf := bytes.NewBufferString("Log{")
 	for key, value := range l {
@@ -38,6 +48,31 @@ func (l Log) String() string {
 		}
 	}
 	return buf.String()
+}
+
+// String implemented fmt.Stringer interface, returns a Go-syntax string.
+func (l Log) String() string {
+	return l.GoString()
+}
+
+// From copy values from the Log argument, returns self.
+//  log := Log{"key": "foo"}
+//  logging.Info(log.From(Log{"key2": "foo2"}))
+func (l Log) From(log Log) Log {
+	for key, val := range log {
+		l[key] = val
+	}
+	return l
+}
+
+// Into copy self values into the Log argument, returns the Log argument.
+//  redisLog := Log{"kind": "redis"}
+//  logging.Err(redisLog.Into(Log{"data": "foo"}))
+func (l Log) Into(log Log) Log {
+	for key, val := range l {
+		log[key] = val
+	}
+	return log
 }
 
 // Reset delete all key-value on the log. Empty log will not be consumed.
@@ -83,8 +118,22 @@ var levels = []string{"EMERG", "ALERT", "CRIT", "ERR", "WARNING", "NOTICE", "INF
 var std = New(os.Stderr)
 
 // Default returns the default logger
-func Default() *Logger {
+func Default(devMode ...bool) *Logger {
+	if len(devMode) > 0 && devMode[0] {
+		std.SetLogConsume(developmentConsume)
+	}
 	return std
+}
+
+func developmentConsume(log Log, ctx *gear.Context) {
+	std.mu.Lock() // don't need Lock usually, logger.Output do it for us.
+	defer std.mu.Unlock()
+
+	fmt.Fprintf(std.Out, "%s %s %s ", log["IP"].(net.IP), log["Method"].(string), log["URL"].(string))
+	status := log["Status"].(int)
+	FprintWithColor(std.Out, strconv.Itoa(status), colorStatus(status))
+	fmt.Fprintln(std.Out, fmt.Sprintf(
+		" %s - %.3f ms", log["Length"], float64(time.Now().Sub(log["Start"].(time.Time)))/1e6))
 }
 
 // New creates a Logger instance with given io.Writer and DebugLevel log level.
@@ -102,15 +151,18 @@ func New(w io.Writer) *Logger {
 		log["Start"] = time.Now()
 	}
 
-	logger.consume = func(log Log, ctx *gear.Context) {
-		logger.mu.Lock() // don't need Lock usually, logger.Output do it for us.
-		defer logger.mu.Unlock()
+	logger.consume = func(log Log, _ *gear.Context) {
+		end := time.Now()
+		if t, ok := log["Start"].(time.Time); ok {
+			log["Time"] = end.Sub(t) / 1e6
+			delete(log, "Start")
+		}
 
-		fmt.Fprintf(logger.Out, "%s %s %s ", log["IP"].(net.IP), log["Method"].(string), log["URL"].(string))
-		status := log["Status"].(int)
-		FprintWithColor(logger.Out, strconv.Itoa(status), colorStatus(status))
-		fmt.Fprintln(logger.Out, fmt.Sprintf(
-			" %s - %.3f ms", log["Length"], float64(time.Now().Sub(log["Start"].(time.Time)))/1e6))
+		if str, err := log.Format(); err == nil {
+			logger.Output(end, InfoLevel, str)
+		} else {
+			logger.Output(end, WarningLevel, log.String())
+		}
 	}
 	return logger
 }
@@ -135,13 +187,11 @@ func New(w io.Writer) *Logger {
 //  })
 //  logger.SetLogConsume(func(log Log, _ *gear.Context) {
 //  	end := time.Now()
-//  	log["Time"] = end.Sub(log["Start"].(time.Time)) / 1e6
-//  	delete(log, "Start")
-// 		if res, err := log.JSON(); err == nil {
-// 			logger.Output(end, InfoLevel, res)
-// 		} else {
-// 			logger.Output(end, WarningLevel, log.String())
-// 		}
+//  	if str, err := log.Format(); err == nil {
+//  		logger.Output(end, InfoLevel, str)
+//  	} else {
+//  		logger.Output(end, WarningLevel, log.String())
+//  	}
 //  })
 //
 //  app.UseHandler(logger)
@@ -171,55 +221,55 @@ func (l *Logger) checkLogLevel(level Level) bool {
 
 // Emerg produce a "Emergency" log
 func (l *Logger) Emerg(v interface{}) {
-	l.Output(time.Now(), EmergLevel, fmt.Sprint(v))
+	l.Output(time.Now(), EmergLevel, format(v))
 }
 
 // Alert produce a "Alert" log
 func (l *Logger) Alert(v interface{}) {
 	if l.checkLogLevel(AlertLevel) {
-		l.Output(time.Now(), AlertLevel, fmt.Sprint(v))
+		l.Output(time.Now(), AlertLevel, format(v))
 	}
 }
 
 // Crit produce a "Critical" log
 func (l *Logger) Crit(v interface{}) {
 	if l.checkLogLevel(CritiLevel) {
-		l.Output(time.Now(), CritiLevel, fmt.Sprint(v))
+		l.Output(time.Now(), CritiLevel, format(v))
 	}
 }
 
 // Err produce a "Error" log
 func (l *Logger) Err(v interface{}) {
 	if l.checkLogLevel(ErrLevel) {
-		l.Output(time.Now(), ErrLevel, fmt.Sprint(v))
+		l.Output(time.Now(), ErrLevel, format(v))
 	}
 }
 
 // Warning produce a "Warning" log
 func (l *Logger) Warning(v interface{}) {
 	if l.checkLogLevel(WarningLevel) {
-		l.Output(time.Now(), WarningLevel, fmt.Sprint(v))
+		l.Output(time.Now(), WarningLevel, format(v))
 	}
 }
 
 // Notice produce a "Notice" log
 func (l *Logger) Notice(v interface{}) {
 	if l.checkLogLevel(NoticeLevel) {
-		l.Output(time.Now(), NoticeLevel, fmt.Sprint(v))
+		l.Output(time.Now(), NoticeLevel, format(v))
 	}
 }
 
 // Info produce a "Informational" log
 func (l *Logger) Info(v interface{}) {
 	if l.checkLogLevel(InfoLevel) {
-		l.Output(time.Now(), InfoLevel, fmt.Sprint(v))
+		l.Output(time.Now(), InfoLevel, format(v))
 	}
 }
 
 // Debug produce a "Debug" log
 func (l *Logger) Debug(v interface{}) {
 	if l.checkLogLevel(DebugLevel) {
-		l.Output(time.Now(), DebugLevel, fmt.Sprint(v))
+		l.Output(time.Now(), DebugLevel, format(v))
 	}
 }
 
@@ -232,7 +282,7 @@ func (l *Logger) Debugf(format string, args ...interface{}) {
 
 // Panic produce a "Emergency" log and then calls panic with the message
 func (l *Logger) Panic(v interface{}) {
-	s := fmt.Sprint(v)
+	s := format(v)
 	l.Emerg(s)
 	panic(s)
 }
@@ -277,8 +327,11 @@ func (l *Logger) Output(t time.Time, level Level, s string) (err error) {
 	if level < 4 {
 		s = gear.ErrorWithStack(s, 4).String()
 	}
-	_, err = fmt.Fprintf(l.Out, l.lf, t.UTC().Format(l.tf), levels[level], s)
-	if err == nil && (len(s) == 0 || s[len(s)-1] != '\n') {
+	if l := len(s); l > 0 && s[l-1] == '\n' {
+		s = s[0 : l-1]
+	}
+	_, err = fmt.Fprintf(l.Out, l.lf, t.UTC().Format(l.tf), levels[level], crlfEscaper.Replace(s))
+	if err == nil {
 		l.Out.Write([]byte{'\n'})
 	}
 	return
@@ -326,7 +379,7 @@ func (l *Logger) SetLogInit(fn func(Log, *gear.Context)) {
 //
 //   127.0.0.1 GET /text 200 6500 - 0.765 ms
 //
-// Please implements a WriteLog for your production.
+// Please implements a Log Consume for your production.
 func (l *Logger) SetLogConsume(fn func(Log, *gear.Context)) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -462,5 +515,17 @@ func colorStatus(code int) ColorType {
 		return ColorYellow
 	default:
 		return ColorRed
+	}
+}
+
+func format(i interface{}) string {
+	switch v := i.(type) {
+	case Messager:
+		if str, err := v.Format(); err == nil {
+			return str
+		}
+		return v.String()
+	default:
+		return fmt.Sprint(i)
 	}
 }

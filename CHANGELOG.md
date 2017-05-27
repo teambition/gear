@@ -5,6 +5,18 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.7.0] - 2017-05-27
+
+**Changed:**
+
+- Improve gear.Error and logging.
+
+## [1.6.2] - 2017-05-23
+
+**Changed:**
+
+- Improve ValuesToStruct function.
+
 ## [1.6.1] - 2017-05-22
 
 **Fixed:**

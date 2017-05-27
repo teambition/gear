@@ -90,8 +90,13 @@ func (err *Error) Error() string {
 	return fmt.Sprintf("%s: %s", err.Err, err.Msg)
 }
 
-// String implemented fmt.Stringer interface, returns a Go-syntax string.
-func (err *Error) String() string {
+// String implemented fmt.Stringer interface.
+func (err Error) String() string {
+	return err.GoString()
+}
+
+// GoString implemented fmt.GoStringer interface, returns a Go-syntax string.
+func (err Error) GoString() string {
 	if v, ok := err.Data.([]byte); ok && utf8.Valid(v) {
 		err.Data = string(v)
 	}
@@ -364,7 +369,7 @@ func tryUnmarshalValue(v reflect.Value, str string) error {
 			return u.UnmarshalJSON([]byte(str))
 		}
 	}
-	return Err.WithMsgf("unknown field type: %v", v.Type())
+	return fmt.Errorf("unknown field type: %v", v.Type())
 }
 
 // pruneStack make a thin conversion for stack information
@@ -471,7 +476,7 @@ func isEmptyStatus(status int) bool {
 	}
 }
 
-var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
+var quoteEscaper = strings.NewReplacer("\\", "\\\\", "\"", "\\\"")
 
 // ContentDisposition implements a simple version of https://tools.ietf.org/html/rfc2183
 // Use mime.ParseMediaType to parse Content-Disposition header.
