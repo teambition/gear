@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.7.1] - 2017-06-01
+
+**Changed:**
+
+- Change development logger format to "Common Log Format".
+
 ## [1.7.0] - 2017-05-27
 
 **Changed:**

@@ -350,7 +350,8 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		log := buf.String()
 		logger.mu.Unlock()
 
-		assert.Contains(log, "127.0.0.1 GET / ")
+		assert.Contains(log, "\x1b[32;1m127.0.0.1\x1b[39;22m - -")
+		assert.Contains(log, `"GET / `)
 		assert.Contains(log, "\x1b[32;1m200\x1b[39;22m")
 		res.Body.Close()
 	})

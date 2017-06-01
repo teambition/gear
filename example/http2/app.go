@@ -30,7 +30,7 @@ h1 {
 
 	app := gear.New()
 
-	app.UseHandler(logging.Default())
+	app.UseHandler(logging.Default(true))
 	app.Use(favicon.New("./testdata/favicon.ico"))
 
 	router := gear.NewRouter()
@@ -47,6 +47,3 @@ h1 {
 }
 
 // Visit: https://127.0.0.1:3000/
-// Logging:
-// 127.0.0.1 GET /hello.css 200 22 - 0.145 ms
-// 127.0.0.1 GET / 200 157 - 0.167 ms

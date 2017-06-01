@@ -10,7 +10,7 @@ func main() {
 	app := gear.New()
 
 	// Add logging middleware
-	app.UseHandler(logging.Default())
+	app.UseHandler(logging.Default(true))
 
 	// Add router middleware
 	router := gear.NewRouter()

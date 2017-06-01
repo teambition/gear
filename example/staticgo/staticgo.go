@@ -20,7 +20,7 @@ func main() {
 	flag.Parse()
 	app := gear.New()
 
-	app.UseHandler(logging.Default())
+	app.UseHandler(logging.Default(true))
 	app.Use(cors.New())
 	app.Use(static.New(static.Options{Root: *path}))
 

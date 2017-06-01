@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -118,6 +117,7 @@ var levels = []string{"EMERG", "ALERT", "CRIT", "ERR", "WARNING", "NOTICE", "INF
 var std = New(os.Stderr)
 
 // Default returns the default logger
+// If devMode is true, logger will print a simple version of Common Log Format with terminal color
 func Default(devMode ...bool) *Logger {
 	if len(devMode) > 0 && devMode[0] {
 		std.SetLogConsume(developmentConsume)
@@ -125,15 +125,26 @@ func Default(devMode ...bool) *Logger {
 	return std
 }
 
+// a simple version of Common Log Format with terminal color
+// https://en.wikipedia.org/wiki/Common_Log_Format
+//
+//  127.0.0.1 - - [2017-06-01T12:23:13.161Z] "GET /context.go?query=xxx HTTP/1.1" 200 21559 5.228ms
+//
 func developmentConsume(log Log, ctx *gear.Context) {
 	std.mu.Lock() // don't need Lock usually, logger.Output do it for us.
 	defer std.mu.Unlock()
 
-	fmt.Fprintf(std.Out, "%s %s %s ", log["IP"].(net.IP), log["Method"].(string), log["URL"].(string))
+	end := time.Now().UTC()
+	FprintWithColor(std.Out, fmt.Sprintf("%s", log["IP"]), ColorGreen)
+	fmt.Fprintf(std.Out, ` - - [%s] "%s %s %s" `, end.Format(std.tf), log["Method"], log["URL"], log["Proto"])
 	status := log["Status"].(int)
 	FprintWithColor(std.Out, strconv.Itoa(status), colorStatus(status))
-	fmt.Fprintln(std.Out, fmt.Sprintf(
-		" %s - %.3f ms", log["Length"], float64(time.Now().Sub(log["Start"].(time.Time)))/1e6))
+	size := log["Length"].(string)
+	if size == "" {
+		size = "-"
+	}
+	resTime := float64(end.Sub(log["Start"].(time.Time))) / 1e6
+	fmt.Fprintln(std.Out, fmt.Sprintf(" %s %.3fms", size, resTime))
 }
 
 // New creates a Logger instance with given io.Writer and DebugLevel log level.
@@ -148,6 +159,7 @@ func New(w io.Writer) *Logger {
 		log["IP"] = ctx.IP()
 		log["Method"] = ctx.Method
 		log["URL"] = ctx.Req.URL.String()
+		log["Proto"] = ctx.Req.Proto
 		log["Start"] = time.Now()
 	}
 

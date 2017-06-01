@@ -51,7 +51,7 @@ https://github.com/teambition/gear/tree/master/example/hello
   app := gear.New()
 
   // Add logging middleware
-  app.UseHandler(logging.Default())
+  app.UseHandler(logging.Default(true))
 
   // Add router middleware
   router := gear.NewRouter()
@@ -112,7 +112,7 @@ h1 {
 
   app := gear.New()
 
-  app.UseHandler(logging.Default())
+  app.UseHandler(logging.Default(true))
   app.Use(favicon.New("./testdata/favicon.ico"))
 
   router := gear.NewRouter()
@@ -165,7 +165,7 @@ func main() {
   flag.Parse()
   app := gear.New()
 
-  app.UseHandler(logging.Default())
+  app.UseHandler(logging.Default(true))
   app.Use(cors.New())
   app.Use(static.New(static.Options{Root: *path}))
 
