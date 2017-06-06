@@ -361,3 +361,44 @@ func TestGearSetWithContext(t *testing.T) {
 		assert.Equal(0, count)
 	})
 }
+
+func TestGearSetServerName(t *testing.T) {
+	t.Run("default server name", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			return ctx.End(204)
+		})
+		srv := app.Start()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(204, res.StatusCode)
+		assert.Equal("Gear/"+Version, res.Header.Get(HeaderServer))
+		res.Body.Close()
+		assert.Nil(app.Close())
+	})
+
+	t.Run("no server name", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		assert.Panics(func() {
+			app.Set(SetServerName, 123)
+		})
+		app.Set(SetServerName, "")
+		app.Use(func(ctx *Context) error {
+			return ctx.End(204)
+		})
+		srv := app.Start()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(204, res.StatusCode)
+		_, ok := res.Header[HeaderServer]
+		assert.False(ok)
+		res.Body.Close()
+		assert.Nil(app.Close())
+	})
+}

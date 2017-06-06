@@ -637,45 +637,61 @@ func TestGearContentDisposition(t *testing.T) {
 	})
 }
 
-type valuesStruct struct {
-	String  string    `form:"string"`
-	Bool    bool      `form:"bool"`
-	Int     int       `form:"int"`
-	Int8    int8      `form:"int8"`
-	Int16   int16     `form:"int16"`
-	Int32   int32     `form:"int32"`
-	Int64   int64     `form:"int64"`
-	Uint    uint      `form:"uint"`
-	Uint8   uint8     `form:"uint8"`
-	Uint16  uint16    `form:"uint16"`
-	Uint32  uint32    `form:"uint32"`
-	Uint64  uint64    `form:"uint64"`
-	Float32 float32   `form:"float32"`
-	Float64 float64   `form:"float64"`
-	Slice1  []string  `form:"pslice1"`
-	Slice2  []int     `form:"pslice2"`
-	Slice3  []int     `form:"slice3"`
-	Time    time.Time `form:"time"`
+type myDuration struct {
+	v time.Duration
+}
 
-	Pstring  *string    `form:"pstring"`
-	Pbool    *bool      `form:"pbool"`
-	Pint     *int       `form:"pint"`
-	Pint8    *int8      `form:"pint8"`
-	Pint16   *int16     `form:"pint16"`
-	Pint32   *int32     `form:"pint32"`
-	Pint64   *int64     `form:"pint64"`
-	Puint    *uint      `form:"puint"`
-	Puint8   *uint8     `form:"puint8"`
-	Puint16  *uint16    `form:"puint16"`
-	Puint32  *uint32    `form:"puint32"`
-	Puint64  *uint64    `form:"puint64"`
-	Pfloat32 *float32   `form:"pfloat32"`
-	Pfloat64 *float64   `form:"pfloat64"`
-	Pslice1  []*string  `form:"pslice1"`
-	Pslice2  []*int     `form:"pslice2"`
-	Pslice3  []*int     `form:"pslice3"`
-	PTime    *time.Time `form:"ptime"`
-	Hide     string     `json:"hide"`
+func (m *myDuration) UnmarshalJSON(b []byte) error {
+	val, err := time.ParseDuration(string(b))
+	if err == nil {
+		m.v = val
+	}
+	return err
+}
+
+type valuesStruct struct {
+	String  string        `form:"string"`
+	Bool    bool          `form:"bool"`
+	Int     int           `form:"int"`
+	Int8    int8          `form:"int8"`
+	Int16   int16         `form:"int16"`
+	Int32   int32         `form:"int32"`
+	Int64   int64         `form:"int64"`
+	Uint    uint          `form:"uint"`
+	Uint8   uint8         `form:"uint8"`
+	Uint16  uint16        `form:"uint16"`
+	Uint32  uint32        `form:"uint32"`
+	Uint64  uint64        `form:"uint64"`
+	Float32 float32       `form:"float32"`
+	Float64 float64       `form:"float64"`
+	Slice1  []string      `form:"pslice1"`
+	Slice2  []int         `form:"pslice2"`
+	Slice3  []int         `form:"slice3"`
+	Time    time.Time     `form:"time"`
+	Du      time.Duration `form:"du"`
+	Du2     myDuration    `form:"du2"`
+
+	Pstring  *string        `form:"pstring"`
+	Pbool    *bool          `form:"pbool"`
+	Pint     *int           `form:"pint"`
+	Pint8    *int8          `form:"pint8"`
+	Pint16   *int16         `form:"pint16"`
+	Pint32   *int32         `form:"pint32"`
+	Pint64   *int64         `form:"pint64"`
+	Puint    *uint          `form:"puint"`
+	Puint8   *uint8         `form:"puint8"`
+	Puint16  *uint16        `form:"puint16"`
+	Puint32  *uint32        `form:"puint32"`
+	Puint64  *uint64        `form:"puint64"`
+	Pfloat32 *float32       `form:"pfloat32"`
+	Pfloat64 *float64       `form:"pfloat64"`
+	Pslice1  []*string      `form:"pslice1"`
+	Pslice2  []*int         `form:"pslice2"`
+	Pslice3  []*int         `form:"pslice3"`
+	PTime    *time.Time     `form:"ptime"`
+	PDu      *time.Duration `form:"pdu"`
+	PDu2     *myDuration    `form:"pdu2"`
+	Hide     string         `json:"hide"`
 }
 
 func TestGearValuesToStruct(t *testing.T) {
@@ -701,6 +717,8 @@ func TestGearValuesToStruct(t *testing.T) {
 		"slice2":   {"1"},
 		"slice3":   {},
 		"time":     {timeStr},
+		"du":       {"300000000"},
+		"du2":      {"300ms"},
 		"pstring":  {"string"},
 		"pbool":    {"true"},
 		"pint":     {"-1"},
@@ -719,6 +737,8 @@ func TestGearValuesToStruct(t *testing.T) {
 		"pslice2":  {"1"},
 		"pslice3":  {},
 		"ptime":    {timeStr},
+		"pdu":      {"300000000"},
+		"pdu2":     {"300ms"},
 	}
 
 	t.Run("Should error", func(t *testing.T) {
@@ -769,6 +789,8 @@ func TestGearValuesToStruct(t *testing.T) {
 		assert.Equal([]int{1}, s.Slice2)
 		assert.Equal([]int{}, s.Slice3)
 		assert.Equal(timeVal.Unix(), s.Time.Unix())
+		assert.Equal(time.Millisecond*300, s.Du)
+		assert.Equal(myDuration{time.Millisecond * 300}, s.Du2)
 
 		assert.Nil(ValuesToStruct(data, &s, "form"))
 		assert.Equal("string", *s.Pstring)
@@ -791,5 +813,7 @@ func TestGearValuesToStruct(t *testing.T) {
 		assert.Equal([]*int{&sliceint1}, s.Pslice2)
 		assert.Equal([]*int{}, s.Pslice3)
 		assert.Equal(timeVal.Unix(), (*s.PTime).Unix())
+		assert.Equal(time.Millisecond*300, *s.PDu)
+		assert.Equal(myDuration{time.Millisecond * 300}, *s.PDu2)
 	})
 }

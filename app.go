@@ -116,6 +116,7 @@ type App struct {
 	urlParser   URLParser
 	compress    Compressible  // Default to nil, do not compress response content.
 	timeout     time.Duration // Default to 0, no time out.
+	serverName  string        // Gear/1.7.2
 	logger      *log.Logger
 	onerror     func(*Context, HTTPError)
 	withContext func(*http.Request) context.Context
@@ -134,6 +135,7 @@ func New() *App {
 		env = "development"
 	}
 	app.Set(SetEnv, env)
+	app.Set(SetServerName, "Gear/"+Version)
 	app.Set(SetBodyParser, DefaultBodyParser(2<<20)) // 2MB
 	app.Set(SetURLParser, DefaultURLParser{})
 	app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
@@ -197,6 +199,10 @@ const (
 	// Set a app env string to app, it can be retrieved by `ctx.Setting(gear.SetEnv)`.
 	// Default to os process "APP_ENV" or "development".
 	SetEnv
+
+	// Set a server name that respond to client as "Server" header.
+	// Default to "Gear/{version}".
+	SetServerName
 )
 
 // Set add key/value settings to app. The settings can be retrieved by `ctx.Setting(key)`.
@@ -260,6 +266,12 @@ func (app *App) Set(key, val interface{}) {
 		case SetEnv:
 			if _, ok := val.(string); !ok {
 				panic(Err.WithMsg("SetEnv setting must be string"))
+			}
+		case SetServerName:
+			if name, ok := val.(string); !ok {
+				panic(Err.WithMsg("SetServerName setting must be string"))
+			} else {
+				app.serverName = name
 			}
 		}
 		app.settings[k] = val

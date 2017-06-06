@@ -71,6 +71,10 @@ func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 		kv:      make(map[interface{}]interface{}),
 	}
 
+	if app.serverName != "" {
+		ctx.Set(HeaderServer, app.serverName)
+	}
+
 	if app.timeout <= 0 {
 		ctx.ctx, ctx.cancelCtx = context.WithCancel(r.Context())
 	} else {

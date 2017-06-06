@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.7.2] - 2017-06-06
+
+**Changed:**
+
+- Add gear.SetServerName setting.
+
 ## [1.7.1] - 2017-06-01
 
 **Changed:**
