@@ -13,6 +13,11 @@ import (
 	"strings"
 	"sync/atomic"
 	"unicode/utf8"
+	"io"
+	"mime/multipart"
+	"os"
+	"io/ioutil"
+	"path/filepath"
 )
 
 type middlewares []Middleware
@@ -269,6 +274,115 @@ func ValuesToStruct(values map[string][]string, target interface{}, tag string) 
 	}
 
 	return
+}
+
+var stringType = reflect.TypeOf("")
+var fileHeaderType = reflect.TypeOf((*multipart.FileHeader)(nil))
+var fileHeaderSliceType = reflect.TypeOf([]*multipart.FileHeader{})
+
+func FormToStruct(form *multipart.Form, target interface{}, formTag, fileTag string) (err error) {
+	if form == nil {
+		return fmt.Errorf("invalid values: <nil>")
+	}
+	defer form.RemoveAll()
+
+	err = ValuesToStruct(form.Value, target, formTag)
+	if err != nil {
+		return
+	}
+
+	if len(form.File) == 0 {
+		return
+	}
+
+	rv := reflect.ValueOf(target)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return fmt.Errorf("invalid struct: %v", rv)
+	}
+
+	rv = rv.Elem()
+	rt := rv.Type()
+	n := rv.NumField()
+	for i := 0; i < n; i++ {
+		fv := rv.Field(i)
+		if !fv.CanSet() {
+			continue
+		}
+
+		fk := rt.Field(i).Tag.Get(fileTag)
+		if fk == "" {
+			continue
+		}
+
+		if fhs, ok := form.File[fk]; ok {
+			switch rt.Field(i).Type {
+			case stringType:
+				name, err := SaveFileTo(fhs[0], fv.String())
+				form.File[fk] = fhs[1:]
+				if err != nil {
+					return err
+				}
+				fv.SetString(name)
+			case fileHeaderType:
+				form.File[fk] = fhs[1:]
+				fv.Set(reflect.ValueOf(fhs[0]))
+			case fileHeaderSliceType:
+				delete(form.File, fk)
+				fv.Set(reflect.ValueOf(fhs))
+			}
+		}
+	}
+	return
+}
+
+func SaveFileTo(file *multipart.FileHeader, moveTo string) (string, error) {
+	if file == nil {
+		return "", fmt.Errorf("invalid values: <nil>")
+	}
+
+	var err error
+	if moveTo != "" {
+		moveTo, err = filepath.Abs(moveTo)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	rf := reflect.ValueOf(*file)
+	name := rf.FieldByName("tmpfile").String()
+	if name != "" {
+		if moveTo == "" {
+			return name, nil
+		}
+		err = os.Rename(name, moveTo)
+		if err != nil {
+			return "", err
+		}
+		return name, nil
+	}
+	var df *os.File
+	if moveTo == "" {
+		df, err = ioutil.TempFile("", "")
+		moveTo = df.Name()
+	} else {
+		df, err = os.Create(moveTo)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	sf, err := file.Open()
+	if err != nil {
+		df.Close()
+		return "", err
+	}
+	_, err = io.Copy(df, sf)
+	df.Close()
+	sf.Close()
+	if err != nil {
+		return "", err
+	}
+	return moveTo, nil
 }
 
 func shouldDeref(k reflect.Kind) bool {

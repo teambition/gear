@@ -6,10 +6,12 @@ import (
 	"compress/zlib"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/textproto"
 	"net/url"
@@ -815,5 +817,70 @@ func TestGearValuesToStruct(t *testing.T) {
 		assert.Equal(timeVal.Unix(), (*s.PTime).Unix())
 		assert.Equal(time.Millisecond*300, *s.PDu)
 		assert.Equal(myDuration{time.Millisecond * 300}, *s.PDu2)
+	})
+}
+
+func TestGearFormToStruct(t *testing.T) {
+	data := &multipart.Form{
+		File: map[string][]*multipart.FileHeader{
+			"file1": {{Filename: "fileName1"}},
+			"file2": {{Filename: "fileName2"}},
+			"file3": {{Filename: "fileName3.1"}, {Filename: "fileName3.2"}},
+		}}
+
+	t.Run("Should work", func(t *testing.T) {
+		body := &struct {
+			All  []*multipart.FileHeader `file:"file3"`
+			All2 []*multipart.FileHeader `file:"file2"`
+			One  *multipart.FileHeader   `file:"file3"`
+			One2 *multipart.FileHeader   `file:"file1"`
+		}{}
+
+		if err := FormToStruct(data, body, "from", "file"); err != nil {
+			t.Fatal(err)
+		}
+		t.Log(body.All)
+		t.Log(body.All2)
+		t.Log(body.One)
+		t.Log(body.One2)
+	})
+
+}
+
+func MultipartForm() (io.Reader, string) {
+	buf := &bytes.Buffer{}
+	mw := multipart.NewWriter(buf)
+	mw.WriteField("Abc", "Cba")
+	mw.WriteField("D", "d")
+	mw.WriteField("E", "e")
+
+	f1w, _ := mw.CreateFormFile("file1", "1.txt")
+	f1w.Write([]byte("AAABBBCCC1"))
+	f2w, _ := mw.CreateFormFile("file2", "2.txt")
+	f2w.Write([]byte("AAABBBCCC2"))
+	f31w, _ := mw.CreateFormFile("file3", "3.txt")
+	f31w.Write([]byte("AAABBBCCC31"))
+	f32w, _ := mw.CreateFormFile("file3", "4.txt")
+	f32w.Write([]byte("AAABBBCCC32"))
+
+	mw.Close()
+
+	return buf, mw.Boundary()
+}
+
+func TestSaveFileTo(t *testing.T) {
+	t.Skip("11")
+	t.Run("Should work", func(t *testing.T) {
+		blob, boundary := MultipartForm()
+		mr := multipart.NewReader(blob, boundary)
+		form, _ := mr.ReadForm(1 << 10)
+
+		name, err := SaveFileTo(form.File["file3"][1], "1.txt")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		fmt.Print(name)
+		//fmt.Printf("%v", form.File["file3"])
 	})
 }

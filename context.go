@@ -17,12 +17,14 @@ import (
 
 	"github.com/go-http-utils/cookie"
 	"github.com/go-http-utils/negotiator"
+	"errors"
+	"mime/multipart"
 )
 
 type contextKey int
 
 const (
-	isContext contextKey = iota
+	isContext   contextKey = iota
 	isRecursive
 	paramsKey
 )
@@ -344,6 +346,14 @@ func (ctx *Context) QueryAll(name string) []string {
 	return ctx.query[name]
 }
 
+// multipartByReader is a sentinel value.
+// Its presence in Request.MultipartForm indicates that parsing of the request
+// body has been handed off to a MultipartReader instead of ParseMultipartFrom.
+var multipartByReader = &multipart.Form{
+	Value: make(map[string][]string),
+	File:  make(map[string][]*multipart.FileHeader),
+}
+
 // ParseBody parses request content with BodyParser, stores the result in the value
 // pointed to by BodyTemplate body, and validate it.
 // DefaultBodyParser support JSON, Form and XML.
@@ -385,6 +395,33 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 	}
 	if mediaType, params, err = mime.ParseMediaType(mediaType); err != nil {
 		return ErrUnsupportedMediaType.From(err)
+	}
+
+	if mediaType == MIMEMultipartForm {
+		if ctx.app.multipartParser == nil {
+			return Err.WithMsg("multipartParser not registered")
+		}
+
+		boundary, ok := params["boundary"]
+		if !ok {
+			return ErrBadRequest.From(http.ErrMissingBoundary)
+		}
+
+		if ctx.Req.MultipartForm != nil {
+			return Err.WithMsg("ParseBody called twice")
+		}
+		ctx.Req.MultipartForm = multipartByReader
+
+		reader := http.MaxBytesReader(ctx.Res, ctx.Req.Body, ctx.app.multipartParser.MaxBytes())
+		mr := multipart.NewReader(reader, boundary)
+		if err := ctx.app.multipartParser.Parse(mr, body, params["charset"]); err != nil {
+			if err == errors.New("http: request body too large") {
+				return ErrRequestEntityTooLarge.From(err)
+			}
+			return ErrBadRequest.From(err)
+		}
+
+		return body.Validate()
 	}
 
 	reader := http.MaxBytesReader(ctx.Res, ctx.Req.Body, ctx.app.bodyParser.MaxBytes())
