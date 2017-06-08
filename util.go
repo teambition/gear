@@ -280,12 +280,14 @@ var stringType = reflect.TypeOf("")
 var fileHeaderType = reflect.TypeOf((*multipart.FileHeader)(nil))
 var fileHeaderSliceType = reflect.TypeOf([]*multipart.FileHeader{})
 
-// ValuesToStruct converts multipart.Form into struct object.
+// FormToStruct converts multipart.Form into struct object.
 //
 //	type multipartBodyTemplate struct {
 //		ID     string                  `form:"id"`
 //		Pass   string                  `form:"pass"`
 //		Photo1 *multipart.FileHeader   `file:"photo1"`
+//
+//		//if Photo2 is not empty, the file will save to that as a path
 //		Photo2 string                  `file:"photo2"`
 //		Photo3 []*multipart.FileHeader `file:"photo3"`
 //	}
