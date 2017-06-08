@@ -656,6 +656,18 @@ func TestGearContextParseBody(t *testing.T) {
 		assert.Equal("password", body.Pass)
 	})
 
+	t.Run("should parse multipart content", func(t *testing.T) {
+		assert := assert.New(t)
+		reader, boundary := MultipartForm()
+		ctx := CtxTest(app, "POST", "http://example.com/foo", reader)
+		ctx.Req.Header.Set(HeaderContentType, "multipart/form-data; boundary="+boundary)
+
+		body := &multipartBodyTemplate{}
+		assert.Nil(ctx.ParseBody(body))
+		assert.Equal("Cba", body.ABC)
+		assert.Equal("1.txt", body.One.Filename)
+	})
+
 	t.Run("should parse Form content", func(t *testing.T) {
 		assert := assert.New(t)
 

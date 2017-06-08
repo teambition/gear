@@ -5,10 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"mime"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/url"
@@ -17,14 +19,12 @@ import (
 
 	"github.com/go-http-utils/cookie"
 	"github.com/go-http-utils/negotiator"
-	"errors"
-	"mime/multipart"
 )
 
 type contextKey int
 
 const (
-	isContext   contextKey = iota
+	isContext contextKey = iota
 	isRecursive
 	paramsKey
 )

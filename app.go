@@ -6,12 +6,12 @@ import (
 	"encoding/xml"
 	"io"
 	"log"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"time"
-	"mime/multipart"
 )
 
 // Middleware defines a function to process as middleware.

@@ -4,20 +4,20 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/textproto"
 	"net/url"
+	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"unicode/utf8"
-	"io"
-	"mime/multipart"
-	"os"
-	"io/ioutil"
-	"path/filepath"
 )
 
 type middlewares []Middleware
@@ -324,11 +324,11 @@ func FormToStruct(form *multipart.Form, target interface{}, formTag, fileTag str
 				}
 				fv.SetString(name)
 			case fileHeaderType:
-				form.File[fk] = fhs[1:]
 				fv.Set(reflect.ValueOf(fhs[0]))
+				form.File[fk] = fhs[1:]
 			case fileHeaderSliceType:
-				delete(form.File, fk)
 				fv.Set(reflect.ValueOf(fhs))
+				delete(form.File, fk)
 			}
 		}
 	}

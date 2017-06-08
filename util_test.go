@@ -6,7 +6,6 @@ import (
 	"compress/zlib"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -820,39 +819,12 @@ func TestGearValuesToStruct(t *testing.T) {
 	})
 }
 
-func TestGearFormToStruct(t *testing.T) {
-	data := &multipart.Form{
-		File: map[string][]*multipart.FileHeader{
-			"file1": {{Filename: "fileName1"}},
-			"file2": {{Filename: "fileName2"}},
-			"file3": {{Filename: "fileName3.1"}, {Filename: "fileName3.2"}},
-		}}
-
-	t.Run("Should work", func(t *testing.T) {
-		body := &struct {
-			All  []*multipart.FileHeader `file:"file3"`
-			All2 []*multipart.FileHeader `file:"file2"`
-			One  *multipart.FileHeader   `file:"file3"`
-			One2 *multipart.FileHeader   `file:"file1"`
-		}{}
-
-		if err := FormToStruct(data, body, "from", "file"); err != nil {
-			t.Fatal(err)
-		}
-		t.Log(body.All)
-		t.Log(body.All2)
-		t.Log(body.One)
-		t.Log(body.One2)
-	})
-
-}
-
 func MultipartForm() (io.Reader, string) {
 	buf := &bytes.Buffer{}
 	mw := multipart.NewWriter(buf)
 	mw.WriteField("Abc", "Cba")
-	mw.WriteField("D", "d")
-	mw.WriteField("E", "e")
+	mw.WriteField("d", "t")
+	mw.WriteField("e", "55")
 
 	f1w, _ := mw.CreateFormFile("file1", "1.txt")
 	f1w.Write([]byte("AAABBBCCC1"))
@@ -868,19 +840,82 @@ func MultipartForm() (io.Reader, string) {
 	return buf, mw.Boundary()
 }
 
-func TestSaveFileTo(t *testing.T) {
-	t.Skip("11")
+type multipartBodyTemplate struct {
+	ABC  string                  `form:"Abc"`
+	D    bool                    `form:"d"`
+	E    int                     `form:"e"`
+	One  *multipart.FileHeader   `file:"file1"`
+	All  []*multipart.FileHeader `file:"file3"`
+	All2 []*multipart.FileHeader `file:"file2"`
+}
+
+func (b *multipartBodyTemplate) Validate() error {
+	if b.ABC == "" {
+		return ErrBadRequest.WithMsg("invalid id or pass")
+	}
+	return nil
+}
+
+func TestGearFormToStruct(t *testing.T) {
+	blob, boundary := MultipartForm()
+	mr := multipart.NewReader(blob, boundary)
+	data, _ := mr.ReadForm(1 << 20)
+
 	t.Run("Should work", func(t *testing.T) {
+		assert := assert.New(t)
+		body := &multipartBodyTemplate{}
+
+		if err := FormToStruct(data, body, "form", "file"); err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal("Cba", body.ABC)
+		assert.Equal(true, body.D)
+		assert.Equal(int(55), body.E)
+
+		assert.Equal(2, len(body.All))
+		assert.Equal("3.txt", body.All[0].Filename)
+		assert.Equal("4.txt", body.All[1].Filename)
+
+		assert.Equal(1, len(body.All2))
+		assert.Equal("2.txt", body.All2[0].Filename)
+		assert.Equal("1.txt", body.One.Filename)
+	})
+}
+
+func TestSaveFileTo(t *testing.T) {
+	t.Skip("need operate file system")
+	t.Run("tmpfile exist", func(t *testing.T) {
+		blob, boundary := MultipartForm()
+		mr := multipart.NewReader(blob, boundary)
+		form, _ := mr.ReadForm(0)
+
+		name1, err := SaveFileTo(form.File["file3"][0], "1.txt")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log(name1)
+
+		name2, err := SaveFileTo(form.File["file1"][0], "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log(name2)
+	})
+	t.Run("tmpfile not exist", func(t *testing.T) {
 		blob, boundary := MultipartForm()
 		mr := multipart.NewReader(blob, boundary)
 		form, _ := mr.ReadForm(1 << 10)
 
-		name, err := SaveFileTo(form.File["file3"][1], "1.txt")
+		name1, err := SaveFileTo(form.File["file3"][0], "1.txt")
 		if err != nil {
 			t.Fatal(err)
 		}
+		t.Log(name1)
 
-		fmt.Print(name)
-		//fmt.Printf("%v", form.File["file3"])
+		name2, err := SaveFileTo(form.File["file1"][0], "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log(name2)
 	})
 }
