@@ -280,6 +280,19 @@ var stringType = reflect.TypeOf("")
 var fileHeaderType = reflect.TypeOf((*multipart.FileHeader)(nil))
 var fileHeaderSliceType = reflect.TypeOf([]*multipart.FileHeader{})
 
+// ValuesToStruct converts multipart.Form into struct object.
+//
+//	type multipartBodyTemplate struct {
+//		ID     string                  `form:"id"`
+//		Pass   string                  `form:"pass"`
+//		Photo1 *multipart.FileHeader   `file:"photo1"`
+//		Photo2 string                  `file:"photo2"`
+//		Photo3 []*multipart.FileHeader `file:"photo3"`
+//	}
+//
+//  target := multipartBodyTemplate{}
+//
+//	FormToStruct(form, &target, "form","file")
 func FormToStruct(form *multipart.Form, target interface{}, formTag, fileTag string) (err error) {
 	if form == nil {
 		return fmt.Errorf("invalid values: <nil>")
@@ -335,6 +348,8 @@ func FormToStruct(form *multipart.Form, target interface{}, formTag, fileTag str
 	return
 }
 
+// SaveFileTo save file to moveTo and return file's abs path,
+// if moveTo is empty, save file to temp path.
 func SaveFileTo(file *multipart.FileHeader, moveTo string) (string, error) {
 	if file == nil {
 		return "", fmt.Errorf("invalid values: <nil>")

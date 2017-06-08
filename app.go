@@ -83,6 +83,9 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 	return ErrUnsupportedMediaType.WithMsg("unsupported media type")
 }
 
+// MultipartParser interface is used by ctx.ParseBody. Default to:
+//  app.Set(gear.SetMultipartParser, DefaultMultipartParser{MaxForm: 10 << 20, MaxMemory: 10 << 20})
+//
 type MultipartParser interface {
 	MaxBytes() int64
 	Parse(reader *multipart.Reader, body interface{}, charset string) error
