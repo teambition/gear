@@ -734,6 +734,7 @@ func TestGearContextParseBody(t *testing.T) {
 		assert := assert.New(t)
 
 		ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
+		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationJSON)
 		body := jsonBodyTemplate{}
 		err := ctx.ParseBody(&body)
 		assert.Equal(400, err.(*Error).Code)
@@ -743,7 +744,9 @@ func TestGearContextParseBody(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		app.Set(SetBodyParser, DefaultBodyParser(100))
+		d := DefaultBodyParser
+		d.(*BodyHandle).Set(MIMEApplicationJSON, ParseJSON, 100)
+		app.Set(SetBodyParser, d)
 
 		ctx := CtxTest(app, "POST", "http://example.com/foo",
 			bytes.NewBufferString(strings.Repeat("t", 101)))

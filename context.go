@@ -5,12 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
-	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"mime"
-	"mime/multipart"
 	"net"
 	"net/http"
 	"net/url"
@@ -346,17 +342,9 @@ func (ctx *Context) QueryAll(name string) []string {
 	return ctx.query[name]
 }
 
-// multipartByReader is a sentinel value.
-// Its presence in Request.MultipartForm indicates that parsing of the request
-// body has been handed off to a MultipartReader instead of ParseMultipartFrom.
-var multipartByReader = &multipart.Form{
-	Value: make(map[string][]string),
-	File:  make(map[string][]*multipart.FileHeader),
-}
-
 // ParseBody parses request content with BodyParser, stores the result in the value
 // pointed to by BodyTemplate body, and validate it.
-// DefaultBodyParser support JSON, Form and XML.
+// DefaultBodyParse support JSON, Form and XML.
 //
 // Define a BodyTemplate type in some API:
 //  type jsonBodyTemplate struct {
@@ -385,53 +373,27 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 		return Err.WithMsg("missing request body")
 	}
 
-	var err error
-	var buf []byte
-	var mediaType string
-	var params map[string]string
-	if mediaType = ctx.Get(HeaderContentType); mediaType == "" {
+	mediaType := ctx.Get(HeaderContentType)
+	if mediaType == "" {
 		// RFC 2616, section 7.2.1 - empty type SHOULD be treated as application/octet-stream
 		mediaType = MIMEOctetStream
 	}
-	if mediaType, params, err = mime.ParseMediaType(mediaType); err != nil {
-		return ErrUnsupportedMediaType.From(err)
+
+	fn, maxBytes := ctx.app.bodyParser.Get(mediaType)
+	if fn == nil {
+		return ErrUnsupportedMediaType.WithMsg("unsupported media type")
 	}
 
-	if mediaType == MIMEMultipartForm {
-		if ctx.app.multipartParser == nil {
-			return Err.WithMsg("multipartParser not registered")
+	reader := http.MaxBytesReader(ctx.Res, ctx.Req.Body, maxBytes)
+
+	err := fn(reader, body, ctx.Req.Header)
+	if err != nil {
+		if err.Error() == "http: request body too large" {
+			return ErrRequestEntityTooLarge.From(err)
 		}
-
-		boundary, ok := params["boundary"]
-		if !ok {
-			return ErrBadRequest.From(http.ErrMissingBoundary)
-		}
-
-		if ctx.Req.MultipartForm != nil {
-			return Err.WithMsg("ParseBody called twice")
-		}
-		ctx.Req.MultipartForm = multipartByReader
-
-		reader := http.MaxBytesReader(ctx.Res, ctx.Req.Body, ctx.app.multipartParser.MaxBytes())
-		mr := multipart.NewReader(reader, boundary)
-		if err := ctx.app.multipartParser.Parse(mr, body, params["charset"]); err != nil {
-			if err == errors.New("http: request body too large") {
-				return ErrRequestEntityTooLarge.From(err)
-			}
-			return ErrBadRequest.From(err)
-		}
-
-		return body.Validate()
-	}
-
-	reader := http.MaxBytesReader(ctx.Res, ctx.Req.Body, ctx.app.bodyParser.MaxBytes())
-	if buf, err = ioutil.ReadAll(reader); err != nil {
-		// err may not be 413 Request entity too large, just make it to 413
-		return ErrRequestEntityTooLarge.From(err)
-	}
-	if err = ctx.app.bodyParser.Parse(buf, body, mediaType, params["charset"]); err != nil {
 		return ErrBadRequest.From(err)
 	}
+
 	return body.Validate()
 }
 
