@@ -374,12 +374,17 @@ h1 {
 		defer app.Close()
 
 		cond.Wait()
-		time.Sleep(time.Millisecond)
+		_ = time.Second
+		time.Sleep(time.Millisecond << 5)
 		tr, err := HTTP2Transport("./testdata/out/test.crt", "./testdata/out/test.key")
-		assert.Nil(err)
+		if !assert.NoError(err) {
+			return
+		}
 		cli := &http.Client{Transport: tr}
 		res, err := cli.Get("https://127.0.0.1:3443")
-		assert.Nil(err)
+		if !assert.NoError(err) {
+			return
+		}
 		assert.Equal("HTTP/2.0", res.Proto)
 		res.Body.Close()
 	})

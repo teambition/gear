@@ -182,7 +182,7 @@ type App struct {
 
 	keys        []string
 	renderer    Renderer
-	bodyParse  *BodyParse
+	bodyParse   *BodyParse
 	urlParser   URLParser
 	compress    Compressible  // Default to nil, do not compress response content.
 	timeout     time.Duration // Default to 0, no time out.
