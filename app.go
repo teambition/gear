@@ -44,17 +44,10 @@ func (d DefaultURLParser) Parse(val map[string][]string, body interface{}, tag s
 	return ValuesToStruct(val, body, tag)
 }
 
-// BodyParser interface is used by ctx.ParseBody. Default to:
-//  app.Set(gear.SetBodyParser, DefaultBodyParser)
-//
-type BodyParser interface {
-	Set(mediaType string, fn BodyParserFunc, maxBytes int64) error
-	Get(mediaType string) (_ BodyParserFunc, MaxBytes int64)
-}
-
-// DefaultBodyParser is default BodyParse type, used 1MB as default max body length
-var DefaultBodyParser = func() BodyParser {
-	h := &BodyHandle{}
+// DefaultBodyParse is default BodyParse type, use 1MB as default max body length for json, xml, x-www form body
+// use 10MB as default max body length for multipart form body
+var DefaultBodyParse = func() *BodyParse {
+	h := &BodyParse{}
 	h.Set(MIMEApplicationJSON, ParseJSON, 1<<20)
 	h.Set(MIMEApplicationXML, ParseXML, 1<<20)
 	h.Set(MIMEApplicationForm, ParseApplicationForm, 1<<20)
@@ -62,25 +55,22 @@ var DefaultBodyParser = func() BodyParser {
 	return h
 }()
 
-// BodyParserFunc is used by BodyParse
-type BodyParserFunc func(data io.Reader, body interface{}, header http.Header) error
+// BodyParseFunc defines a function to support parse body
+type BodyParseFunc func(data io.Reader, body interface{}, header http.Header) error
 
 type funcAndMaxBytes struct {
-	Fn       BodyParserFunc
+	Fn       BodyParseFunc
 	MaxBytes int64
 }
 
-// BodyHandle is default BodyParser type.
-// SetBodyParser used 1MB as default:
-//
-//  app.Set(gear.SetBodyParser, DefaultBodyParser(1<<20))
-//
-type BodyHandle struct {
+// BodyParse is used by ctx.ParseBody. Default to:
+//  app.Set(gear.SetBodyParse, DefaultBodyParse)
+type BodyParse struct {
 	Parsers map[string]funcAndMaxBytes
 }
 
-// Set implemented BodyParser interface.
-func (h *BodyHandle) Set(mediaType string, fn BodyParserFunc, maxBytes int64) error {
+// Set set new BodyParseFunc to parse body.
+func (h *BodyParse) Set(mediaType string, fn BodyParseFunc, maxBytes int64) error {
 	if h.Parsers == nil {
 		h.Parsers = make(map[string]funcAndMaxBytes)
 	}
@@ -98,8 +88,8 @@ func (h *BodyHandle) Set(mediaType string, fn BodyParserFunc, maxBytes int64) er
 	return nil
 }
 
-// Get implemented BodyParser interface.
-func (h *BodyHandle) Get(mediaType string) (BodyParserFunc, int64) {
+// Get return BodyParseFunc and maxBytes for parse mediaType.
+func (h *BodyParse) Get(mediaType string) (BodyParseFunc, int64) {
 	mediaType, _, err := mime.ParseMediaType(mediaType)
 	if err != nil {
 		return nil, 0
@@ -126,7 +116,7 @@ func ParseXML(data io.Reader, body interface{}, _ http.Header) error {
 	return xml.Unmarshal(blob, body)
 }
 
-// ParseApplicationForm is a BodyParseFunc to support parse url form
+// ParseApplicationForm is a BodyParseFunc to support parse x-www form
 func ParseApplicationForm(data io.Reader, body interface{}, _ http.Header) error {
 	blob, err := ioutil.ReadAll(data)
 	if err != nil {
@@ -140,7 +130,7 @@ func ParseApplicationForm(data io.Reader, body interface{}, _ http.Header) error
 }
 
 // ParseMultipartForm is a BodyParseFunc to support parse multipart form
-func ParseMultipartForm(maxMemory int64) BodyParserFunc {
+func ParseMultipartForm(maxMemory int64) BodyParseFunc {
 	return func(data io.Reader, body interface{}, header http.Header) error {
 		mediaType := header.Get(HeaderContentType)
 		_, params, err := mime.ParseMediaType(mediaType)
@@ -192,7 +182,7 @@ type App struct {
 
 	keys        []string
 	renderer    Renderer
-	bodyParser  BodyParser
+	bodyParse  *BodyParse
 	urlParser   URLParser
 	compress    Compressible  // Default to nil, do not compress response content.
 	timeout     time.Duration // Default to 0, no time out.
@@ -216,7 +206,7 @@ func New() *App {
 	}
 	app.Set(SetEnv, env)
 	app.Set(SetServerName, "Gear/"+Version)
-	app.Set(SetBodyParser, DefaultBodyParser)
+	app.Set(SetBodyParse, DefaultBodyParse)
 	app.Set(SetURLParser, DefaultURLParser{})
 	app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
 	return app
@@ -236,15 +226,15 @@ type appSetting uint8
 
 // Build-in app settings
 const (
-	// It will be used by `ctx.ParseBody`, value should implements `gear.BodyParser` interface, default to:
-	//  app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
-	SetBodyParser appSetting = iota
+	// It will be used by `ctx.ParseBody`, value must be `gear.BodyParse`, default to:
+	//  app.Set(gear.SetBodyParse, gear.DefaultBodyParse)
+	SetBodyParse appSetting = iota
 
-	// It will be used by `ctx.ParseURL`, value should implements `gear.URLParser` interface, default to:
+	// It will be used by `ctx.ParseURL`, value must implements `gear.URLParser` interface, default to:
 	//  app.Set(gear.SetURLParser, gear.DefaultURLParser)
 	SetURLParser
 
-	// Enable compress for response, value should implements `gear.Compressible` interface, no default value.
+	// Enable compress for response, value must implements `gear.Compressible` interface, no default value.
 	// Example:
 	//  import "github.com/teambition/compressible-go"
 	//
@@ -289,11 +279,11 @@ const (
 func (app *App) Set(key, val interface{}) {
 	if k, ok := key.(appSetting); ok {
 		switch key {
-		case SetBodyParser:
-			if bodyParser, ok := val.(BodyParser); !ok {
-				panic(Err.WithMsg("SetBodyParser setting must implemented gear.BodyParser interface"))
+		case SetBodyParse:
+			if bodyParse, ok := val.(*BodyParse); !ok {
+				panic(Err.WithMsg("SetBodyParse setting must be *gear.BodyParse"))
 			} else {
-				app.bodyParser = bodyParser
+				app.bodyParse = bodyParse
 			}
 		case SetURLParser:
 			if urlParser, ok := val.(URLParser); !ok {

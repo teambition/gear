@@ -342,7 +342,7 @@ func (ctx *Context) QueryAll(name string) []string {
 	return ctx.query[name]
 }
 
-// ParseBody parses request content with BodyParser, stores the result in the value
+// ParseBody parses request content with BodyParse, stores the result in the value
 // pointed to by BodyTemplate body, and validate it.
 // DefaultBodyParse support JSON, Form and XML.
 //
@@ -366,8 +366,8 @@ func (ctx *Context) QueryAll(name string) []string {
 //  }
 //
 func (ctx *Context) ParseBody(body BodyTemplate) error {
-	if ctx.app.bodyParser == nil {
-		return Err.WithMsg("bodyParser not registered")
+	if ctx.app.bodyParse == nil {
+		return Err.WithMsg("bodyParse not registered")
 	}
 	if ctx.Req.Body == nil {
 		return Err.WithMsg("missing request body")
@@ -379,7 +379,7 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 		mediaType = MIMEOctetStream
 	}
 
-	fn, maxBytes := ctx.app.bodyParser.Get(mediaType)
+	fn, maxBytes := ctx.app.bodyParse.Get(mediaType)
 	if fn == nil {
 		return ErrUnsupportedMediaType.WithMsg("unsupported media type")
 	}
