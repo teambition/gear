@@ -528,8 +528,7 @@ func (l *Logger) Serve(ctx *gear.Context) error {
       return
     }
     log["Status"] = ctx.Res.Status()
-    log["Type"] = ctx.Res.Type()
-    log["Length"] = ctx.Res.Get(gear.HeaderContentLength)
+    log["Length"] = len(ctx.Res.Body())
     l.consume(log, ctx)
   })
   return nil

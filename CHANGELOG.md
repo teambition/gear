@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.7.3] - 2017-06-10
+
+**Fixed:**
+
+- Fix logging middleware, [issue 24](https://github.com/teambition/gear/issues/24).
+
 ## [1.7.2] - 2017-06-06
 
 **Changed:**

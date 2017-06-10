@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 
+	"github.com/teambition/compressible-go"
 	"github.com/teambition/gear"
 	"github.com/teambition/gear/logging"
 	"github.com/teambition/gear/middleware/cors"
@@ -19,6 +20,7 @@ var (
 func main() {
 	flag.Parse()
 	app := gear.New()
+	app.Set(gear.SetCompress, compressible.WithThreshold(1024))
 
 	app.UseHandler(logging.Default(true))
 	app.Use(cors.New())

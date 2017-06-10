@@ -5,7 +5,6 @@ import (
 	"net"
 	"net/http"
 	"regexp"
-	"strconv"
 )
 
 var defaultHeaderFilterReg = regexp.MustCompile(
@@ -130,10 +129,7 @@ func (r *Response) WriteHeader(code int) {
 		r.body = nil
 	}
 
-	// check and set Content-Length
-	if r.body != nil {
-		r.Set(HeaderContentLength, strconv.Itoa(len(r.body)))
-	}
+	// we don't need to set Content-Length, http.Server will handle it
 	r.rw.WriteHeader(r.status)
 	// execute "end hooks" with LIFO order after Response.WriteHeader.
 	// they run in a goroutine, in order to not block current process.

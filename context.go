@@ -653,6 +653,8 @@ func (ctx *Context) After(hook func()) {
 }
 
 // OnEnd add a "end hook" to the ctx that will run after Response.WriteHeader.
+// Take care that http.ResponseWriter and http.Request maybe reset for reusing.
+// Issue https://github.com/teambition/gear/issues/24
 func (ctx *Context) OnEnd(hook func()) {
 	if ctx.Res.ended.isTrue() { // should not add endHooks if ctx.Res.ended
 		panic(Err.WithMsg(`can't add "end hook" after middleware process ended`))

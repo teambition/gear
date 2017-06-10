@@ -130,7 +130,6 @@ func TestGearResponseCompress(t *testing.T) {
 
 			assert.Equal("", res.Header.Get(HeaderContentEncoding))
 			assert.Equal("", res.Header.Get(HeaderVary))
-			assert.Equal(strconv.FormatInt(int64(len(body)), 10), res.Header.Get(HeaderContentLength))
 			assert.Equal(body, content)
 		})
 
@@ -178,7 +177,6 @@ func TestGearResponseCompress(t *testing.T) {
 
 			assert.Equal("", res.Header.Get(HeaderContentEncoding))
 			assert.Equal("", res.Header.Get(HeaderVary))
-			assert.Equal(strconv.FormatInt(int64(len(body)), 10), res.Header.Get(HeaderContentLength))
 			assert.Equal(body, content)
 		})
 

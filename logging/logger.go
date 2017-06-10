@@ -139,12 +139,8 @@ func developmentConsume(log Log, ctx *gear.Context) {
 	fmt.Fprintf(std.Out, ` - - [%s] "%s %s %s" `, end.Format(std.tf), log["Method"], log["URL"], log["Proto"])
 	status := log["Status"].(int)
 	FprintWithColor(std.Out, strconv.Itoa(status), colorStatus(status))
-	size := log["Length"].(string)
-	if size == "" {
-		size = "-"
-	}
 	resTime := float64(end.Sub(log["Start"].(time.Time))) / 1e6
-	fmt.Fprintln(std.Out, fmt.Sprintf(" %s %.3fms", size, resTime))
+	fmt.Fprintln(std.Out, fmt.Sprintf(" %s %.3fms", log["Length"], resTime))
 }
 
 // New creates a Logger instance with given io.Writer and DebugLevel log level.
@@ -160,6 +156,7 @@ func New(w io.Writer) *Logger {
 		log["Method"] = ctx.Method
 		log["URL"] = ctx.Req.URL.String()
 		log["Proto"] = ctx.Req.Proto
+		log["UserAgent"] = ctx.Get(gear.HeaderUserAgent)
 		log["Start"] = time.Now()
 	}
 
@@ -432,8 +429,7 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 			return
 		}
 		log["Status"] = ctx.Res.Status()
-		log["Type"] = ctx.Res.Type()
-		log["Length"] = ctx.Res.Get(gear.HeaderContentLength)
+		log["Length"] = len(ctx.Res.Body())
 		l.consume(log, ctx)
 	})
 	return nil
