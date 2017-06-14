@@ -43,8 +43,7 @@ func TestGearRouter(t *testing.T) {
 		res, err = RequestBy("GET", host+"/api")
 		assert.Nil(err)
 		assert.Equal(0, called)
-		assert.Equal(421, res.StatusCode)
-		assert.Equal("", PickRes(res.Text()).(string))
+		assert.Equal(501, res.StatusCode)
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/api/users")
@@ -665,6 +664,33 @@ func TestGearRouter(t *testing.T) {
 		assert.Equal("/abc/xyz/", rt.Header.Get("Location"))
 	})
 
+	t.Run("router with root", func(t *testing.T) {
+		assert := assert.New(t)
+
+		r := NewRouter(RouterOptions{Root: "/api"})
+		r.Get("/", func(ctx *Context) error {
+			return ctx.End(200, []byte("hello"))
+		})
+
+		app := New()
+		app.UseHandler(r)
+
+		srv := app.Start()
+		defer srv.Close()
+		host := "http://" + srv.Addr().String()
+
+		res, err := RequestBy("GET", host)
+		assert.Nil(err)
+		assert.Equal(421, res.StatusCode)
+		res.Body.Close()
+
+		res, err = RequestBy("GET", host+"/api")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("hello", PickRes(res.Text()).(string))
+		res.Body.Close()
+	})
+
 	t.Run("router with root and FixedPathRedirect", func(t *testing.T) {
 		assert := assert.New(t)
 		app := New()
@@ -869,12 +895,14 @@ func TestGearRouter(t *testing.T) {
 
 		res, err = RequestBy("GET", host+"/abc")
 		assert.Nil(err)
-		assert.Equal(421, res.StatusCode)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("", PickRes(res.Text()).(string))
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/abcd")
 		assert.Nil(err)
-		assert.Equal(421, res.StatusCode)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("", PickRes(res.Text()).(string))
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/abc/")

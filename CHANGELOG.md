@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.7.4] - 2017-06-14
+
+**Fixed:**
+
+- Fix root path for router with namepace.
+
 ## [1.7.3] - 2017-06-10
 
 **Fixed:**

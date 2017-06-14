@@ -106,6 +106,7 @@ import (
 // More info: https://github.com/teambition/trie-mux
 type Router struct {
 	root       string
+	rt         string
 	trie       *trie.Trie
 	otherwise  Middleware
 	middleware Middleware
@@ -180,6 +181,7 @@ func NewRouter(routerOptions ...RouterOptions) *Router {
 
 	return &Router{
 		root: opts.Root,
+		rt:   opts.Root[0 : len(opts.Root)-1],
 		mds:  make([]Middleware, 0),
 		trie: trie.New(trie.Options{
 			IgnoreCase:            opts.IgnoreCase,
@@ -262,12 +264,14 @@ func (r *Router) Serve(ctx *Context) error {
 	method := ctx.Method
 	var handler Middleware
 
-	if !strings.HasPrefix(path, r.root) {
+	if !strings.HasPrefix(path, r.root) && path != r.rt {
 		return nil
 	}
 
-	if l := len(r.root); l > 1 {
-		path = path[l-1:]
+	if path == r.rt {
+		path = "/"
+	} else if l := len(r.rt); l > 0 {
+		path = path[l:]
 	}
 
 	matched := r.trie.Match(path)
