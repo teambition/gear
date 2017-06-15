@@ -11,8 +11,6 @@ import (
 	"net/url"
 	"os"
 	"time"
-
-	"github.com/DavadDi/gear/logging"
 )
 
 // Middleware defines a function to process as middleware.
@@ -140,7 +138,7 @@ func New() *App {
 	app.Set(SetServerName, "Gear/"+Version)
 	app.Set(SetBodyParser, DefaultBodyParser(2<<20)) // 2MB
 	app.Set(SetURLParser, DefaultURLParser{})
-	app.Set(SetLogger, log.New(logging.DefaultSrvErr(), "", log.LstdFlags))
+	app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
 	return app
 }
 
