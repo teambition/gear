@@ -138,7 +138,13 @@ func New() *App {
 	app.Set(SetServerName, "Gear/"+Version)
 	app.Set(SetBodyParser, DefaultBodyParser(2<<20)) // 2MB
 	app.Set(SetURLParser, DefaultURLParser{})
-	app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
+
+	if env == "development" {
+		app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
+	} else {
+		app.Set(SetLogger, log.New(DefaultFilterWriter(), "", log.LstdFlags))
+	}
+
 	return app
 }
 
