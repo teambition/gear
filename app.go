@@ -138,13 +138,7 @@ func New() *App {
 	app.Set(SetServerName, "Gear/"+Version)
 	app.Set(SetBodyParser, DefaultBodyParser(2<<20)) // 2MB
 	app.Set(SetURLParser, DefaultURLParser{})
-
-	if env == "development" {
-		app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
-	} else {
-		app.Set(SetLogger, log.New(DefaultFilterWriter(), "", log.LstdFlags))
-	}
-
+	app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
 	return app
 }
 
@@ -185,6 +179,8 @@ const (
 
 	// Set a logger to app, value should be `*log.Logger` instance, default to:
 	//  app.Set(gear.SetLogger, log.New(os.Stderr, "", log.LstdFlags))
+	// Maybe you need LoggerFilterWriter to filter some server errors in production:
+	//  app.Set(gear.SetLogger, log.New(gear.DefaultFilterWriter(), "", log.LstdFlags))
 	SetLogger
 
 	// Set a on-error hook to app, value should be `func(ctx *Context, err *Error)`, no default value.

@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.7.5] - 2017-06-16
+
+**Changed:**
+
+- Add gear.LoggerFilterWriter to filter unnecessary server errors.
+
 ## [1.7.4] - 2017-06-14
 
 **Fixed:**
