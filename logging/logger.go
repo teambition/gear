@@ -140,7 +140,7 @@ func developmentConsume(log Log, ctx *gear.Context) {
 	status := log["Status"].(int)
 	FprintWithColor(std.Out, strconv.Itoa(status), colorStatus(status))
 	resTime := float64(end.Sub(log["Start"].(time.Time))) / 1e6
-	fmt.Fprintln(std.Out, fmt.Sprintf(" %s %.3fms", log["Length"], resTime))
+	fmt.Fprintln(std.Out, fmt.Sprintf(" %d %.3fms", log["Length"], resTime))
 }
 
 // New creates a Logger instance with given io.Writer and DebugLevel log level.

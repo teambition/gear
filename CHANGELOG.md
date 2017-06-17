@@ -5,6 +5,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.7.6] - 2017-06-17
+
+**Changed:**
+
+- Add a QUIC example.
+
+**Fixed:**
+
+- Fix logging's development consume function.
+
 ## [1.7.5] - 2017-06-16
 
 **Changed:**
