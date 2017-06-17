@@ -640,7 +640,7 @@ func (b *xmlBodyTemplate) Validate() error {
 func TestGearContextParseBody(t *testing.T) {
 	app := New()
 	assert.Panics(t, func() {
-		app.Set(SetBodyParser, 123)
+		app.Set(SetBodyParse, 123)
 	})
 
 	t.Run("should parse JSON content", func(t *testing.T) {
@@ -654,6 +654,18 @@ func TestGearContextParseBody(t *testing.T) {
 		assert.Nil(ctx.ParseBody(&body))
 		assert.Equal("admin", body.ID)
 		assert.Equal("password", body.Pass)
+	})
+
+	t.Run("should parse multipart content", func(t *testing.T) {
+		assert := assert.New(t)
+		reader, boundary := MultipartForm()
+		ctx := CtxTest(app, "POST", "http://example.com/foo", reader)
+		ctx.Req.Header.Set(HeaderContentType, "multipart/form-data; boundary="+boundary)
+
+		body := &multipartBodyTemplate{}
+		assert.Nil(ctx.ParseBody(body))
+		assert.Equal("Cba", body.ABC)
+		assert.Equal("1.txt", body.One.Filename)
 	})
 
 	t.Run("should parse Form content", func(t *testing.T) {
@@ -722,6 +734,7 @@ func TestGearContextParseBody(t *testing.T) {
 		assert := assert.New(t)
 
 		ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
+		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationJSON)
 		body := jsonBodyTemplate{}
 		err := ctx.ParseBody(&body)
 		assert.Equal(400, err.(*Error).Code)
@@ -731,7 +744,9 @@ func TestGearContextParseBody(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		app.Set(SetBodyParser, DefaultBodyParser(100))
+		d := DefaultBodyParse
+		d.Set(MIMEApplicationJSON, ParseJSON, 100)
+		app.Set(SetBodyParse, d)
 
 		ctx := CtxTest(app, "POST", "http://example.com/foo",
 			bytes.NewBufferString(strings.Repeat("t", 101)))
@@ -741,18 +756,18 @@ func TestGearContextParseBody(t *testing.T) {
 		assert.Equal(413, err.(*Error).Code)
 	})
 
-	t.Run("should error when bodyParser not exists", func(t *testing.T) {
+	t.Run("should error when bodyParse not exists", func(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		app.bodyParser = nil
+		app.bodyParse = nil
 
 		ctx := CtxTest(app, "POST", "http://example.com/foo",
 			bytes.NewBuffer([]byte(`{"id":"admin","pass":"pass"}`)))
 		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationJSON)
 		body := jsonBodyTemplate{}
 		err := ctx.ParseBody(&body)
-		assert.Equal("Error: bodyParser not registered", err.Error())
+		assert.Equal("Error: bodyParse not registered", err.Error())
 	})
 
 	t.Run("should error when req.Body not exists", func(t *testing.T) {

@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"io"
+	"io/ioutil"
 	"log"
+	"mime"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/url"
@@ -41,45 +44,112 @@ func (d DefaultURLParser) Parse(val map[string][]string, body interface{}, tag s
 	return ValuesToStruct(val, body, tag)
 }
 
-// BodyParser interface is used by ctx.ParseBody. Default to:
-//  app.Set(gear.SetBodyParser, DefaultBodyParser(1<<20))
-//
-type BodyParser interface {
-	// Maximum allowed size for a request body
-	MaxBytes() int64
-	Parse(buf []byte, body interface{}, mediaType, charset string) error
+// DefaultBodyParse is default BodyParse type, use 1MB as default max body length for json, xml, x-www form body
+// use 10MB as default max body length for multipart form body
+var DefaultBodyParse = func() *BodyParse {
+	h := &BodyParse{}
+	h.Set(MIMEApplicationJSON, ParseJSON, 1<<20)
+	h.Set(MIMEApplicationXML, ParseXML, 1<<20)
+	h.Set(MIMEApplicationForm, ParseApplicationForm, 1<<20)
+	h.Set(MIMEMultipartForm, ParseMultipartForm(1<<20), 10<<20)
+	return h
+}()
+
+// BodyParseFunc defines a function to support parse body
+type BodyParseFunc func(data io.Reader, body interface{}, header http.Header) error
+
+type funcAndMaxBytes struct {
+	Fn       BodyParseFunc
+	MaxBytes int64
 }
 
-// DefaultBodyParser is default BodyParser type.
-// SetBodyParser used 1MB as default:
-//
-//  app.Set(gear.SetBodyParser, DefaultBodyParser(1<<20))
-//
-type DefaultBodyParser int64
-
-// MaxBytes implemented BodyParser interface.
-func (d DefaultBodyParser) MaxBytes() int64 {
-	return int64(d)
+// BodyParse is used by ctx.ParseBody. Default to:
+//  app.Set(gear.SetBodyParse, DefaultBodyParse)
+type BodyParse struct {
+	Parsers map[string]funcAndMaxBytes
 }
 
-// Parse implemented BodyParser interface.
-func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charset string) error {
-	if len(buf) == 0 {
-		return ErrBadRequest.WithMsg("request entity empty")
+// Set set new BodyParseFunc to parse body.
+func (h *BodyParse) Set(mediaType string, fn BodyParseFunc, maxBytes int64) error {
+	if h.Parsers == nil {
+		h.Parsers = make(map[string]funcAndMaxBytes)
 	}
-	switch mediaType {
-	case MIMEApplicationJSON:
-		return json.Unmarshal(buf, body)
-	case MIMEApplicationXML:
-		return xml.Unmarshal(buf, body)
-	case MIMEApplicationForm:
-		val, err := url.ParseQuery(string(buf))
-		if err == nil {
-			err = ValuesToStruct(val, body, "form")
-		}
+
+	mediaType, _, err := mime.ParseMediaType(mediaType)
+	if err != nil {
 		return err
 	}
-	return ErrUnsupportedMediaType.WithMsg("unsupported media type")
+
+	if maxBytes == 0 {
+		maxBytes = 1 << 20
+	}
+
+	h.Parsers[mediaType] = funcAndMaxBytes{fn, maxBytes}
+	return nil
+}
+
+// Get return BodyParseFunc and maxBytes for parse mediaType.
+func (h *BodyParse) Get(mediaType string) (BodyParseFunc, int64) {
+	mediaType, _, err := mime.ParseMediaType(mediaType)
+	if err != nil {
+		return nil, 0
+	}
+	p := h.Parsers[mediaType]
+	return p.Fn, p.MaxBytes
+}
+
+// ParseJSON is a BodyParseFunc to support parse json
+func ParseJSON(data io.Reader, body interface{}, _ http.Header) error {
+	blob, err := ioutil.ReadAll(data)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(blob, body)
+}
+
+// ParseXML is a BodyParseFunc to support parse xml
+func ParseXML(data io.Reader, body interface{}, _ http.Header) error {
+	blob, err := ioutil.ReadAll(data)
+	if err != nil {
+		return err
+	}
+	return xml.Unmarshal(blob, body)
+}
+
+// ParseApplicationForm is a BodyParseFunc to support parse x-www form
+func ParseApplicationForm(data io.Reader, body interface{}, _ http.Header) error {
+	blob, err := ioutil.ReadAll(data)
+	if err != nil {
+		return err
+	}
+	val, err := url.ParseQuery(string(blob))
+	if err == nil {
+		err = ValuesToStruct(val, body, "form")
+	}
+	return err
+}
+
+// ParseMultipartForm is a BodyParseFunc to support parse multipart form
+func ParseMultipartForm(maxMemory int64) BodyParseFunc {
+	return func(data io.Reader, body interface{}, header http.Header) error {
+		mediaType := header.Get(HeaderContentType)
+		_, params, err := mime.ParseMediaType(mediaType)
+		if err != nil {
+			return err
+		}
+		boundary, ok := params["boundary"]
+		if !ok {
+			return http.ErrMissingBoundary
+		}
+
+		mr := multipart.NewReader(data, boundary)
+
+		form, err := mr.ReadForm(maxMemory)
+		if err != nil {
+			return err
+		}
+		return FormToStruct(form, body, "form", "file")
+	}
 }
 
 // HTTPError interface is used to create a server error that include status code and error message.
@@ -112,7 +182,7 @@ type App struct {
 
 	keys        []string
 	renderer    Renderer
-	bodyParser  BodyParser
+	bodyParse   *BodyParse
 	urlParser   URLParser
 	compress    Compressible  // Default to nil, do not compress response content.
 	timeout     time.Duration // Default to 0, no time out.
@@ -136,7 +206,7 @@ func New() *App {
 	}
 	app.Set(SetEnv, env)
 	app.Set(SetServerName, "Gear/"+Version)
-	app.Set(SetBodyParser, DefaultBodyParser(2<<20)) // 2MB
+	app.Set(SetBodyParse, DefaultBodyParse)
 	app.Set(SetURLParser, DefaultURLParser{})
 	app.Set(SetLogger, log.New(os.Stderr, "", log.LstdFlags))
 	return app
@@ -156,15 +226,15 @@ type appSetting uint8
 
 // Build-in app settings
 const (
-	// It will be used by `ctx.ParseBody`, value should implements `gear.BodyParser` interface, default to:
-	//  app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
-	SetBodyParser appSetting = iota
+	// It will be used by `ctx.ParseBody`, value must be `gear.BodyParse`, default to:
+	//  app.Set(gear.SetBodyParse, gear.DefaultBodyParse)
+	SetBodyParse appSetting = iota
 
-	// It will be used by `ctx.ParseURL`, value should implements `gear.URLParser` interface, default to:
+	// It will be used by `ctx.ParseURL`, value must implements `gear.URLParser` interface, default to:
 	//  app.Set(gear.SetURLParser, gear.DefaultURLParser)
 	SetURLParser
 
-	// Enable compress for response, value should implements `gear.Compressible` interface, no default value.
+	// Enable compress for response, value must implements `gear.Compressible` interface, no default value.
 	// Example:
 	//  import "github.com/teambition/compressible-go"
 	//
@@ -211,11 +281,11 @@ const (
 func (app *App) Set(key, val interface{}) {
 	if k, ok := key.(appSetting); ok {
 		switch key {
-		case SetBodyParser:
-			if bodyParser, ok := val.(BodyParser); !ok {
-				panic(Err.WithMsg("SetBodyParser setting must implemented gear.BodyParser interface"))
+		case SetBodyParse:
+			if bodyParse, ok := val.(*BodyParse); !ok {
+				panic(Err.WithMsg("SetBodyParse setting must be *gear.BodyParse"))
 			} else {
-				app.bodyParser = bodyParser
+				app.bodyParse = bodyParse
 			}
 		case SetURLParser:
 			if urlParser, ok := val.(URLParser); !ok {

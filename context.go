@@ -7,8 +7,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"mime"
 	"net"
 	"net/http"
 	"net/url"
@@ -344,9 +342,9 @@ func (ctx *Context) QueryAll(name string) []string {
 	return ctx.query[name]
 }
 
-// ParseBody parses request content with BodyParser, stores the result in the value
+// ParseBody parses request content with BodyParse, stores the result in the value
 // pointed to by BodyTemplate body, and validate it.
-// DefaultBodyParser support JSON, Form and XML.
+// DefaultBodyParse support JSON, Form and XML.
 //
 // Define a BodyTemplate type in some API:
 //  type jsonBodyTemplate struct {
@@ -368,33 +366,34 @@ func (ctx *Context) QueryAll(name string) []string {
 //  }
 //
 func (ctx *Context) ParseBody(body BodyTemplate) error {
-	if ctx.app.bodyParser == nil {
-		return Err.WithMsg("bodyParser not registered")
+	if ctx.app.bodyParse == nil {
+		return Err.WithMsg("bodyParse not registered")
 	}
 	if ctx.Req.Body == nil {
 		return Err.WithMsg("missing request body")
 	}
 
-	var err error
-	var buf []byte
-	var mediaType string
-	var params map[string]string
-	if mediaType = ctx.Get(HeaderContentType); mediaType == "" {
+	mediaType := ctx.Get(HeaderContentType)
+	if mediaType == "" {
 		// RFC 2616, section 7.2.1 - empty type SHOULD be treated as application/octet-stream
 		mediaType = MIMEOctetStream
 	}
-	if mediaType, params, err = mime.ParseMediaType(mediaType); err != nil {
-		return ErrUnsupportedMediaType.From(err)
+
+	fn, maxBytes := ctx.app.bodyParse.Get(mediaType)
+	if fn == nil {
+		return ErrUnsupportedMediaType.WithMsg("unsupported media type")
 	}
 
-	reader := http.MaxBytesReader(ctx.Res, ctx.Req.Body, ctx.app.bodyParser.MaxBytes())
-	if buf, err = ioutil.ReadAll(reader); err != nil {
-		// err may not be 413 Request entity too large, just make it to 413
-		return ErrRequestEntityTooLarge.From(err)
-	}
-	if err = ctx.app.bodyParser.Parse(buf, body, mediaType, params["charset"]); err != nil {
+	reader := http.MaxBytesReader(ctx.Res, ctx.Req.Body, maxBytes)
+
+	err := fn(reader, body, ctx.Req.Header)
+	if err != nil {
+		if err.Error() == "http: request body too large" {
+			return ErrRequestEntityTooLarge.From(err)
+		}
 		return ErrBadRequest.From(err)
 	}
+
 	return body.Validate()
 }
 
