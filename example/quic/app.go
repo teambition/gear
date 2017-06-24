@@ -41,6 +41,9 @@ h1 {
 		ctx.Type("text/css")
 		return ctx.End(200, []byte(pushBody))
 	})
+	router.Get("/json", func(ctx *gear.Context) error {
+		return ctx.JSON(200, map[string]interface{}{"name": "quic"})
+	})
 	app.UseHandler(router)
 	app.Server.Addr = ":3000"
 	quicServer := h2quic.Server{

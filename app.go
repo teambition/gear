@@ -116,7 +116,7 @@ type App struct {
 	urlParser   URLParser
 	compress    Compressible  // Default to nil, do not compress response content.
 	timeout     time.Duration // Default to 0, no time out.
-	serverName  string        // Gear/1.7.2
+	serverName  string        // Gear/1.7.6
 	logger      *log.Logger
 	onerror     func(*Context, HTTPError)
 	withContext func(*http.Request) context.Context
