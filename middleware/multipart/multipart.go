@@ -1,17 +1,20 @@
 package multipart
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime"
 	"mime/multipart"
+	"net/http"
+	"net/textproto"
 	"os"
 	"path/filepath"
 	"reflect"
 
 	"github.com/teambition/gear"
-	"mime"
-	"net/http"
 )
 
 var stringType = reflect.TypeOf("")
@@ -140,13 +143,114 @@ func SaveFileTo(file *multipart.FileHeader, moveTo string) (string, error) {
 	return moveTo, nil
 }
 
-type BodyTemplate interface {
-	Validate() error
-	New() BodyTemplate
+type FileHeader struct {
+	Filename string
+	Header   textproto.MIMEHeader
+	Reader   io.Reader
 }
 
-func New(body BodyTemplate, key interface{}, maxBytes, maxMemory int64) gear.Middleware {
+type Writer interface {
+	Write(ctx *gear.Context, file *FileHeader) error
+}
+
+type handleFn func(body reflect.Value, ctx *gear.Context, file *FileHeader) error
+
+func getHandleFn(field reflect.StructField, i int) handleFn {
+	writerType := reflect.TypeOf((*Writer)(nil)).Elem()
+	if !field.Type.Implements(writerType) {
+		panic(field.Name + " not implements " + writerType.Name())
+	}
+	m, _ := field.Type.MethodByName("Write")
+	methodIndex := m.Index
+	return func(body reflect.Value, ctx *gear.Context, file *FileHeader) error {
+		fn := body.Field(i).Method(methodIndex)
+		e := fn.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(file)})
+		if e[0].Interface() == nil {
+			return nil
+		}
+		return e[0].Interface().(error)
+	}
+}
+
+func readMultiPart(r *multipart.Reader, body gear.BodyTemplate, ctx *gear.Context, writers map[string]handleFn) error {
+	rBody := reflect.ValueOf(body).Elem()
+
+	form := make(map[string][]string)
+
+	maxValueBytes := int64(10 << 20)
+	for {
+		p, err := r.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		name := p.FormName()
+		if name == "" {
+			continue
+		}
+		filename := p.FileName()
+
+		var b bytes.Buffer
+
+		if filename == "" {
+			// value, store as string in memory
+			n, err := io.CopyN(&b, p, maxValueBytes)
+			if err != nil && err != io.EOF {
+				return err
+			}
+			maxValueBytes -= n
+			if maxValueBytes == 0 {
+				return errors.New("multipart: message too large")
+			}
+			form[name] = append(form[name], b.String())
+			continue
+		}
+
+		fn, ok := writers[name]
+		if !ok {
+			return fmt.Errorf("")
+		}
+
+		err = fn(rBody, ctx, &FileHeader{
+			Filename: filename,
+			Header:   p.Header,
+			Reader:   p,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return gear.ValuesToStruct(form, body, "form")
+}
+
+// new func()gear.BodyTemplate
+func New(newBody func() gear.BodyTemplate, key interface{}, maxBytes, maxMemory int64) (gear.Middleware, error) {
+	bodyType := reflect.TypeOf(newBody())
+	if bodyType.Kind() != reflect.Ptr {
+		return nil, fmt.Errorf("invalid struct: %v", bodyType)
+	}
+
+	writers := make(map[string]handleFn)
+
+	for i, n := 0, bodyType.NumField(); i < n; i++ {
+		field := bodyType.Field(i)
+		tag := field.Tag.Get("file")
+		if tag == "" {
+			continue
+		}
+		switch field.Type {
+		case stringType:
+			//todo
+		default:
+			writers[tag] = getHandleFn(field, i)
+		}
+	}
+
 	return func(ctx *gear.Context) (err error) {
+		body := newBody()
 		mediaType := ctx.Get(gear.HeaderContentType)
 		mediaType, params, err := mime.ParseMediaType(mediaType)
 		if err != nil || mediaType != gear.MIMEMultipartForm {
@@ -159,17 +263,16 @@ func New(body BodyTemplate, key interface{}, maxBytes, maxMemory int64) gear.Mid
 
 		reader := http.MaxBytesReader(ctx.Res, ctx.Req.Body, maxBytes)
 		mr := multipart.NewReader(reader, boundary)
-		form, err := mr.ReadForm(maxMemory)
+
+		//form, err := mr.ReadForm(maxMemory)
+
+		err = readMultiPart(mr, body, ctx, writers)
+
 		if err != nil {
 			if err.Error() == "http: request body too large" {
 				return gear.ErrRequestEntityTooLarge.From(err)
 			}
 			return gear.ErrBadRequest.From(err)
-		}
-
-		err = FormToStruct(form, body, "form", "file")
-		if err != nil {
-			return err
 		}
 
 		err = body.Validate()
@@ -180,5 +283,5 @@ func New(body BodyTemplate, key interface{}, maxBytes, maxMemory int64) gear.Mid
 		ctx.SetAny(key, body)
 
 		return
-	}
+	}, nil
 }

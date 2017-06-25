@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"mime/multipart"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -109,4 +110,108 @@ func TestSaveFileTo(t *testing.T) {
 		}
 		t.Log(name2)
 	})
+}
+
+type TestWriter struct {
+	host     string
+	filename string
+	content  string
+}
+
+func (w *TestWriter) Write(ctx *gear.Context, file *FileHeader) error {
+	w.host = ctx.Host
+	w.filename = file.Filename
+	buf := bytes.Buffer{}
+	_, err := io.Copy(&buf, file.Reader)
+	if err != nil {
+		return err
+	}
+	w.content = buf.String()
+	return nil
+}
+
+type testBodyTemplate struct {
+	A string      `form:"a"`
+	B string      `form:"b"`
+	W *TestWriter `file:"testfile"`
+}
+
+func (t *testBodyTemplate) Validate() error {
+	return nil
+}
+
+func TestGetHandleFn(t *testing.T) {
+	a := assert.New(t)
+
+	fn := getHandleFn(reflect.TypeOf(&testBodyTemplate{}).Elem().Field(2), 2)
+
+	body1 := &testBodyTemplate{W: &TestWriter{}}
+	rbody1 := reflect.ValueOf(body1).Elem()
+	body2 := &testBodyTemplate{W: &TestWriter{}}
+	rbody2 := reflect.ValueOf(body2).Elem()
+
+	err := fn(rbody1, &gear.Context{Host: "11"},
+		&FileHeader{Filename: "a", Reader: bytes.NewReader([]byte("aaa"))})
+	if !a.NoError(err) {
+		a.FailNow("", err)
+	}
+	a.Equal("11", body1.W.host)
+	a.Equal("a", body1.W.filename)
+	a.Equal("aaa", body1.W.content)
+
+	err = fn(rbody2, &gear.Context{Host: "22"},
+		&FileHeader{Filename: "b", Reader: bytes.NewReader([]byte("bbb"))})
+	if !a.NoError(err) {
+		a.FailNow("", err)
+	}
+	a.Equal("22", body2.W.host)
+	a.Equal("b", body2.W.filename)
+	a.Equal("bbb", body2.W.content)
+}
+
+func multiPart() *multipart.Reader {
+	buf := &bytes.Buffer{}
+
+	mw := multipart.NewWriter(buf)
+
+	mw.WriteField("a", "A")
+	mw.WriteField("b", "B")
+	mw.WriteField("C", "C")
+	mw.WriteField("D", "d")
+
+	fw, _ := mw.CreateFormFile("testfile", "aa.txt")
+	fw.Write([]byte("asdfadsfasdfasdfaefwefaef"))
+	mw.Close()
+
+	return multipart.NewReader(buf, mw.Boundary())
+}
+
+func TestReadMultiPart(t *testing.T) {
+	a := assert.New(t)
+
+	newBody := func() *testBodyTemplate {
+		return &testBodyTemplate{W: &TestWriter{}}
+	}
+
+	writers := map[string]handleFn{
+		"testfile": getHandleFn(reflect.TypeOf(newBody()).Elem().Field(2), 2),
+	}
+
+	body1 := newBody()
+	err := readMultiPart(multiPart(), body1, &gear.Context{Host: "11"}, writers)
+	if !a.NoError(err) {
+		a.FailNow("", err)
+	}
+	a.Equal("11", body1.W.host)
+	a.Equal("A", body1.A)
+	a.Equal("B", body1.B)
+	a.Equal("aa.txt", body1.W.filename)
+	a.Equal("asdfadsfasdfasdfaefwefaef", body1.W.content)
+
+	body2 := newBody()
+	err = readMultiPart(multiPart(), body2, &gear.Context{Host: "22"}, writers)
+	if !a.NoError(err) {
+		a.FailNow("", err)
+	}
+	a.Equal("22", body2.W.host)
 }
