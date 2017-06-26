@@ -91,7 +91,8 @@ func writerCase(i int, field reflect.StructField) handleFunc {
 
 var ErrBodyTooLarge = errors.New("fileupload: request body too large")
 
-func readMultiPart(r *multipart.Reader, body gear.BodyTemplate, ctx *gear.Context, writers map[string]handleFunc, formTag string) error {
+func readMultiPart(r *multipart.Reader, body gear.BodyTemplate,
+	ctx *gear.Context, writers map[string]handleFunc, formTag string) error {
 	rBody := reflect.ValueOf(body).Elem()
 
 	form := make(map[string][]string)
@@ -194,7 +195,8 @@ func readMultiPart(r *multipart.Reader, body gear.BodyTemplate, ctx *gear.Contex
 //	app:=gear.New()
 //	app.Use(mw)
 //
-func New(newBody func() gear.BodyTemplate, key interface{}, maxSize int64, fileTag, formTag string) (gear.Middleware, error) {
+func New(newBody func() gear.BodyTemplate, key interface{},
+	maxSize int64, fileTag, formTag string) (gear.Middleware, error) {
 	bodyType := reflect.TypeOf(newBody())
 	if bodyType.Kind() != reflect.Ptr {
 		return nil, fmt.Errorf("invalid struct: %v", bodyType)
