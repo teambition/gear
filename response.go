@@ -8,7 +8,7 @@ import (
 )
 
 var defaultHeaderFilterReg = regexp.MustCompile(
-	`(?i)^(accept|allow|retry-after|warning|vary|access-control-allow-|x-ratelimit-)`)
+	`(?i)^(accept|allow|retry-after|warning|vary|server|x-powered-by|access-control-allow-|x-ratelimit-)`)
 
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.
@@ -131,11 +131,6 @@ func (r *Response) WriteHeader(code int) {
 
 	// we don't need to set Content-Length, http.Server will handle it
 	r.rw.WriteHeader(r.status)
-	// execute "end hooks" with LIFO order after Response.WriteHeader.
-	// they run in a goroutine, in order to not block current process.
-	if len(r.endHooks) > 0 {
-		go runHooks(r.endHooks)
-	}
 }
 
 // Flush implements the http.Flusher interface to allow an HTTP handler to flush

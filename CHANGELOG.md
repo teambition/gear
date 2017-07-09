@@ -5,6 +5,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.7.7] - 2017-07-09
+
+**Changed:**
+
+- Update defaultHeaderFilterReg for error response.
+- Make end-hooks running in defer func.
+
 ## [1.7.6] - 2017-06-17
 
 **Changed:**
