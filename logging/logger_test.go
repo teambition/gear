@@ -301,7 +301,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		logger.mu.Lock()
 		log := buf.String()
 		logger.mu.Unlock()
-		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:18])
+		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:16])
 		assert.Contains(log, " INFO ")
 		assert.Contains(log, `"Data":[1,2,3],`)
 		assert.Contains(log, `"Method":"GET",`)

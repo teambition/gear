@@ -163,7 +163,7 @@ func New(w io.Writer) *Logger {
 	logger.consume = func(log Log, _ *gear.Context) {
 		end := time.Now()
 		if t, ok := log["Start"].(time.Time); ok {
-			log["Time"] = end.Sub(t) / 1e6
+			log["Time"] = end.Sub(t) / 1e6 // ms
 			delete(log, "Start")
 		}
 
@@ -187,19 +187,19 @@ func New(w io.Writer) *Logger {
 //
 //  logger := logging.New(os.Stdout)
 //  logger.SetLevel(logging.InfoLevel)
-//  logger.SetLogInit(func(log Log, ctx *gear.Context) {
+//  logger.SetLogInit(func(log logging.Log, ctx *gear.Context) {
 //  	log["IP"] = ctx.IP()
 //  	log["Method"] = ctx.Method
 //  	log["URL"] = ctx.Req.URL.String()
 //  	log["Start"] = time.Now()
 //  	log["UserAgent"] = ctx.Get(gear.HeaderUserAgent)
 //  })
-//  logger.SetLogConsume(func(log Log, _ *gear.Context) {
+//  logger.SetLogConsume(func(log logging.Log, _ *gear.Context) {
 //  	end := time.Now()
 //  	if str, err := log.Format(); err == nil {
-//  		logger.Output(end, InfoLevel, str)
+//  		logger.Output(end, logging.InfoLevel, str)
 //  	} else {
-//  		logger.Output(end, WarningLevel, log.String())
+//  		logger.Output(end, logging.WarningLevel, log.String())
 //  	}
 //  })
 //

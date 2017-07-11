@@ -228,7 +228,7 @@ func ErrorWithStack(val interface{}, skip ...int) *Error {
 //
 //  target := jsonQueryTemplate{}
 //
-//  ValuesToStruct(map[string][]string{
+//  gear.ValuesToStruct(map[string][]string{
 //  	"id": []string{"some id"},
 //  	"pass": []string{"some pass"},
 //  }, &target, "form")

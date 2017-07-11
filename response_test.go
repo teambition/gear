@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"fmt"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -368,11 +370,12 @@ h1 {
 		defer app.Close()
 
 		cond.Wait()
-		time.Sleep(time.Millisecond)
+		time.Sleep(time.Millisecond * 100)
 		tr, err := HTTP2Transport("./testdata/out/test.crt", "./testdata/out/test.key")
 		assert.Nil(err)
 		cli := &http.Client{Transport: tr}
 		res, err := cli.Get("https://127.0.0.1:3443")
+		fmt.Println(res, err)
 		assert.Nil(err)
 		assert.Equal("HTTP/2.0", res.Proto)
 		res.Body.Close()

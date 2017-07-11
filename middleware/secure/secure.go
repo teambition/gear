@@ -51,14 +51,14 @@ var oldIERegex = regexp.MustCompile(`(?i)msie\s*(\d+)`)
 //
 // Equals:
 //
-//  app.Use(DNSPrefetchControl(false))
-//  app.Use(HidePoweredBy())
-//  app.Use(IENoOpen())
-//  app.Use(NoSniff())
-//  app.Use(NoCache())
-//  app.Use(XSSFilter())
-//  app.Use(FrameGuard(FrameGuardActionSameOrigin))
-//  app.Use(StrictTransportSecurity(StrictTransportSecurityOptions{
+//  app.Use(secure.DNSPrefetchControl(false))
+//  app.Use(secure.HidePoweredBy())
+//  app.Use(secure.IENoOpen())
+//  app.Use(secure.NoSniff())
+//  app.Use(secure.NoCache())
+//  app.Use(secure.XSSFilter())
+//  app.Use(secure.FrameGuard(FrameGuardActionSameOrigin))
+//  app.Use(secure.StrictTransportSecurity(secure.StrictTransportSecurityOptions{
 //  	MaxAge:            180 * 24 * time.Hour,
 //  	IncludeSubDomains: true,
 //  }))

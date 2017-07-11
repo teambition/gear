@@ -27,7 +27,7 @@ type Renderer interface {
 }
 
 // URLParser interface is used by ctx.ParseUrl. Default to:
-//  app.Set(gear.SetURLParser, DefaultURLParser)
+//  app.Set(gear.SetURLParser, gear.DefaultURLParser)
 //
 type URLParser interface {
 	Parse(val map[string][]string, body interface{}, tag string) error
@@ -42,7 +42,7 @@ func (d DefaultURLParser) Parse(val map[string][]string, body interface{}, tag s
 }
 
 // BodyParser interface is used by ctx.ParseBody. Default to:
-//  app.Set(gear.SetBodyParser, DefaultBodyParser(1<<20))
+//  app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
 //
 type BodyParser interface {
 	// Maximum allowed size for a request body
@@ -53,7 +53,7 @@ type BodyParser interface {
 // DefaultBodyParser is default BodyParser type.
 // SetBodyParser used 1MB as default:
 //
-//  app.Set(gear.SetBodyParser, DefaultBodyParser(1<<20))
+//  app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
 //
 type DefaultBodyParser int64
 
