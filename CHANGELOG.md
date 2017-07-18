@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.7.8] - 2017-07-18
+
+**Changed:**
+
+- Update logging middleware: print time with brackets.
+
 ## [1.7.7] - 2017-07-09
 
 **Changed:**
