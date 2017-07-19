@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.7.9] - 2017-07-19
+
+**Changed:**
+
+- Add Error.WithErr(name string).
+
 ## [1.7.8] - 2017-07-18
 
 **Changed:**

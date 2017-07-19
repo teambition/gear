@@ -143,6 +143,20 @@ func TestGearError(t *testing.T) {
 		assert.Equal(`Error{Code:500, Err:"Error", Msg:"", Data:<nil>, Stack:""}`, Err.String())
 	})
 
+	t.Run("Error.WithErr", func(t *testing.T) {
+		assert := assert.New(t)
+
+		err := ErrBadRequest.WithErr("InvalidEmail")
+		assert.Equal(400, err.Code)
+		assert.Equal("InvalidEmail", err.Err)
+
+		err = err.WithMsg("Hello")
+		assert.Equal(400, err.Code)
+		assert.Equal("InvalidEmail", err.Err)
+		assert.Equal("Hello", err.Msg)
+		assert.Equal("InvalidEmail: Hello", err.Error())
+	})
+
 	t.Run("Error.WithMsg", func(t *testing.T) {
 		assert := assert.New(t)
 

@@ -107,6 +107,13 @@ func (err Error) GoString() string {
 		err.Code, err.Err, err.Msg, err.Data, err.Stack)
 }
 
+// WithErr returns a copy of err with given new error name.
+//  err := gear.ErrBadRequest.WithErr("InvalidEmail") // 400 Bad Request error with error name InvalidEmail"
+func (err Error) WithErr(name string) *Error {
+	err.Err = name
+	return &err
+}
+
 // WithMsg returns a copy of err with given new messages.
 //  err := gear.Err.WithMsg() // just clone
 //  err := gear.ErrBadRequest.WithMsg("invalid email") // 400 Bad Request error with message invalid email"
