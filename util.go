@@ -3,7 +3,6 @@ package gear
 import (
 	"bytes"
 	"encoding"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -226,7 +225,7 @@ func ErrorWithStack(val interface{}, skip ...int) *Error {
 	return err
 }
 
-// ValuesToStruct converts url.Values into struct object.
+// ValuesToStruct converts url.Values into struct object. It supports specific types that implementing encoding.TextUnmarshaler interface.
 //
 //  type jsonQueryTemplate struct {
 //  	ID   string `json:"id" form:"id"`
@@ -307,6 +306,10 @@ func setRefSlice(v reflect.Value, vals []string) error {
 }
 
 func setRefField(v reflect.Value, str string) error {
+	if ok, err := tryUnmarshalValue(v, str); ok {
+		return err
+	}
+
 	if v.Kind() == reflect.Ptr && shouldDeref(v.Type().Elem().Kind()) {
 		v.Set(reflect.New(v.Type().Elem()))
 		v = v.Elem()
@@ -325,7 +328,7 @@ func setRefField(v reflect.Value, str string) error {
 	case reflect.Float32, reflect.Float64:
 		return setRefFloat(v, str, v.Type().Bits())
 	default:
-		return tryUnmarshalValue(v, str)
+		return fmt.Errorf("unknown field type: %v", v.Type())
 	}
 }
 
@@ -361,8 +364,8 @@ func setRefFloat(v reflect.Value, str string, size int) error {
 	return err
 }
 
-func tryUnmarshalValue(v reflect.Value, str string) error {
-	if v.Kind() != reflect.Ptr && v.Type().Name() != "" && v.CanAddr() {
+func tryUnmarshalValue(v reflect.Value, str string) (bool, error) {
+	if v.Kind() != reflect.Ptr && v.CanAddr() && v.Type().Name() != "" {
 		v = v.Addr()
 	}
 
@@ -370,16 +373,11 @@ func tryUnmarshalValue(v reflect.Value, str string) error {
 		if v.IsNil() {
 			v.Set(reflect.New(v.Type().Elem()))
 		}
-
-		i := v.Interface()
-		if u, ok := i.(encoding.TextUnmarshaler); ok {
-			return u.UnmarshalText([]byte(str))
-		}
-		if u, ok := i.(json.Unmarshaler); ok {
-			return u.UnmarshalJSON([]byte(str))
+		if u, ok := v.Interface().(encoding.TextUnmarshaler); ok {
+			return true, u.UnmarshalText([]byte(str))
 		}
 	}
-	return fmt.Errorf("unknown field type: %v", v.Type())
+	return false, nil
 }
 
 // pruneStack make a thin conversion for stack information

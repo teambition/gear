@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.7.10] - 2017-07-19
+
+**Fixed:**
+
+- Fix gear.ValuesToStruct.
+
 ## [1.7.9] - 2017-07-19
 
 **Changed:**
