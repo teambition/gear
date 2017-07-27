@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.7.11] - 2017-07-27
+
+**Fixed:**
+
+- Fix const errors.
+
 ## [1.7.10] - 2017-07-19
 
 **Fixed:**

@@ -388,7 +388,7 @@ app.Use(func(ctx *Context) error {
 请求方会收到 `500 Internal Server Error` 的 JSON 响应:
 
 ```json
-{"error":"Internal Server Error","message":"some error"}
+{"error":"InternalServerError","message":"some error"}
 ```
 
 对于必要的（如 5xx 系列）错误会进入 `App.Error` 处理，这样也保留了错误堆栈。

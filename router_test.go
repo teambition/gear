@@ -239,7 +239,7 @@ func TestGearRouter(t *testing.T) {
 		assert.Equal(501, res.StatusCode)
 		assert.Equal("nosniff", res.Header.Get(HeaderXContentTypeOptions))
 		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal(`{"error":"Not Implemented","message":"\"/\" is not implemented"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"NotImplemented","message":"\"/\" is not implemented"}`, PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 
@@ -261,7 +261,7 @@ func TestGearRouter(t *testing.T) {
 		assert.Equal("GET", res.Header.Get(HeaderAllow))
 		assert.Equal("nosniff", res.Header.Get(HeaderXContentTypeOptions))
 		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal(`{"error":"Method Not Allowed","message":"\"PUT\" is not allowed in \"/abc\""}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"MethodNotAllowed","message":"\"PUT\" is not allowed in \"/abc\""}`, PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 
@@ -592,7 +592,7 @@ func TestGearRouter(t *testing.T) {
 		err = r.Serve(ctx)
 		assert.NotNil(err)
 		assert.Equal(501, err.(*Error).Code)
-		assert.Equal("Not Implemented", err.(*Error).Err)
+		assert.Equal("NotImplemented", err.(*Error).Err)
 		assert.Equal(`"/abc//efg" is not implemented`, err.(*Error).Msg)
 	})
 
@@ -821,7 +821,7 @@ func TestGearRouter(t *testing.T) {
 		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal(`{"error":"Internal Server Error","message":"some error"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"InternalServerError","message":"some error"}`, PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 
@@ -863,7 +863,7 @@ func TestGearRouter(t *testing.T) {
 		res, err := RequestBy("GET", host)
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal(`{"error":"Internal Server Error","message":"some error"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"InternalServerError","message":"some error"}`, PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 

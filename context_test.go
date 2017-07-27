@@ -201,7 +201,7 @@ func TestGearContextTiming(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal(`{"error":"Internal Server Error","message":"Timing panic: \"some error\""}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"InternalServerError","message":"Timing panic: \"some error\""}`, PickRes(res.Text()).(string))
 	})
 
 	t.Run("when timeout", func(t *testing.T) {
@@ -226,7 +226,7 @@ func TestGearContextTiming(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal(`{"error":"Internal Server Error","message":"context deadline exceeded"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"InternalServerError","message":"context deadline exceeded"}`, PickRes(res.Text()).(string))
 	})
 
 	t.Run("when context timeout", func(t *testing.T) {
@@ -254,7 +254,7 @@ func TestGearContextTiming(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(504, res.StatusCode)
-		assert.Equal(`{"error":"Gateway Timeout","message":"context deadline exceeded"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"GatewayTimeout","message":"context deadline exceeded"}`, PickRes(res.Text()).(string))
 		time.Sleep(time.Second)
 	})
 }
@@ -1258,7 +1258,7 @@ func TestGearContextRender(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(404, res.StatusCode)
-		assert.Equal(`{"error":"Not Found","message":"html/template: \"helloA\" is undefined"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"NotFound","message":"html/template: \"helloA\" is undefined"}`, PickRes(res.Text()).(string))
 	})
 }
 
@@ -1474,7 +1474,7 @@ func TestGearContextError(t *testing.T) {
 		time.Sleep(time.Millisecond)
 		assert.Equal(0, count.Int())
 		assert.Equal(500, res.StatusCode)
-		assert.Equal(`{"error":"Internal Server Error","message":"some error"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"InternalServerError","message":"some error"}`, PickRes(res.Text()).(string))
 	})
 
 	t.Run("with nil error", func(t *testing.T) {
@@ -1499,7 +1499,7 @@ func TestGearContextError(t *testing.T) {
 		time.Sleep(time.Millisecond)
 		assert.Equal(0, count.Int())
 		assert.Equal(500, res.StatusCode)
-		assert.Equal(`{"error":"Internal Server Error","message":"nil error"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"InternalServerError","message":"nil error"}`, PickRes(res.Text()).(string))
 	})
 
 	t.Run("should transform with app.onerror", func(t *testing.T) {
@@ -1571,7 +1571,7 @@ func TestGearContextErrorStatus(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal(`{"error":"Internal Server Error","message":"invalid error status"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"InternalServerError","message":"invalid error status"}`, PickRes(res.Text()).(string))
 	})
 }
 

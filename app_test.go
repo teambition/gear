@@ -152,9 +152,9 @@ func TestGearAppOnError(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal(`{"error":"Internal Server Error","message":"Some error"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"InternalServerError","message":"Some error"}`, PickRes(res.Text()).(string))
 		assert.True(strings.Contains(buf.String(),
-			`TEST: Error{Code:500, Err:"Internal Server Error", Msg:"Some error", Data:<nil>, Stack:"\t`))
+			`TEST: Error{Code:500, Err:"InternalServerError", Msg:"Some error", Data:<nil>, Stack:"\t`))
 		res.Body.Close()
 	})
 
@@ -179,7 +179,7 @@ func TestGearAppOnError(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("text/plain; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal("Internal Server Error: some error", PickRes(res.Text()).(string))
+		assert.Equal("InternalServerError: some error", PickRes(res.Text()).(string))
 		assert.Equal("", buf.String())
 		res.Body.Close()
 	})
@@ -202,9 +202,9 @@ func TestGearAppOnError(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal(`{"error":"Internal Server Error","message":"some error"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"InternalServerError","message":"some error"}`, PickRes(res.Text()).(string))
 		assert.True(strings.Contains(buf.String(),
-			`TEST: Error{Code:500, Err:"Internal Server Error", Msg:"some error", Data:<nil>, Stack:"\t`))
+			`TEST: Error{Code:500, Err:"InternalServerError", Msg:"some error", Data:<nil>, Stack:"\t`))
 		res.Body.Close()
 	})
 
@@ -224,7 +224,7 @@ func TestGearAppOnError(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal(`{"error":"Internal Server Error","message":"Some error"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"InternalServerError","message":"Some error"}`, PickRes(res.Text()).(string))
 
 		log := buf.String()
 		assert.True(strings.Contains(log, "github.com/teambition/gear"))
@@ -256,7 +256,7 @@ func TestGearSetTimeout(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(504, res.StatusCode)
-		assert.Equal(`{"error":"Gateway Timeout","message":"context deadline exceeded"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"GatewayTimeout","message":"context deadline exceeded"}`, PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 
