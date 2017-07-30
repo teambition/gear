@@ -958,15 +958,41 @@ func TestGearContextParseURL(t *testing.T) {
 }
 
 func TestGearContextGetSet(t *testing.T) {
-	assert := assert.New(t)
-
 	app := New()
-	ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
 
-	assert.Equal("", ctx.Get(HeaderAccept))
-	ctx.Set(HeaderWarning, "Some error")
-	res := CtxResult(ctx)
-	assert.Equal("Some error", res.Header.Get(HeaderWarning))
+	t.Run("shoud Set and Get header", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+		assert.Equal("", ctx.Get(HeaderAccept))
+		ctx.Set(HeaderWarning, "Some error")
+		res := CtxResult(ctx)
+		assert.Equal("Some error", res.Header.Get(HeaderWarning))
+	})
+
+	t.Run("shoud support Referer header", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+		assert.Equal("", ctx.Get(HeaderReferer))
+		ctx.Req.Header.Set(HeaderReferer, "http://test.com")
+		assert.Equal("http://test.com", ctx.Get(HeaderReferer))
+		assert.Equal("http://test.com", ctx.Get("referer"))
+		assert.Equal("http://test.com", ctx.Get("Referrer"))
+		assert.Equal("http://test.com", ctx.Get("referrer"))
+	})
+
+	t.Run("shoud support Referrer header", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+		assert.Equal("", ctx.Get(HeaderReferer))
+		ctx.Req.Header.Set("Referrer", "http://test.com")
+		assert.Equal("http://test.com", ctx.Get(HeaderReferer))
+		assert.Equal("http://test.com", ctx.Get("referer"))
+		assert.Equal("http://test.com", ctx.Get("Referrer"))
+		assert.Equal("http://test.com", ctx.Get("referrer"))
+	})
 }
 
 func TestGearContextStatus(t *testing.T) {

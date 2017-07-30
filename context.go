@@ -450,7 +450,15 @@ func (ctx *Context) ParseURL(body BodyTemplate) error {
 
 // Get retrieves data from the request Header.
 func (ctx *Context) Get(key string) string {
-	return ctx.Req.Header.Get(key)
+	switch key {
+	case "Referer", "referer", "Referrer", "referrer":
+		if val := ctx.Req.Header.Get("Referer"); val != "" {
+			return val
+		}
+		return ctx.Req.Header.Get("Referrer")
+	default:
+		return ctx.Req.Header.Get(key)
+	}
 }
 
 // Set saves data to the response Header.

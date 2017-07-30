@@ -5,6 +5,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.7.12] - 2017-07-30
+
+**Fixed:**
+
+- Support Referrer header.
+
+-----
+
 ## [1.7.11] - 2017-07-27
 
 **Fixed:**
