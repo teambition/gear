@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-http-utils/cookie"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type Counter int32
@@ -637,6 +638,15 @@ func (b *xmlBodyTemplate) Validate() error {
 	return nil
 }
 
+type mapTemplate map[string]*bson.ObjectId
+
+func (m mapTemplate) Validate() error {
+	if !m["id"].Valid() {
+		return ErrBadRequest.WithMsg("invalid id")
+	}
+	return nil
+}
+
 func TestGearContextParseBody(t *testing.T) {
 	app := New()
 	assert.Panics(t, func() {
@@ -681,6 +691,18 @@ func TestGearContextParseBody(t *testing.T) {
 		assert.Nil(ctx.ParseBody(&body))
 		assert.Equal("admin", body.ID)
 		assert.Equal("password", body.Pass)
+	})
+
+	t.Run("should support mapTemplate", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo",
+			bytes.NewBuffer([]byte(`{"id":"000000000000000000000000"}`)))
+		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+
+		body := mapTemplate{}
+		assert.Nil(ctx.ParseBody(&body))
+		assert.Equal(body["id"], bson.ObjectIdHex("000000000000000000000000"))
 	})
 
 	t.Run("should 400 error when validate error", func(t *testing.T) {
