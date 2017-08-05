@@ -702,7 +702,7 @@ func TestGearContextParseBody(t *testing.T) {
 
 		body := mapTemplate{}
 		assert.Nil(ctx.ParseBody(&body))
-		assert.Equal(body["id"], bson.ObjectIdHex("000000000000000000000000"))
+		assert.Equal(*body["id"], bson.ObjectIdHex("000000000000000000000000"))
 	})
 
 	t.Run("should 400 error when validate error", func(t *testing.T) {

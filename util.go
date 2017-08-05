@@ -28,7 +28,7 @@ func (m middlewares) run(ctx *Context) (err error) {
 	return
 }
 
-// Compose composes a array of middlewares to one middleware
+// Compose composes a slice of middlewares to one middleware
 func Compose(mds ...Middleware) Middleware {
 	switch len(mds) {
 	case 0:
@@ -58,7 +58,7 @@ func WrapHandlerFunc(fn http.HandlerFunc) Middleware {
 	}
 }
 
-// IsNil checks if a specified object is nil or not, without Failing.
+// IsNil checks if a specified object is nil or not, without failing.
 func IsNil(val interface{}) bool {
 	if val == nil {
 		return true

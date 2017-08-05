@@ -65,8 +65,8 @@ func (r *Response) Body() []byte {
 	return r.body
 }
 
-// ResetHeader reset headers. If keepSubset is true,
-// header matching `(?i)^(accept|allow|retry-after|warning|access-control-allow-)` will be keep
+// ResetHeader reset headers. The default filterReg is
+// `(?i)^(accept|allow|retry-after|warning|vary|server|x-powered-by|access-control-allow-|x-ratelimit-)`.
 func (r *Response) ResetHeader(filterReg ...*regexp.Regexp) {
 	reg := defaultHeaderFilterReg
 	if len(filterReg) > 0 {
