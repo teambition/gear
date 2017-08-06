@@ -477,7 +477,7 @@ func isRedirectStatus(status int) bool {
 
 func isEmptyStatus(status int) bool {
 	switch status {
-	case 204, 205, 304:
+	case 100, 101, 102, 204, 205, 304:
 		return true
 	default:
 		return false

@@ -25,6 +25,13 @@ A lightweight, composable and high performance web service framework for Go.
 
 [Go-Documentation](https://godoc.org/github.com/teambition/gear)
 
+## Import
+
+```go
+// package gear
+import "github.com/teambition/gear"
+```
+
 ## Design
 
 1. [Server 底层基于原生 net/http 而不是 fasthttp](https://github.com/teambition/gear/blob/master/doc/design.md#1-server-底层基于原生-nethttp-而不是-fasthttp)
@@ -185,13 +192,6 @@ func main() {
 https://github.com/teambition/gear/tree/master/example/grpc_server
 
 https://github.com/teambition/gear/tree/master/example/grpc_client
-
-## Import
-
-```go
-// package gear
-import "github.com/teambition/gear"
-```
 
 ## About Router
 
