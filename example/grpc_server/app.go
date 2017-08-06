@@ -32,7 +32,7 @@ func main() {
 
 	app.Use(func(ctx *gear.Context) error {
 		// "application/grpc", "application/grpc+proto"
-		if strings.HasPrefix(ctx.Get(gear.HeaderContentType), "application/grpc") {
+		if strings.HasPrefix(ctx.GetHeader(gear.HeaderContentType), "application/grpc") {
 			rpc.ServeHTTP(ctx.Res, ctx.Req)
 		}
 		return ctx.End(204) // Must end with 204 to handle rpc error

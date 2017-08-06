@@ -83,9 +83,9 @@ var Default = gear.Compose(
 func DNSPrefetchControl(allow bool) gear.Middleware {
 	return func(ctx *gear.Context) error {
 		if allow {
-			ctx.Set(gear.HeaderXDNSPrefetchControl, "on")
+			ctx.SetHeader(gear.HeaderXDNSPrefetchControl, "on")
 		} else {
-			ctx.Set(gear.HeaderXDNSPrefetchControl, "off")
+			ctx.SetHeader(gear.HeaderXDNSPrefetchControl, "off")
 		}
 		return nil
 	}
@@ -104,11 +104,11 @@ func FrameGuard(action FrameGuardAction, domains ...string) gear.Middleware {
 	return func(ctx *gear.Context) error {
 		switch action {
 		case FrameGuardActionDeny:
-			ctx.Set(gear.HeaderXFrameOptions, "DENY")
+			ctx.SetHeader(gear.HeaderXFrameOptions, "DENY")
 		case FrameGuardActionSameOrigin:
-			ctx.Set(gear.HeaderXFrameOptions, "SAMEORIGIN")
+			ctx.SetHeader(gear.HeaderXFrameOptions, "SAMEORIGIN")
 		case FrameGuardActionAllowFrom:
-			ctx.Set(gear.HeaderXFrameOptions, "ALLOW-FROM "+domains[0])
+			ctx.SetHeader(gear.HeaderXFrameOptions, "ALLOW-FROM "+domains[0])
 		}
 		return nil
 	}
@@ -158,9 +158,9 @@ func PublicKeyPinning(options PublicKeyPinningOptions) gear.Middleware {
 		}
 
 		if options.ReportOnly {
-			ctx.Set(gear.HeaderPublicKeyPinsReportOnly, publicKeyPins)
+			ctx.SetHeader(gear.HeaderPublicKeyPinsReportOnly, publicKeyPins)
 		} else {
-			ctx.Set(gear.HeaderPublicKeyPins, publicKeyPins)
+			ctx.SetHeader(gear.HeaderPublicKeyPins, publicKeyPins)
 		}
 		return nil
 	}
@@ -187,7 +187,7 @@ func StrictTransportSecurity(options StrictTransportSecurityOptions) gear.Middle
 			val += "preload;"
 		}
 
-		ctx.Set(gear.HeaderStrictTransportSecurity, val)
+		ctx.SetHeader(gear.HeaderStrictTransportSecurity, val)
 		return nil
 	}
 }
@@ -197,7 +197,7 @@ func StrictTransportSecurity(options StrictTransportSecurityOptions) gear.Middle
 // See https://blogs.msdn.microsoft.com/ie/2008/07/02/ie8-security-part-v-comprehensive-protection/ .
 func IENoOpen() gear.Middleware {
 	return func(ctx *gear.Context) error {
-		ctx.Set(gear.HeaderXDownloadOptions, "noopen")
+		ctx.SetHeader(gear.HeaderXDownloadOptions, "noopen")
 		return nil
 	}
 }
@@ -208,7 +208,7 @@ func IENoOpen() gear.Middleware {
 // See https://blog.fox-it.com/2012/05/08/mime-sniffing-feature-or-vulnerability/ .
 func NoSniff() gear.Middleware {
 	return func(ctx *gear.Context) error {
-		ctx.Set(gear.HeaderXContentTypeOptions, "nosniff")
+		ctx.SetHeader(gear.HeaderXContentTypeOptions, "nosniff")
 		return nil
 	}
 }
@@ -221,9 +221,9 @@ func NoSniff() gear.Middleware {
 // `s-max-age=0` equal to `Surrogate-Control: no-store`
 func NoCache() gear.Middleware {
 	return func(ctx *gear.Context) error {
-		ctx.Set(gear.HeaderCacheControl, "private, no-cache, max-age=0, s-max-age=0, must-revalidate")
-		ctx.Set(gear.HeaderPragma, "no-cache")
-		ctx.Set(gear.HeaderExpires, "0")
+		ctx.SetHeader(gear.HeaderCacheControl, "private, no-cache, max-age=0, s-max-age=0, must-revalidate")
+		ctx.SetHeader(gear.HeaderPragma, "no-cache")
+		ctx.SetHeader(gear.HeaderExpires, "0")
 		return nil
 	}
 }
@@ -233,7 +233,7 @@ func NoCache() gear.Middleware {
 // See https://www.w3.org/TR/referrer-policy/#referrer-policy-header .
 func SetReferrerPolicy(policy ReferrerPolicy) gear.Middleware {
 	return func(ctx *gear.Context) error {
-		ctx.Set(gear.HeaderRefererPolicy, string(policy))
+		ctx.SetHeader(gear.HeaderRefererPolicy, string(policy))
 		return nil
 	}
 }
@@ -245,11 +245,11 @@ func SetReferrerPolicy(policy ReferrerPolicy) gear.Middleware {
 // See https://blogs.msdn.microsoft.com/ieinternals/2011/01/31/controlling-the-xss-filter/ .
 func XSSFilter() gear.Middleware {
 	return func(ctx *gear.Context) error {
-		ieVersion, err := getIEVersionFromUA(ctx.Get(gear.HeaderUserAgent))
+		ieVersion, err := getIEVersionFromUA(ctx.GetHeader(gear.HeaderUserAgent))
 		if err == nil && ieVersion < 9 {
-			ctx.Set(gear.HeaderXXSSProtection, "0")
+			ctx.SetHeader(gear.HeaderXXSSProtection, "0")
 		} else {
-			ctx.Set(gear.HeaderXXSSProtection, "1; mode=block")
+			ctx.SetHeader(gear.HeaderXXSSProtection, "1; mode=block")
 		}
 		return nil
 	}
@@ -307,9 +307,9 @@ func ContentSecurityPolicy(directives CSPDirectives) gear.Middleware {
 		}
 
 		if directives.ReportOnly {
-			ctx.Set(gear.HeaderContentSecurityPolicyReportOnly, csp)
+			ctx.SetHeader(gear.HeaderContentSecurityPolicyReportOnly, csp)
 		} else {
-			ctx.Set(gear.HeaderContentSecurityPolicy, csp)
+			ctx.SetHeader(gear.HeaderContentSecurityPolicy, csp)
 		}
 		return nil
 	}

@@ -66,7 +66,7 @@ func NewWithIco(file []byte, times ...time.Time) gear.Middleware {
 			if ctx.Method != http.MethodOptions {
 				status = 405
 			}
-			ctx.Set(gear.HeaderAllow, "GET, HEAD, OPTIONS")
+			ctx.SetHeader(gear.HeaderAllow, "GET, HEAD, OPTIONS")
 			return ctx.End(status)
 		}
 		ctx.Type("image/x-icon")

@@ -303,13 +303,13 @@ func (r *Router) Serve(ctx *Context) error {
 		if handler, ok = matched.Node.GetHandler(method).(Middleware); !ok {
 			// OPTIONS support
 			if method == http.MethodOptions {
-				ctx.Set(HeaderAllow, matched.Node.GetAllow())
+				ctx.SetHeader(HeaderAllow, matched.Node.GetAllow())
 				return ctx.End(http.StatusNoContent)
 			}
 
 			if r.otherwise == nil {
 				// If no route handler is returned, it's a 405 error
-				ctx.Set(HeaderAllow, matched.Node.GetAllow())
+				ctx.SetHeader(HeaderAllow, matched.Node.GetAllow())
 				return ErrMethodNotAllowed.WithMsgf(`"%s" is not allowed in "%s"`, method, ctx.Path)
 			}
 			handler = r.otherwise

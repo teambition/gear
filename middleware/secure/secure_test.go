@@ -378,7 +378,7 @@ func getAppWithMiddleware(middleware gear.Middleware) *gear.App {
 	app := gear.New()
 	app.Use(middleware)
 	app.Use(func(ctx *gear.Context) error {
-		ctx.Set(gear.HeaderXPoweredBy, "Gear")
+		ctx.SetHeader(gear.HeaderXPoweredBy, "Gear")
 		return ctx.HTML(200, "OK")
 	})
 

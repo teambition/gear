@@ -156,8 +156,8 @@ func (a *User) Login(ctx *gear.Context) (err error) {
   if err != nil {
     return ctx.Error(err)
   }
-  ctx.Set(gear.HeaderPragma, "no-cache")
-  ctx.Set(gear.HeaderCacheControl, "no-store")
+  ctx.SetHeader(gear.HeaderPragma, "no-cache")
+  ctx.SetHeader(gear.HeaderCacheControl, "no-store")
   return ctx.JSON(200, map[string]interface{}{
     "access_token": token,
     "token_type":   "Bearer",

@@ -72,7 +72,7 @@ func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	}
 
 	if app.serverName != "" {
-		ctx.Set(HeaderServer, app.serverName)
+		ctx.SetHeader(HeaderServer, app.serverName)
 	}
 
 	if app.timeout <= 0 {
@@ -288,7 +288,7 @@ func (ctx *Context) Protocol() string {
 	if ctx.Req.TLS != nil {
 		return "https"
 	}
-	switch p := ctx.Get(HeaderXForwardedProto); p {
+	switch p := ctx.GetHeader(HeaderXForwardedProto); p {
 	case "http", "https":
 		return p
 	default:
@@ -379,7 +379,7 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 	var buf []byte
 	var mediaType string
 	var params map[string]string
-	if mediaType = ctx.Get(HeaderContentType); mediaType == "" {
+	if mediaType = ctx.GetHeader(HeaderContentType); mediaType == "" {
 		// RFC 2616, section 7.2.1 - empty type SHOULD be treated as application/octet-stream
 		mediaType = MIMEOctetStream
 	}
@@ -448,8 +448,18 @@ func (ctx *Context) ParseURL(body BodyTemplate) error {
 	return body.Validate()
 }
 
-// Get retrieves data from the request Header.
+// Get - Please use ctx.GetHeader instead. This method will be changed in v2.
 func (ctx *Context) Get(key string) string {
+	return ctx.GetHeader(key)
+}
+
+// Set - Please use ctx.SetHeader instead. This method will be changed in v2.
+func (ctx *Context) Set(key, value string) {
+	ctx.SetHeader(key, value)
+}
+
+// GetHeader retrieves data from the request Header.
+func (ctx *Context) GetHeader(key string) string {
 	switch key {
 	case "Referer", "referer", "Referrer", "referrer":
 		if val := ctx.Req.Header.Get("Referer"); val != "" {
@@ -461,8 +471,8 @@ func (ctx *Context) Get(key string) string {
 	}
 }
 
-// Set saves data to the response Header.
-func (ctx *Context) Set(key, value string) {
+// SetHeader saves data to the response Header.
+func (ctx *Context) SetHeader(key, value string) {
 	ctx.Res.Set(key, value)
 }
 
@@ -520,7 +530,7 @@ func (ctx *Context) JSONP(code int, callback string, val interface{}) error {
 // "after hooks" and "end hooks" will run normally.
 func (ctx *Context) JSONPBlob(code int, callback string, buf []byte) error {
 	ctx.Type(MIMEApplicationJavaScriptCharsetUTF8)
-	ctx.Set(HeaderXContentTypeOptions, "nosniff")
+	ctx.SetHeader(HeaderXContentTypeOptions, "nosniff")
 	// the /**/ is a specific security mitigation for "Rosetta Flash JSONP abuse"
 	// @see http://miki.it/blog/2014/7/8/abusing-jsonp-with-rosetta-flash/
 	// the typeof check is just to reduce client error noise
@@ -587,7 +597,7 @@ func (ctx *Context) Attachment(name string, modtime time.Time, content io.ReadSe
 		if len(inline) > 0 && inline[0] {
 			dispositionType = "inline"
 		}
-		ctx.Set(HeaderContentDisposition, ContentDisposition(name, dispositionType))
+		ctx.SetHeader(HeaderContentDisposition, ContentDisposition(name, dispositionType))
 		http.ServeContent(ctx.Res, ctx.Req, name, modtime, content)
 	}
 	return
@@ -678,8 +688,8 @@ func (ctx *Context) respondError(err HTTPError) {
 			ctx.app.Error(err)
 		}
 		// try to render error as json
-		ctx.Set(HeaderContentType, MIMEApplicationJSONCharsetUTF8)
-		ctx.Set(HeaderXContentTypeOptions, "nosniff")
+		ctx.SetHeader(HeaderContentType, MIMEApplicationJSONCharsetUTF8)
+		ctx.SetHeader(HeaderXContentTypeOptions, "nosniff")
 
 		buf, _ := json.Marshal(err)
 		ctx.Res.respond(code, buf)

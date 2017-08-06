@@ -76,7 +76,7 @@ func New(options ...Options) gear.Middleware {
 		// Always set Vary, see https://github.com/rs/cors/issues/10
 		ctx.Res.Vary(gear.HeaderOrigin)
 
-		origin := ctx.Get(gear.HeaderOrigin)
+		origin := ctx.GetHeader(gear.HeaderOrigin)
 		// not a CORS request.
 		if origin == "" {
 			return
@@ -91,16 +91,16 @@ func New(options ...Options) gear.Middleware {
 			// when responding to a credentialed request, server must specify a
 			// domain, and cannot use wild carding.
 			// See *important note* in https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Requests_with_credentials .
-			ctx.Set(gear.HeaderAccessControlAllowCredentials, "true")
+			ctx.SetHeader(gear.HeaderAccessControlAllowCredentials, "true")
 		}
-		ctx.Set(gear.HeaderAccessControlAllowOrigin, allowOrigin)
+		ctx.SetHeader(gear.HeaderAccessControlAllowOrigin, allowOrigin)
 
 		// Handle preflighted requests (https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Preflighted_requests) .
 		if ctx.Method == http.MethodOptions {
 			ctx.Res.Vary(gear.HeaderAccessControlRequestMethod)
 			ctx.Res.Vary(gear.HeaderAccessControlRequestHeaders)
 
-			requestMethod := ctx.Get(gear.HeaderAccessControlRequestMethod)
+			requestMethod := ctx.GetHeader(gear.HeaderAccessControlRequestMethod)
 			// If there is no "Access-Control-Request-Method" request header. We just
 			// treat this request as an invalid preflighted request, so terminate the
 			// following steps.
@@ -110,27 +110,27 @@ func New(options ...Options) gear.Middleware {
 				return gear.ErrForbidden.WithMsg("invalid preflighted request, missing Access-Control-Request-Method header")
 			}
 			if len(opts.AllowMethods) > 0 {
-				ctx.Set(gear.HeaderAccessControlAllowMethods, strings.Join(opts.AllowMethods, ", "))
+				ctx.SetHeader(gear.HeaderAccessControlAllowMethods, strings.Join(opts.AllowMethods, ", "))
 			}
 
 			var allowHeaders string
 			if len(opts.AllowHeaders) > 0 {
 				allowHeaders = strings.Join(opts.AllowHeaders, ", ")
 			} else {
-				allowHeaders = ctx.Get(gear.HeaderAccessControlRequestHeaders)
+				allowHeaders = ctx.GetHeader(gear.HeaderAccessControlRequestHeaders)
 			}
 			if allowHeaders != "" {
-				ctx.Set(gear.HeaderAccessControlAllowHeaders, allowHeaders)
+				ctx.SetHeader(gear.HeaderAccessControlAllowHeaders, allowHeaders)
 			}
 
 			if opts.MaxAge > 0 {
-				ctx.Set(gear.HeaderAccessControlMaxAge, strconv.Itoa(int(opts.MaxAge.Seconds())))
+				ctx.SetHeader(gear.HeaderAccessControlMaxAge, strconv.Itoa(int(opts.MaxAge.Seconds())))
 			}
 			return ctx.End(http.StatusNoContent)
 		}
 
 		if len(opts.ExposeHeaders) > 0 {
-			ctx.Set(gear.HeaderAccessControlExposeHeaders, strings.Join(opts.ExposeHeaders, ", "))
+			ctx.SetHeader(gear.HeaderAccessControlExposeHeaders, strings.Join(opts.ExposeHeaders, ", "))
 		}
 		return
 	}

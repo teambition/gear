@@ -367,7 +367,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 			log["Method"] = ctx.Method
 			log["URL"] = ctx.Req.URL.String()
 			log["Start"] = time.Now()
-			log["UserAgent"] = ctx.Get(gear.HeaderUserAgent)
+			log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
 		})
 		logger.SetLogConsume(func(log Log, _ *gear.Context) {
 			end := time.Now()
@@ -423,7 +423,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 			log["Method"] = ctx.Method
 			log["URL"] = ctx.Req.URL.String()
 			log["Start"] = time.Now()
-			log["UserAgent"] = ctx.Get(gear.HeaderUserAgent)
+			log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
 		})
 		logger.SetLogConsume(func(log Log, _ *gear.Context) {
 			end := time.Now()

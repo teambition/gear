@@ -156,7 +156,7 @@ func New(w io.Writer) *Logger {
 		log["Method"] = ctx.Method
 		log["URL"] = ctx.Req.URL.String()
 		log["Proto"] = ctx.Req.Proto
-		log["UserAgent"] = ctx.Get(gear.HeaderUserAgent)
+		log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
 		log["Start"] = time.Now()
 	}
 
@@ -192,7 +192,7 @@ func New(w io.Writer) *Logger {
 //  	log["Method"] = ctx.Method
 //  	log["URL"] = ctx.Req.URL.String()
 //  	log["Start"] = time.Now()
-//  	log["UserAgent"] = ctx.Get(gear.HeaderUserAgent)
+//  	log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
 //  })
 //  logger.SetLogConsume(func(log logging.Log, _ *gear.Context) {
 //  	end := time.Now()

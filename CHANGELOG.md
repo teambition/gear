@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.8.0] - 2017-08-07
+
+**Changed:**
+
+- Change ctx.Get to ctx.GetHeader; Change ctx.Set to ctx.SetHeader.
+
 ## [1.7.13] - 2017-08-06
 
 **Fixed:**

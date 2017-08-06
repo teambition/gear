@@ -76,7 +76,7 @@ func New(opts Options) gear.Middleware {
 			if ctx.Method != http.MethodOptions {
 				status = 405
 			}
-			ctx.Set(gear.HeaderAllow, "GET, HEAD, OPTIONS")
+			ctx.SetHeader(gear.HeaderAllow, "GET, HEAD, OPTIONS")
 			return ctx.End(status)
 		}
 
