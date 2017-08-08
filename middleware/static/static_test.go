@@ -186,3 +186,35 @@ func TestGearMiddlewareStaticWithFileMap(t *testing.T) {
 		res.Body.Close()
 	})
 }
+
+func TestGearMiddlewareStaticWithIncludes(t *testing.T) {
+	app := gear.New()
+	app.Use(New(Options{
+		Root:        "../../testdata",
+		Prefix:      "/assets",
+		StripPrefix: true,
+		Includes:    []string{"/README.md"},
+	}))
+	srv := app.Start()
+	defer app.Close()
+
+	t.Run("should work with Includes", func(t *testing.T) {
+		assert := assert.New(t)
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String()+"/README.md")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		res.Body.Close()
+	})
+
+	t.Run("should work with Prefix", func(t *testing.T) {
+		assert := assert.New(t)
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String()+"/assets/hello.html")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		res.Body.Close()
+	})
+}

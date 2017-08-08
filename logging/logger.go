@@ -515,7 +515,7 @@ func FromCtx(ctx *gear.Context) Log {
 
 func colorStatus(code int) ColorType {
 	switch {
-	case code >= 200 && code < 300:
+	case code < 300:
 		return ColorGreen
 	case code >= 300 && code < 400:
 		return ColorCyan

@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.8.1] - 2017-08-08
+
+**Changed:**
+
+- Add `Includes` option to static middleware.
+
 ## [1.8.0] - 2017-08-07
 
 **Changed:**
