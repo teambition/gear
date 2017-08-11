@@ -538,7 +538,7 @@ func ContentDisposition(fileName, dispositionType string) (header string) {
 //  		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
 //  	})
 //
-//  	app.Set(gear.SetLogger, log.New(gear.DefaultFilterWriter(), "", log.LstdFlags))
+//  	app.Set(gear.SetLogger, log.New(gear.DefaultFilterWriter(), "", 0))
 //  	app.Listen(":3000")
 //  }
 //

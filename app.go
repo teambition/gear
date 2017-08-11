@@ -178,9 +178,10 @@ const (
 	SetKeys
 
 	// Set a logger to app, value should be `*log.Logger` instance, default to:
-	//  app.Set(gear.SetLogger, log.New(os.Stderr, "", log.LstdFlags))
+	//  app.Set(gear.SetLogger, log.New(os.Stderr, "", 0))
 	// Maybe you need LoggerFilterWriter to filter some server errors in production:
-	//  app.Set(gear.SetLogger, log.New(gear.DefaultFilterWriter(), "", log.LstdFlags))
+	//  app.Set(gear.SetLogger, log.New(gear.DefaultFilterWriter(), "", 0))
+	// We recommand set logger flags to 0.
 	SetLogger
 
 	// Set a on-error hook to app, value should be `func(ctx *Context, err *Error)`, no default value.
