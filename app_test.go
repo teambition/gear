@@ -153,8 +153,7 @@ func TestGearAppOnError(t *testing.T) {
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
 		assert.Equal(`{"error":"InternalServerError","message":"Some error"}`, PickRes(res.Text()).(string))
-		assert.True(strings.Contains(buf.String(),
-			`TEST: Error{Code:500, Err:"InternalServerError", Msg:"Some error", Data:<nil>, Stack:"\t`))
+		assert.True(strings.Contains(buf.String(), `"message":"Some error"`))
 		res.Body.Close()
 	})
 
@@ -203,8 +202,7 @@ func TestGearAppOnError(t *testing.T) {
 		assert.Equal(500, res.StatusCode)
 		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
 		assert.Equal(`{"error":"InternalServerError","message":"some error"}`, PickRes(res.Text()).(string))
-		assert.True(strings.Contains(buf.String(),
-			`TEST: Error{Code:500, Err:"InternalServerError", Msg:"some error", Data:<nil>, Stack:"\t`))
+		assert.True(strings.Contains(buf.String(), `"message":"some error"`))
 		res.Body.Close()
 	})
 

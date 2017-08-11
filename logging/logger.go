@@ -230,27 +230,27 @@ func (l *Logger) checkLogLevel(level Level) bool {
 
 // Emerg produce a "Emergency" log
 func (l *Logger) Emerg(v interface{}) {
-	l.Output(time.Now(), EmergLevel, format(v))
+	l.Output(time.Now(), EmergLevel, formatError(v))
 }
 
 // Alert produce a "Alert" log
 func (l *Logger) Alert(v interface{}) {
 	if l.checkLogLevel(AlertLevel) {
-		l.Output(time.Now(), AlertLevel, format(v))
+		l.Output(time.Now(), AlertLevel, formatError(v))
 	}
 }
 
 // Crit produce a "Critical" log
 func (l *Logger) Crit(v interface{}) {
 	if l.checkLogLevel(CritiLevel) {
-		l.Output(time.Now(), CritiLevel, format(v))
+		l.Output(time.Now(), CritiLevel, formatError(v))
 	}
 }
 
 // Err produce a "Error" log
 func (l *Logger) Err(v interface{}) {
 	if l.checkLogLevel(ErrLevel) {
-		l.Output(time.Now(), ErrLevel, format(v))
+		l.Output(time.Now(), ErrLevel, formatError(v))
 	}
 }
 
@@ -332,10 +332,6 @@ func (l *Logger) Output(t time.Time, level Level, s string) (err error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	// log level checked before
-	if level < 4 {
-		s = gear.ErrorWithStack(s, 4).String()
-	}
 	if l := len(s); l > 0 && s[l-1] == '\n' {
 		s = s[0 : l-1]
 	}
@@ -523,6 +519,15 @@ func colorStatus(code int) ColorType {
 		return ColorYellow
 	default:
 		return ColorRed
+	}
+}
+
+func formatError(i interface{}) string {
+	err := gear.ErrorWithStack(i, 3)
+	if str, e := err.Format(); e == nil {
+		return str
+	} else {
+		return err.String()
 	}
 }
 

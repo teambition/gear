@@ -3,6 +3,7 @@ package gear
 import (
 	"bytes"
 	"encoding"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -82,6 +83,15 @@ type Error struct {
 	Stack string      `json:"-"`
 }
 
+// errorForLog use to marshal for logging.
+type errorForLog struct {
+	Code  int         `json:"code"`
+	Err   string      `json:"error"`
+	Msg   string      `json:"message"`
+	Data  interface{} `json:"data,omitempty"`
+	Stack string      `json:"stack"`
+}
+
 // Status implemented HTTPError interface.
 func (err *Error) Status() int {
 	return err.Code
@@ -104,6 +114,16 @@ func (err Error) GoString() string {
 	}
 	return fmt.Sprintf(`Error{Code:%d, Err:"%s", Msg:"%s", Data:%#v, Stack:"%s"}`,
 		err.Code, err.Err, err.Msg, err.Data, err.Stack)
+}
+
+// Format implemented logging.Messager interface.
+func (err Error) Format() (string, error) {
+	errlog := errorForLog{err.Code, err.Err, err.Msg, err.Data, err.Stack}
+	res, e := json.Marshal(errlog)
+	if e == nil {
+		return string(res), nil
+	}
+	return "", e
 }
 
 // WithErr returns a copy of err with given new error name.
