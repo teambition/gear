@@ -152,7 +152,7 @@ func New(w io.Writer) *Logger {
 	logger.SetLogFormat("[%s] %s %s")
 
 	logger.init = func(log Log, ctx *gear.Context) {
-		log["IP"] = ctx.IP()
+		log["IP"] = ctx.IP().String()
 		log["Method"] = ctx.Method
 		log["URL"] = ctx.Req.URL.String()
 		log["Proto"] = ctx.Req.Proto
@@ -526,9 +526,8 @@ func formatError(i interface{}) string {
 	err := gear.ErrorWithStack(i, 3)
 	if str, e := err.Format(); e == nil {
 		return str
-	} else {
-		return err.String()
 	}
+	return err.String()
 }
 
 func format(i interface{}) string {

@@ -5,7 +5,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
-## [1.8.2] - 2017-08-1
+## [1.8.3] - 2017-08-12
+
+**Fixed:**
+
+- Fix logging. Add more test.
+
+## [1.8.2] - 2017-08-11
 
 **Fixed:**
 

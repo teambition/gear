@@ -331,20 +331,17 @@ func (app *App) Start(addr ...string) *ServerListener {
 // Error writes error to underlayer logging system.
 func (app *App) Error(err error) {
 	if err := ErrorWithStack(err, 4); err != nil {
-		if str, e := err.Format(); e == nil {
-			switch app.logger.Flags() {
-			case 0:
-				app.logger.Printf("[%s] ERR %s\n", time.Now().UTC().Format("2006-01-02T15:04:05.999Z"), str)
-			default:
-				app.logger.Printf("ERR %s\n", str)
-			}
-		} else {
-			switch app.logger.Flags() {
-			case 0:
-				app.logger.Printf("[%s] CRIT %s\n", time.Now().UTC().Format("2006-01-02T15:04:05.999Z"), err.String())
-			default:
-				app.logger.Printf("CRIT %s\n", err.String())
-			}
+		str, e := err.Format()
+		f := app.logger.Flags() == 0
+		switch {
+		case f && e == nil:
+			app.logger.Printf("[%s] ERR %s\n", time.Now().UTC().Format("2006-01-02T15:04:05.999Z"), str)
+		case f && e != nil:
+			app.logger.Printf("[%s] CRIT %s\n", time.Now().UTC().Format("2006-01-02T15:04:05.999Z"), err.String())
+		case !f && e == nil:
+			app.logger.Printf("ERR %s\n", str)
+		default:
+			app.logger.Printf("CRIT %s\n", err.String())
 		}
 	}
 }

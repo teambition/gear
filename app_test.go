@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"math"
 	"net/http"
 	"strings"
 	"testing"
@@ -122,6 +123,68 @@ func TestGearAppHello(t *testing.T) {
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("<h1>Hello!</h1>", PickRes(res.Text()).(string))
 		res.Body.Close()
+	})
+}
+
+func TestGearAppError(t *testing.T) {
+	t.Run("normal error and no flag", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := New()
+		app.Set(SetLogger, log.New(&buf, "", 0))
+		app.Error(errors.New("some error"))
+		// [2017-08-11T15:41:22.709Z] ERR {"code":500,"error":"InternalServerError","message":"some error","stack":"\\t/usr/local/go/src/testing/testing.go:697"}
+		assert.True(strings.Contains(buf.String(), `Z] ERR {"`))
+		assert.True(strings.Contains(buf.String(), `"message":"some error"`))
+		assert.True(strings.Contains(buf.String(), `"stack":"\\t`))
+	})
+
+	t.Run("normal error and flag", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := New()
+		app.Set(SetLogger, log.New(&buf, "", log.LstdFlags))
+		app.Error(errors.New("some error"))
+		// 2017/08/11 23:45:26 ERR {"code":500,"error":"InternalServerError","message":"some error","stack":"\\t/usr/local/go/src/testing/testing.go:697"}
+		assert.False(strings.Contains(buf.String(), `Z] ERR {"`))
+		assert.True(strings.Contains(buf.String(), ` ERR {"`))
+		assert.True(strings.Contains(buf.String(), `"message":"some error"`))
+		assert.True(strings.Contains(buf.String(), `"stack":"\\t`))
+	})
+
+	t.Run("malfor error and no flag", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := New()
+		app.Set(SetLogger, log.New(&buf, "", 0))
+
+		err := Err.WithMsg("some error")
+		err.Data = math.NaN()
+		app.Error(err)
+		// [2017-08-11T15:51:08.827Z] CRIT Error{Code:500, Err:"Error", Msg:"some error", Data:NaN, Stack:"\t/usr/local/go/src/testing/testing.go:697"}
+		assert.True(strings.Contains(buf.String(), `Z] CRIT Error{`))
+		assert.True(strings.Contains(buf.String(), `Msg:"some error"`))
+		assert.True(strings.Contains(buf.String(), `Stack:"\t`))
+	})
+
+	t.Run("malfor error and flag", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := New()
+		app.Set(SetLogger, log.New(&buf, "", log.LstdFlags))
+
+		err := Err.WithMsg("some error")
+		err.Data = math.NaN()
+		app.Error(err)
+		// 2017/08/11 23:51:08 CRIT Error{Code:500, Err:"Error", Msg:"some error", Data:NaN, Stack:"\t/usr/local/go/src/testing/testing.go:697"}
+		assert.False(strings.Contains(buf.String(), `Z] CRIT Error{`))
+		assert.True(strings.Contains(buf.String(), ` CRIT Error{`))
+		assert.True(strings.Contains(buf.String(), `Msg:"some error"`))
+		assert.True(strings.Contains(buf.String(), `Stack:"\t`))
 	})
 }
 

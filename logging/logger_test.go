@@ -136,6 +136,17 @@ func TestGearLogger(t *testing.T) {
 		assert.True(strings.Index(buf.String(), "Z] ERR {") > 0)
 		buf.Reset()
 
+		logger.Err(Log{"error": math.NaN()})
+		assert.True(strings.Contains(buf.String(), "Log{error:NaN}"))
+		buf.Reset()
+
+		err := gear.Err.WithMsg("test")
+		err.Data = math.NaN()
+		logger.Err(err)
+		assert.True(strings.Contains(buf.String(), "] ERR Error{"))
+		assert.True(strings.Contains(buf.String(), "Data:NaN"))
+		buf.Reset()
+
 		logger.Warning("Hello")
 		assert.True(strings.HasSuffix(buf.String(), "Z] WARNING Hello\n"))
 		buf.Reset()
@@ -166,6 +177,10 @@ func TestGearLogger(t *testing.T) {
 
 		logger.Info(Log{"name": "gear"})
 		assert.True(strings.HasSuffix(buf.String(), "Z] INFO {\"name\":\"gear\"}\n"))
+		buf.Reset()
+
+		logger.Info(Log{"nan": math.NaN()})
+		assert.True(strings.HasSuffix(buf.String(), "Z] INFO Log{nan:NaN}\n"))
 		buf.Reset()
 
 		Info("Hello\r\n1\r\n")
@@ -285,6 +300,8 @@ func TestGearLoggerMiddleware(t *testing.T) {
 			log := logger.FromCtx(ctx)
 			if ctx.Path == "/reset" {
 				log.Reset()
+			} else if ctx.Path == "/nan" {
+				log["Data"] = math.NaN()
 			} else {
 				log["Data"] = []int{1, 2, 3}
 			}
@@ -303,10 +320,27 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		logger.mu.Unlock()
 		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:16])
 		assert.Contains(log, "] INFO ")
-		assert.Contains(log, `"Data":[1,2,3],`)
-		assert.Contains(log, `"Method":"GET",`)
-		assert.Contains(log, `"Length":2,`)
-		assert.Contains(log, `"Status":200,`)
+		assert.Contains(log, `"Data":[1,2,3]`)
+		assert.Contains(log, `"Method":"GET"`)
+		assert.Contains(log, `"Length":2`)
+		assert.Contains(log, `"Status":200`)
+		res.Body.Close()
+
+		buf.Reset()
+		res, err = RequestBy("GET", "http://"+srv.Addr().String()+"/nan")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		time.Sleep(10 * time.Millisecond)
+		logger.mu.Lock()
+		log = buf.String()
+		logger.mu.Unlock()
+		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:16])
+		assert.Contains(log, "] WARNING ")
+		assert.Contains(log, `Data:NaN`)
+		assert.Contains(log, `Method:"GET"`)
+		assert.Contains(log, `Length:2`)
+		assert.Contains(log, `Status:200`)
 		res.Body.Close()
 
 		buf.Reset()
