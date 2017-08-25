@@ -283,7 +283,7 @@ func (app *App) Set(key, val interface{}) {
 	app.settings[key] = val
 }
 
-// Env returns app' env. You can set app env with `app.Set(gear.SetEnv, "dome env")`
+// Env returns app' env. You can set app env with `app.Set(gear.SetEnv, "some env")`
 // Default to os process "APP_ENV" or "development".
 func (app *App) Env() string {
 	return app.settings[SetEnv].(string)
