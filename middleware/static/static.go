@@ -18,6 +18,7 @@ type Options struct {
 	StripPrefix bool              // Strip the prefix from URL path, default to `false`.
 	Includes    []string          // Optional, a slice of file path to serve, it will ignore Prefix and StripPrefix options.
 	Files       map[string][]byte // Optional, a map of File objects to serve.
+	OnlyFiles   bool              // Optional, if Options.Files provided and Options.OnlyFiles is true, it will not seek files in other way.
 }
 
 // New creates a static middleware to serves static content from the provided root directory.
@@ -93,6 +94,9 @@ func New(opts Options) gear.Middleware {
 			if file, ok := opts.Files[path]; ok {
 				http.ServeContent(ctx.Res, ctx.Req, path, modTime, bytes.NewReader(file))
 				return nil
+			}
+			if opts.OnlyFiles {
+				return gear.ErrNotFound.WithMsgf("%s could not be found", path)
 			}
 		}
 		path = filepath.Join(root, filepath.FromSlash(path))

@@ -187,6 +187,44 @@ func TestGearMiddlewareStaticWithFileMap(t *testing.T) {
 	})
 }
 
+func TestGearMiddlewareStaticWithOnlyFilesOption(t *testing.T) {
+	file, err := ioutil.ReadFile("../../testdata/hello.html")
+	if err != nil {
+		panic(gear.Err.From(err))
+	}
+
+	app := gear.New()
+	app.Use(New(Options{
+		Root:      "../../testdata",
+		OnlyFiles: true,
+		Files: map[string][]byte{
+			"/hello_cache.html": file,
+		},
+	}))
+	srv := app.Start()
+	defer app.Close()
+
+	t.Run("GET from FileMap", func(t *testing.T) {
+		assert := assert.New(t)
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String()+"/hello_cache.html")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		res.Body.Close()
+	})
+
+	t.Run("GET from system", func(t *testing.T) {
+		assert := assert.New(t)
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String()+"/hello.html")
+		assert.Nil(err)
+		assert.Equal(404, res.StatusCode)
+		assert.Equal("application/json; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		res.Body.Close()
+	})
+}
+
 func TestGearMiddlewareStaticWithIncludes(t *testing.T) {
 	app := gear.New()
 	app.Use(New(Options{

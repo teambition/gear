@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.8.4] - 2017-08-26
+
+**Changed:**
+
+- Add Options.OnlyFiles for static middleware.
+
 ## [1.8.3] - 2017-08-12
 
 **Fixed:**
