@@ -159,12 +159,12 @@ func TestGearContextTiming(t *testing.T) {
 		app := New()
 		x := false
 		app.Use(func(ctx *Context) error {
-			err := ctx.Timing(time.Millisecond*15, func(c context.Context) {
+			err := ctx.Timing(time.Millisecond*150, func(c context.Context) {
 				go func() {
 					<-c.Done()
 					assert.Equal(context.Canceled, c.Err())
 				}()
-				time.Sleep(time.Millisecond * 10)
+				time.Sleep(time.Millisecond * 100)
 				x = true
 			})
 			assert.Nil(err)

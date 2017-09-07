@@ -20,6 +20,10 @@ func EqualPtr(t *testing.T, a, b interface{}) {
 	assert.Equal(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
 }
 
+func NotEqualPtr(t *testing.T, a, b interface{}) {
+	assert.NotEqual(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
+}
+
 type GearResponse struct {
 	*http.Response
 }
@@ -87,6 +91,19 @@ func TestGearLog(t *testing.T) {
 
 		EqualPtr(t, log2, log1.Into(log2))
 		assert.Equal(Log{"key2": true, "key1": 1}, log2)
+	})
+
+	t.Run("Log.With", func(t *testing.T) {
+		assert := assert.New(t)
+
+		log1 := Log{"key1": 1}
+		log2 := Log{"key2": true}
+		log3 := log1.With(log2)
+
+		NotEqualPtr(t, log1, log3)
+		NotEqualPtr(t, log2, log3)
+		assert.Equal(Log{"key1": 1, "key2": true}, log3)
+		assert.Equal(log3, log1.With(map[string]interface{}{"key1": 1, "key2": true}))
 	})
 }
 

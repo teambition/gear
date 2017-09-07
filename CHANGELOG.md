@@ -5,6 +5,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.8.5] - 2017-09-07
+
+**Changed:**
+
+- Add Log.With method.
+
+-----
+
 ## [1.8.4] - 2017-08-26
 
 **Changed:**

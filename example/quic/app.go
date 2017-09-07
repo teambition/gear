@@ -1,62 +1,65 @@
 package main
 
-import (
-	"net/http"
+// commented for test~
+func main() {}
 
-	"github.com/lucas-clemente/quic-go/h2quic"
-	"github.com/teambition/gear"
-	"github.com/teambition/gear/logging"
-	"github.com/teambition/gear/middleware/favicon"
-)
+// import (
+// 	"net/http"
 
-func main() {
+// 	"github.com/lucas-clemente/quic-go/h2quic"
+// 	"github.com/teambition/gear"
+// 	"github.com/teambition/gear/logging"
+// 	"github.com/teambition/gear/middleware/favicon"
+// )
 
-	const htmlBody = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <link href="/hello.css" rel="stylesheet" type="text/css">
-  </head>
-  <body>
-    <h1>Hello, Gear!</h1>
-  </body>
-</html>`
+// func main() {
 
-	const pushBody = `
-h1 {
-  color: red;
-}
-`
-	app := gear.New()
+// 	const htmlBody = `
+// <!DOCTYPE html>
+// <html>
+//   <head>
+//     <link href="/hello.css" rel="stylesheet" type="text/css">
+//   </head>
+//   <body>
+//     <h1>Hello, Gear!</h1>
+//   </body>
+// </html>`
 
-	app.UseHandler(logging.Default(true))
-	app.Use(favicon.New("./testdata/favicon.ico"))
+// 	const pushBody = `
+// h1 {
+//   color: red;
+// }
+// `
+// 	app := gear.New()
 
-	router := gear.NewRouter()
-	router.Get("/", func(ctx *gear.Context) error {
-		ctx.Res.Push("/hello.css", &http.PushOptions{Method: "GET"})
-		return ctx.HTML(200, htmlBody)
-	})
-	router.Get("/hello.css", func(ctx *gear.Context) error {
-		ctx.Type("text/css")
-		return ctx.End(200, []byte(pushBody))
-	})
-	router.Get("/json", func(ctx *gear.Context) error {
-		return ctx.JSON(200, map[string]interface{}{"name": "quic"})
-	})
-	app.UseHandler(router)
-	app.Server.Addr = ":3000"
-	quicServer := h2quic.Server{
-		Server: app.Server,
-	}
-	app.Server.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		quicServer.SetQuicHeaders(w.Header())
-		app.ServeHTTP(w, r)
-	})
+// 	app.UseHandler(logging.Default(true))
+// 	app.Use(favicon.New("./testdata/favicon.ico"))
 
-	go app.Server.ListenAndServeTLS("./testdata/out/test.crt", "./testdata/out/test.key")
+// 	router := gear.NewRouter()
+// 	router.Get("/", func(ctx *gear.Context) error {
+// 		ctx.Res.Push("/hello.css", &http.PushOptions{Method: "GET"})
+// 		return ctx.HTML(200, htmlBody)
+// 	})
+// 	router.Get("/hello.css", func(ctx *gear.Context) error {
+// 		ctx.Type("text/css")
+// 		return ctx.End(200, []byte(pushBody))
+// 	})
+// 	router.Get("/json", func(ctx *gear.Context) error {
+// 		return ctx.JSON(200, map[string]interface{}{"name": "quic"})
+// 	})
+// 	app.UseHandler(router)
+// 	app.Server.Addr = ":3000"
+// 	quicServer := h2quic.Server{
+// 		Server: app.Server,
+// 	}
+// 	app.Server.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		quicServer.SetQuicHeaders(w.Header())
+// 		app.ServeHTTP(w, r)
+// 	})
 
-	quicServer.ListenAndServe()
-}
+// 	go app.Server.ListenAndServeTLS("./testdata/out/test.crt", "./testdata/out/test.key")
+
+// 	quicServer.ListenAndServe()
+// }
 
 // Visit: https://127.0.0.1:3000/

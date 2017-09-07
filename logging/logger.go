@@ -74,6 +74,17 @@ func (l Log) Into(log Log) Log {
 	return log
 }
 
+// With copy values from the argument, returns new log.
+//  log := Log{"key": "foo"}
+//  logging.Info(log.With(Log{"key2": "foo2"}))
+func (l Log) With(log map[string]interface{}) Log {
+	cp := l.Into(Log{})
+	for key, val := range log {
+		cp[key] = val
+	}
+	return cp
+}
+
 // Reset delete all key-value on the log. Empty log will not be consumed.
 //
 //  log := logger.FromCtx(ctx)
