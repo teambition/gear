@@ -5,6 +5,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.8.6] - 2017-09-19
+
+**Changed:**
+
+- Return error when recalling end method.
+
+-----
+
 ## [1.8.5] - 2017-09-07
 
 **Changed:**

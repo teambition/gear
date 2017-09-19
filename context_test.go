@@ -1692,8 +1692,8 @@ func TestGearContextEnd(t *testing.T) {
 
 		app := New()
 		app.Use(func(ctx *Context) error {
-			ctx.Res.ended.setTrue()
-			return ctx.End(200, []byte("OK"))
+			ctx.End(200, []byte("OK"))
+			return ctx.End(400, []byte("Err"))
 		})
 
 		srv := app.Start()
@@ -1701,8 +1701,8 @@ func TestGearContextEnd(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(421, res.StatusCode)
-		assert.Equal("", PickRes(res.Text()).(string))
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("OK", PickRes(res.Text()).(string))
 	})
 }
 

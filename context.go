@@ -582,6 +582,8 @@ func (ctx *Context) Stream(code int, contentType string, r io.Reader) (err error
 		ctx.Status(code)
 		ctx.Type(contentType)
 		_, err = io.Copy(ctx.Res, r)
+	} else {
+		err = ErrInternalServerError.WithMsg("request ended before ctx.Stream")
 	}
 	return
 }
@@ -599,6 +601,8 @@ func (ctx *Context) Attachment(name string, modtime time.Time, content io.ReadSe
 		}
 		ctx.SetHeader(HeaderContentDisposition, ContentDisposition(name, dispositionType))
 		http.ServeContent(ctx.Res, ctx.Req, name, modtime, content)
+	} else {
+		err = ErrInternalServerError.WithMsg("request ended before ctx.Attachment")
 	}
 	return
 }
@@ -613,6 +617,8 @@ func (ctx *Context) Redirect(url string) (err error) {
 			ctx.Res.status = http.StatusFound
 		}
 		http.Redirect(ctx.Res, ctx.Req, url, ctx.Res.status)
+	} else {
+		err = ErrInternalServerError.WithMsg("request ended before ctx.Redirect")
 	}
 	return
 }
@@ -657,6 +663,8 @@ func (ctx *Context) End(code int, buf ...[]byte) (err error) {
 			body = buf[0]
 		}
 		err = ctx.Res.respond(code, body)
+	} else {
+		err = ErrInternalServerError.WithMsg("request ended before ctx.End")
 	}
 	return
 }
