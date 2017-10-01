@@ -183,6 +183,11 @@ func (ctx *Context) WithContext(c context.Context) {
 	ctx._ctx = c
 }
 
+// LogErr writes error to underlayer logging system through app.Error.
+func (ctx *Context) LogErr(err error) {
+	ctx.app.Error(err)
+}
+
 // Timing runs fn with the given time limit. If a call runs for longer than its time limit or panic,
 // it will return context.DeadlineExceeded error or panic error.
 func (ctx *Context) Timing(dt time.Duration, fn func(context.Context)) (err error) {

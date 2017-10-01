@@ -5,6 +5,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.8.7] - 2017-10-01
+
+**Changed:**
+
+- Add ctx.LogErr method.
+
+-----
+
 ## [1.8.6] - 2017-09-19
 
 **Changed:**

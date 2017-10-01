@@ -152,6 +152,32 @@ func TestGearContextWithContext(t *testing.T) {
 	assert.Equal(3, count.Int())
 }
 
+func TestGearContextLogErr(t *testing.T) {
+	t.Run("normal error and no flag", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := New()
+		app.Set(SetLogger, log.New(&buf, "", 0))
+		app.Use(func(ctx *Context) error {
+			ctx.LogErr(errors.New("some error"))
+			return ctx.End(204)
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(204, res.StatusCode)
+
+		// [2017-08-11T15:41:22.709Z] ERR {"code":500,"error":"InternalServerError","message":"some error","stack":"\\t/usr/local/go/src/testing/testing.go:697"}
+		assert.True(strings.Contains(buf.String(), `Z] ERR {"`))
+		assert.True(strings.Contains(buf.String(), `"message":"some error"`))
+		assert.True(strings.Contains(buf.String(), `"stack":"\\t`))
+	})
+}
+
 func TestGearContextTiming(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		assert := assert.New(t)
