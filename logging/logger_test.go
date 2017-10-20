@@ -433,8 +433,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 
 		app.UseHandler(logger)
 		app.Use(func(ctx *gear.Context) error {
-			log := logger.FromCtx(ctx)
-			log["Data"] = []int{1, 2, 3}
+			logger.SetTo(ctx, "Data", []int{1, 2, 3})
 			return ctx.HTML(200, "OK")
 		})
 		srv := app.Start()

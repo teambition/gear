@@ -417,6 +417,16 @@ func (l *Logger) FromCtx(ctx *gear.Context) Log {
 	return any.(Log)
 }
 
+// SetTo sets key/value to the Log instance on ctx.
+//  app.Use(func(ctx *gear.Context) error {
+//  	logging.SetTo(ctx, "Data", []int{1, 2, 3})
+//  	return ctx.HTML(200, "OK")
+//  })
+func (l *Logger) SetTo(ctx *gear.Context, key string, val interface{}) {
+	any, _ := ctx.Any(l)
+	any.(Log)[key] = val
+}
+
 // Serve implements gear.Handler interface, we can use logger as gear middleware.
 //
 //  app := gear.New()
@@ -518,6 +528,16 @@ func Println(args ...interface{}) {
 // FromCtx retrieve the Log instance for the default logger.
 func FromCtx(ctx *gear.Context) Log {
 	return std.FromCtx(ctx)
+}
+
+// SetTo sets key/value to the Log instance on ctx for the default logger.
+//  app.UseHandler(logging.Default())
+//  app.Use(func(ctx *gear.Context) error {
+//  	logging.SetTo(ctx, "Data", []int{1, 2, 3})
+//  	return ctx.HTML(200, "OK")
+//  })
+func SetTo(ctx *gear.Context, key string, val interface{}) {
+	std.SetTo(ctx, key, val)
 }
 
 func colorStatus(code int) ColorType {

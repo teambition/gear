@@ -5,6 +5,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.8.8] - 2017-10-20
+
+**Changed:**
+
+- Add ctx.MustAny method and logger.SetTo method.
+
+-----
+
 ## [1.8.7] - 2017-10-01
 
 **Changed:**

@@ -321,6 +321,9 @@ func TestGearContextAny(t *testing.T) {
 
 			val2, _ := ctx.Any(ctxAny)
 			EqualPtr(t, val, val2)
+
+			val3 := ctx.MustAny(ctxAny)
+			EqualPtr(t, val, val3)
 		})
 
 		t.Run("should get different value with different ctx", func(t *testing.T) {

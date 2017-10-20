@@ -251,6 +251,16 @@ func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
 	return
 }
 
+// MustAny returns the value on this ctx by key. It is a sugar for ctx.Any,
+// If some error occurred, it will panic.
+func (ctx *Context) MustAny(any interface{}) interface{} {
+	val, err := ctx.Any(any)
+	if err != nil {
+		panic(err)
+	}
+	return val
+}
+
 // SetAny save a key, value pair on the ctx.
 // Then we can use ctx.Any(key) to retrieve the value from ctx.
 func (ctx *Context) SetAny(key, val interface{}) {
