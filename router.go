@@ -192,9 +192,10 @@ func NewRouter(routerOptions ...RouterOptions) *Router {
 }
 
 // Use registers a new Middleware in the router, that will be called when router mathed.
-func (r *Router) Use(handle Middleware) {
+func (r *Router) Use(handle Middleware) *Router {
 	r.mds = append(r.mds, handle)
 	r.middleware = Compose(r.mds...)
+	return r
 }
 
 // Handle registers a new Middleware handler with method and path in the router.
@@ -204,7 +205,7 @@ func (r *Router) Use(handle Middleware) {
 // This function is intended for bulk loading and to allow the usage of less
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
-func (r *Router) Handle(method, pattern string, handlers ...Middleware) {
+func (r *Router) Handle(method, pattern string, handlers ...Middleware) *Router {
 	if method == "" {
 		panic(Err.WithMsg("invalid method"))
 	}
@@ -212,50 +213,52 @@ func (r *Router) Handle(method, pattern string, handlers ...Middleware) {
 		panic(Err.WithMsg("invalid middleware"))
 	}
 	r.trie.Define(pattern).Handle(strings.ToUpper(method), Compose(handlers...))
+	return r
 }
 
 // Get registers a new GET route for a path with matching handler in the router.
-func (r *Router) Get(pattern string, handlers ...Middleware) {
-	r.Handle(http.MethodGet, pattern, handlers...)
+func (r *Router) Get(pattern string, handlers ...Middleware) *Router {
+	return r.Handle(http.MethodGet, pattern, handlers...)
 }
 
 // Head registers a new HEAD route for a path with matching handler in the router.
-func (r *Router) Head(pattern string, handlers ...Middleware) {
-	r.Handle(http.MethodHead, pattern, handlers...)
+func (r *Router) Head(pattern string, handlers ...Middleware) *Router {
+	return r.Handle(http.MethodHead, pattern, handlers...)
 }
 
 // Post registers a new POST route for a path with matching handler in the router.
-func (r *Router) Post(pattern string, handlers ...Middleware) {
-	r.Handle(http.MethodPost, pattern, handlers...)
+func (r *Router) Post(pattern string, handlers ...Middleware) *Router {
+	return r.Handle(http.MethodPost, pattern, handlers...)
 }
 
 // Put registers a new PUT route for a path with matching handler in the router.
-func (r *Router) Put(pattern string, handlers ...Middleware) {
-	r.Handle(http.MethodPut, pattern, handlers...)
+func (r *Router) Put(pattern string, handlers ...Middleware) *Router {
+	return r.Handle(http.MethodPut, pattern, handlers...)
 }
 
 // Patch registers a new PATCH route for a path with matching handler in the router.
-func (r *Router) Patch(pattern string, handlers ...Middleware) {
-	r.Handle(http.MethodPatch, pattern, handlers...)
+func (r *Router) Patch(pattern string, handlers ...Middleware) *Router {
+	return r.Handle(http.MethodPatch, pattern, handlers...)
 }
 
 // Delete registers a new DELETE route for a path with matching handler in the router.
-func (r *Router) Delete(pattern string, handlers ...Middleware) {
-	r.Handle(http.MethodDelete, pattern, handlers...)
+func (r *Router) Delete(pattern string, handlers ...Middleware) *Router {
+	return r.Handle(http.MethodDelete, pattern, handlers...)
 }
 
 // Options registers a new OPTIONS route for a path with matching handler in the router.
-func (r *Router) Options(pattern string, handlers ...Middleware) {
-	r.Handle(http.MethodOptions, pattern, handlers...)
+func (r *Router) Options(pattern string, handlers ...Middleware) *Router {
+	return r.Handle(http.MethodOptions, pattern, handlers...)
 }
 
 // Otherwise registers a new Middleware handler in the router
 // that will run if there is no other handler matching.
-func (r *Router) Otherwise(handlers ...Middleware) {
+func (r *Router) Otherwise(handlers ...Middleware) *Router {
 	if len(handlers) == 0 {
 		panic(Err.WithMsg("invalid middleware"))
 	}
 	r.otherwise = Compose(handlers...)
+	return r
 }
 
 // Serve implemented gear.Handler interface

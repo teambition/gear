@@ -355,38 +355,42 @@ func (l *Logger) Output(t time.Time, level Level, s string) (err error) {
 
 // SetLevel set the logger's log level
 // The default logger level is DebugLevel
-func (l *Logger) SetLevel(level Level) {
+func (l *Logger) SetLevel(level Level) *Logger {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if level > DebugLevel {
 		panic(gear.Err.WithMsg("invalid logger level"))
 	}
 	l.l = level
+	return l
 }
 
 // SetTimeFormat set the logger timestamp format
 // The default logger timestamp format is "2006-01-02T15:04:05.999Z"(JavaScript ISO date string)
-func (l *Logger) SetTimeFormat(timeFormat string) {
+func (l *Logger) SetTimeFormat(timeFormat string) *Logger {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.tf = timeFormat
+	return l
 }
 
 // SetLogFormat set the logger log format
 // it should accept 3 string values: timestamp, log level and log message
 // The default logger log format is "[%s] %s %s": "[time] logLevel message"
-func (l *Logger) SetLogFormat(logFormat string) {
+func (l *Logger) SetLogFormat(logFormat string) *Logger {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.lf = logFormat
+	return l
 }
 
 // SetLogInit set a log init handle to the logger.
 // It will be called when log created.
-func (l *Logger) SetLogInit(fn func(Log, *gear.Context)) {
+func (l *Logger) SetLogInit(fn func(Log, *gear.Context)) *Logger {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.init = fn
+	return l
 }
 
 // SetLogConsume set a log consumer handle to the logger.
@@ -396,10 +400,11 @@ func (l *Logger) SetLogInit(fn func(Log, *gear.Context)) {
 //   127.0.0.1 GET /text 200 6500 - 0.765 ms
 //
 // Please implements a Log Consume for your production.
-func (l *Logger) SetLogConsume(fn func(Log, *gear.Context)) {
+func (l *Logger) SetLogConsume(fn func(Log, *gear.Context)) *Logger {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.consume = fn
+	return l
 }
 
 // New implements gear.Any interface,then we can use ctx.Any to retrieve a Log instance from ctx.

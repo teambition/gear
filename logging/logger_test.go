@@ -413,23 +413,24 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		app := gear.New()
 
 		logger := New(&buf)
-		logger.SetLogInit(func(log Log, ctx *gear.Context) {
-			log["IP"] = ctx.IP()
-			log["Method"] = ctx.Method
-			log["URL"] = ctx.Req.URL.String()
-			log["Start"] = time.Now()
-			log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
-		})
-		logger.SetLogConsume(func(log Log, _ *gear.Context) {
-			end := time.Now()
-			log["Time"] = end.Sub(log["Start"].(time.Time)) / 1e6
-			delete(log, "Start")
-			if res, err := log.Format(); err == nil {
-				logger.Output(end, InfoLevel, res)
-			} else {
-				logger.Output(end, WarningLevel, log.String())
-			}
-		})
+		logger.
+			SetLogInit(func(log Log, ctx *gear.Context) {
+				log["IP"] = ctx.IP()
+				log["Method"] = ctx.Method
+				log["URL"] = ctx.Req.URL.String()
+				log["Start"] = time.Now()
+				log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
+			}).
+			SetLogConsume(func(log Log, _ *gear.Context) {
+				end := time.Now()
+				log["Time"] = end.Sub(log["Start"].(time.Time)) / 1e6
+				delete(log, "Start")
+				if res, err := log.Format(); err == nil {
+					logger.Output(end, InfoLevel, res)
+				} else {
+					logger.Output(end, WarningLevel, log.String())
+				}
+			})
 
 		app.UseHandler(logger)
 		app.Use(func(ctx *gear.Context) error {
@@ -468,23 +469,24 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		app.Set(gear.SetLogger, log.New(&errbuf, "TEST: ", 0))
 
 		logger := New(&buf)
-		logger.SetLogInit(func(log Log, ctx *gear.Context) {
-			log["IP"] = ctx.IP()
-			log["Method"] = ctx.Method
-			log["URL"] = ctx.Req.URL.String()
-			log["Start"] = time.Now()
-			log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
-		})
-		logger.SetLogConsume(func(log Log, _ *gear.Context) {
-			end := time.Now()
-			log["Time"] = end.Sub(log["Start"].(time.Time)) / 1e6
-			delete(log, "Start")
-			if res, err := log.Format(); err == nil {
-				logger.Output(end, InfoLevel, res)
-			} else {
-				logger.Output(end, WarningLevel, log.String())
-			}
-		})
+		logger.
+			SetLogInit(func(log Log, ctx *gear.Context) {
+				log["IP"] = ctx.IP()
+				log["Method"] = ctx.Method
+				log["URL"] = ctx.Req.URL.String()
+				log["Start"] = time.Now()
+				log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
+			}).
+			SetLogConsume(func(log Log, _ *gear.Context) {
+				end := time.Now()
+				log["Time"] = end.Sub(log["Start"].(time.Time)) / 1e6
+				delete(log, "Start")
+				if res, err := log.Format(); err == nil {
+					logger.Output(end, InfoLevel, res)
+				} else {
+					logger.Output(end, WarningLevel, log.String())
+				}
+			})
 
 		app.UseHandler(logger)
 		app.Use(func(ctx *gear.Context) (err error) {

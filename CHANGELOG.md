@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.8.9] - 2017-11-07
+
+**Changed:**
+
+- Some methods of App, Router, and Logger return itself for chain-style.
+
 ## [1.8.8] - 2017-10-20
 
 **Changed:**

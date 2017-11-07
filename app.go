@@ -143,13 +143,15 @@ func New() *App {
 }
 
 // Use uses the given middleware `handle`.
-func (app *App) Use(handle Middleware) {
+func (app *App) Use(handle Middleware) *App {
 	app.mds = append(app.mds, handle)
+	return app
 }
 
 // UseHandler uses a instance that implemented Handler interface.
-func (app *App) UseHandler(h Handler) {
+func (app *App) UseHandler(h Handler) *App {
 	app.mds = append(app.mds, h.Serve)
+	return app
 }
 
 type appSetting uint8
@@ -209,7 +211,7 @@ const (
 )
 
 // Set add key/value settings to app. The settings can be retrieved by `ctx.Setting(key)`.
-func (app *App) Set(key, val interface{}) {
+func (app *App) Set(key, val interface{}) *App {
 	if k, ok := key.(appSetting); ok {
 		switch key {
 		case SetBodyParser:
@@ -278,9 +280,10 @@ func (app *App) Set(key, val interface{}) {
 			}
 		}
 		app.settings[k] = val
-		return
+		return app
 	}
 	app.settings[key] = val
+	return app
 }
 
 // Env returns app' env. You can set app env with `app.Set(gear.SetEnv, "some env")`
