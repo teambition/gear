@@ -1,8 +1,8 @@
 package gear
 
 import (
-	"compress/flate"
 	"compress/gzip"
+	"compress/zlib"
 	"io"
 	"net/http"
 )
@@ -74,11 +74,12 @@ func (cw *compressWriter) WriteHeader(code int) {
 		cw.compress.Compressible(cw.res.Get(HeaderContentType), len(cw.res.body)) {
 		var w io.WriteCloser
 
+		// http://www.gzip.org/zlib/zlib_faq.html#faq38
 		switch cw.encoding {
-		case "gzip":
-			w, _ = gzip.NewWriterLevel(cw.rw, gzip.DefaultCompression)
-		case "deflate":
-			w, _ = flate.NewWriter(cw.rw, flate.DefaultCompression)
+		case "gzip": // recommend
+			w = gzip.NewWriter(cw.rw)
+		case "deflate": // should be zlib
+			w = zlib.NewWriter(cw.rw)
 		}
 
 		if w != nil {

@@ -2,8 +2,11 @@ package gear
 
 import (
 	"bytes"
+	"compress/gzip"
+	"compress/zlib"
 	"context"
 	"errors"
+	"fmt"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -818,6 +821,52 @@ func TestGearContextParseBody(t *testing.T) {
 		body := jsonBodyTemplate{}
 		err := ctx.ParseBody(&body)
 		assert.Equal("Error: missing request body", err.Error())
+	})
+
+	t.Run("should support content with gzip encoding", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		pass := strings.Repeat("你好，Gear", 500)
+		data := []byte(fmt.Sprintf(`{"id":"admin","pass":"%s"}`, pass))
+
+		var buf bytes.Buffer
+		gw := gzip.NewWriter(&buf)
+		gw.Write(data)
+		gw.Close()
+		assert.True(len(buf.Bytes()) < len(data))
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo", &buf)
+		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+		ctx.Req.Header.Set(HeaderContentEncoding, "gzip")
+
+		body := jsonBodyTemplate{}
+		assert.Nil(ctx.ParseBody(&body))
+		assert.Equal("admin", body.ID)
+		assert.Equal(pass, body.Pass)
+	})
+
+	t.Run("should support content with deflate encoding", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		pass := strings.Repeat("你好，Gear", 500)
+		data := []byte(fmt.Sprintf(`{"id":"admin","pass":"%s"}`, pass))
+
+		var buf bytes.Buffer
+		gw := zlib.NewWriter(&buf)
+		gw.Write(data)
+		gw.Close()
+		assert.True(len(buf.Bytes()) < len(data))
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo", &buf)
+		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+		ctx.Req.Header.Set(HeaderContentEncoding, "deflate")
+
+		body := jsonBodyTemplate{}
+		assert.Nil(ctx.ParseBody(&body))
+		assert.Equal("admin", body.ID)
+		assert.Equal(pass, body.Pass)
 	})
 }
 

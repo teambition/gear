@@ -393,7 +393,9 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 	var err error
 	var buf []byte
 	var mediaType string
+	var encoding string
 	var params map[string]string
+
 	if mediaType = ctx.GetHeader(HeaderContentType); mediaType == "" {
 		// RFC 2616, section 7.2.1 - empty type SHOULD be treated as application/octet-stream
 		mediaType = MIMEOctetStream
@@ -402,7 +404,16 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 		return ErrUnsupportedMediaType.From(err)
 	}
 
-	reader := http.MaxBytesReader(ctx.Res, ctx.Req.Body, ctx.app.bodyParser.MaxBytes())
+	b := ctx.Req.Body
+	if encoding = ctx.GetHeader(HeaderContentEncoding); encoding != "" {
+		if b, err = Decompress(encoding, ctx.Req.Body); err != nil {
+			return err
+		}
+	}
+
+	reader := http.MaxBytesReader(ctx.Res, b, ctx.app.bodyParser.MaxBytes())
+	defer reader.Close()
+
 	if buf, err = ioutil.ReadAll(reader); err != nil {
 		// err may not be 413 Request entity too large, just make it to 413
 		return ErrRequestEntityTooLarge.From(err)

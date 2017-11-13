@@ -874,3 +874,68 @@ func TestLoggerFilterWriter(t *testing.T) {
 		}
 	})
 }
+
+func TestDecompress(t *testing.T) {
+	t.Run("should support gzip", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		body := []byte(strings.Repeat("你好，Gear", 500))
+
+		gw := gzip.NewWriter(&buf)
+		gw.Write(body)
+		gw.Close()
+		assert.True(len(buf.Bytes()) < len(body))
+
+		reader, err := Decompress("gzip", &buf)
+		assert.Nil(err)
+		data, err := ioutil.ReadAll(reader)
+		assert.Nil(err)
+		assert.Equal(body, data)
+	})
+
+	t.Run("should support zlib", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		body := []byte(strings.Repeat("你好，Gear", 500))
+
+		zw := zlib.NewWriter(&buf)
+		zw.Write(body)
+		zw.Close()
+		assert.True(len(buf.Bytes()) < len(body))
+
+		reader, err := Decompress("zlib", &buf)
+		assert.Nil(err)
+		data, err := ioutil.ReadAll(reader)
+		assert.Nil(err)
+		assert.Equal(body, data)
+	})
+
+	t.Run("should support deflate(zlib)", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		body := []byte(strings.Repeat("你好，Gear", 500))
+
+		zw := zlib.NewWriter(&buf)
+		zw.Write(body)
+		zw.Close()
+		assert.True(len(buf.Bytes()) < len(body))
+
+		reader, err := Decompress("deflate", &buf)
+		assert.Nil(err)
+		data, err := ioutil.ReadAll(reader)
+		assert.Nil(err)
+		assert.Equal(body, data)
+	})
+
+	t.Run("should return err when un-support", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		reader, err := Decompress("abc", &buf)
+		assert.Nil(reader)
+		assert.Equal(415, err.(*Error).Status())
+	})
+}

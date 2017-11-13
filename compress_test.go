@@ -2,8 +2,8 @@ package gear
 
 import (
 	"bytes"
-	"compress/flate"
 	"compress/gzip"
+	"compress/zlib"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -16,10 +16,9 @@ import (
 func TestGearResponseCompress(t *testing.T) {
 	gzipCompress := func(buf []byte) []byte {
 		var data bytes.Buffer
-		if gw, err := gzip.NewWriterLevel(&data, gzip.DefaultCompression); err == nil {
-			gw.Write(buf)
-			gw.Close()
-		}
+		gw := gzip.NewWriter(&data)
+		gw.Write(buf)
+		gw.Close()
 		return data.Bytes()
 	}
 	gzipUnCompress := func(buf []byte) []byte {
@@ -31,19 +30,19 @@ func TestGearResponseCompress(t *testing.T) {
 		return data
 	}
 
-	flateCompress := func(buf []byte) []byte {
+	zlibCompress := func(buf []byte) []byte {
 		var data bytes.Buffer
-		if fw, err := flate.NewWriter(&data, flate.DefaultCompression); err == nil {
-			fw.Write(buf)
-			fw.Close()
-		}
+		fw := zlib.NewWriter(&data)
+		fw.Write(buf)
+		fw.Close()
 		return data.Bytes()
 	}
-	flateUnCompress := func(buf []byte) []byte {
+	zlibUnCompress := func(buf []byte) []byte {
 		var data []byte
-		fr := flate.NewReader(bytes.NewBuffer(buf))
-		data, _ = ioutil.ReadAll(fr)
-		fr.Close()
+		if fr, err := zlib.NewReader(bytes.NewBuffer(buf)); err == nil {
+			data, _ = ioutil.ReadAll(fr)
+			fr.Close()
+		}
 		return data
 	}
 
@@ -107,13 +106,13 @@ func TestGearResponseCompress(t *testing.T) {
 			assert.True(res.OK())
 			content := PickRes(ioutil.ReadAll(res.Body)).([]byte)
 
-			buf := flateCompress(body)
+			buf := zlibCompress(body)
 			assert.True(len(buf) < len(body))
 			assert.True(len(buf) == len(content))
 			assert.Equal("deflate", res.Header.Get(HeaderContentEncoding))
 			assert.Equal(HeaderAcceptEncoding, res.Header.Get(HeaderVary))
 			assert.Equal(strconv.FormatInt(int64(len(buf)), 10), res.Header.Get(HeaderContentLength))
-			content = flateUnCompress(content)
+			content = zlibUnCompress(content)
 			assert.Equal(body, content)
 		})
 

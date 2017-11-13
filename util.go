@@ -2,6 +2,8 @@ package gear
 
 import (
 	"bytes"
+	"compress/gzip"
+	"compress/zlib"
 	"encoding"
 	"encoding/json"
 	"fmt"
@@ -575,4 +577,17 @@ func (s *LoggerFilterWriter) Write(p []byte) (n int, err error) {
 	}
 
 	return s.out.Write(p)
+}
+
+// Decompress wrap the reader for decompressing, It support gzip and zlib, and compatible for deflate.
+func Decompress(encoding string, r io.Reader) (io.ReadCloser, error) {
+	switch encoding {
+	case "gzip":
+		return gzip.NewReader(r)
+	case "deflate", "zlib":
+		// compatible for RFC 1950 zlib, RFC 1951 deflate, http://www.open-open.com/lib/view/open1460866410410.html
+		return zlib.NewReader(r)
+	default:
+		return nil, ErrUnsupportedMediaType.WithMsgf("Unsupported Content-Encoding: %s", encoding)
+	}
 }

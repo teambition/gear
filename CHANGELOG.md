@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.8.10] - 2017-11-13
+
+**Changed:**
+
+- Add Decompress function; ctx.ParseBody support compress content.
+
 ## [1.8.9] - 2017-11-07
 
 **Changed:**
