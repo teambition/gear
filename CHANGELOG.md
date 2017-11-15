@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.9.0] - 2017-11-15
+
+**Changed:**
+
+- Add GetRouterNodeFromCtx function.
+
 ## [1.8.10] - 2017-11-13
 
 **Changed:**

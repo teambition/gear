@@ -706,6 +706,7 @@ type valuesStruct struct {
 	Pslice2   []*int         `form:"pslice2"`
 	Pslice3   []*int         `form:"pslice3"`
 	PTime     *time.Time     `form:"ptime"`
+	PTimeN    *time.Time     `form:"ptimeN"`
 	PDu       *time.Duration `form:"pdu"`
 	PDu2      *myDuration    `form:"pdu2"`
 	PObjectID *bson.ObjectId `form:"pobjectID"`
@@ -756,6 +757,7 @@ func TestGearValuesToStruct(t *testing.T) {
 		"pslice2":   {"1"},
 		"pslice3":   {},
 		"ptime":     {timeStr},
+		"ptimeN":    {},
 		"pdu":       {"300000000"},
 		"pdu2":      {"300ms"},
 		"pobjectID": {"000000000000000000000000"},
@@ -834,6 +836,7 @@ func TestGearValuesToStruct(t *testing.T) {
 		assert.Equal([]*int{&sliceint1}, s.Pslice2)
 		assert.Equal([]*int{}, s.Pslice3)
 		assert.Equal(timeVal.Unix(), (*s.PTime).Unix())
+		assert.Nil(s.PTimeN)
 		assert.Equal(time.Millisecond*300, *s.PDu)
 		assert.Equal(myDuration{time.Millisecond * 300}, *s.PDu2)
 		assert.Equal(bson.ObjectIdHex("000000000000000000000000"), *s.PObjectID)

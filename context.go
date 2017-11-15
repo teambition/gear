@@ -25,6 +25,7 @@ const (
 	isContext contextKey = iota
 	isRecursive
 	paramsKey
+	routerNodeKey
 )
 
 // Any interface is used by ctx.Any.
