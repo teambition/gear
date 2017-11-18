@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.9.1] - 2017-11-18
+
+**Changed:**
+
+- Improve logging.
+
 ## [1.9.0] - 2017-11-15
 
 **Changed:**

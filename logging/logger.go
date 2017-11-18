@@ -124,7 +124,29 @@ const (
 	DebugLevel
 )
 
-var levels = []string{"EMERG", "ALERT", "CRIT", "ERR", "WARNING", "NOTICE", "INFO", "DEBUG"}
+func (l Level) String() string {
+	switch l {
+	case EmergLevel:
+		return "EMERG"
+	case AlertLevel:
+		return "ALERT"
+	case CritiLevel:
+		return "CRIT"
+	case ErrLevel:
+		return "ERR"
+	case WarningLevel:
+		return "WARNING"
+	case NoticeLevel:
+		return "NOTICE"
+	case InfoLevel:
+		return "INFO"
+	case DebugLevel:
+		return "DEBUG"
+	default:
+		return "LOG"
+	}
+}
+
 var std = New(os.Stderr)
 
 // Default returns the default logger
@@ -175,7 +197,6 @@ func New(w io.Writer) *Logger {
 		end := time.Now()
 		if t, ok := log["Start"].(time.Time); ok {
 			log["Time"] = end.Sub(t) / 1e6 // ms
-			delete(log, "Start")
 		}
 
 		if str, err := log.Format(); err == nil {
@@ -346,7 +367,7 @@ func (l *Logger) Output(t time.Time, level Level, s string) (err error) {
 	if l := len(s); l > 0 && s[l-1] == '\n' {
 		s = s[0 : l-1]
 	}
-	_, err = fmt.Fprintf(l.Out, l.lf, t.UTC().Format(l.tf), levels[level], crlfEscaper.Replace(s))
+	_, err = fmt.Fprintf(l.Out, l.lf, t.UTC().Format(l.tf), level.String(), crlfEscaper.Replace(s))
 	if err == nil {
 		l.Out.Write([]byte{'\n'})
 	}
