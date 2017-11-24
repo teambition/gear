@@ -77,25 +77,30 @@ func New(options ...Options) gear.Middleware {
 		ctx.Res.Vary(gear.HeaderOrigin)
 
 		origin := ctx.GetHeader(gear.HeaderOrigin)
-		// not a CORS request.
+		// not a CORS request
 		if origin == "" {
 			return
 		}
 
 		allowOrigin := opts.AllowOriginsValidator(origin, ctx)
-		// If the request Origin header is not allowed. Just terminate the following steps.
 		if allowOrigin == "" {
-			return gear.ErrForbidden.WithMsgf("Origin: %v is not allowed", origin)
+			// If the request Origin header is not allowed. Just terminate the following steps.
+			if ctx.Method == http.MethodOptions {
+				return ctx.End(http.StatusOK)
+			}
+			return
 		}
+
+		ctx.SetHeader(gear.HeaderAccessControlAllowOrigin, allowOrigin)
 		if opts.Credentials {
 			// when responding to a credentialed request, server must specify a
 			// domain, and cannot use wild carding.
 			// See *important note* in https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Requests_with_credentials .
 			ctx.SetHeader(gear.HeaderAccessControlAllowCredentials, "true")
 		}
-		ctx.SetHeader(gear.HeaderAccessControlAllowOrigin, allowOrigin)
 
 		// Handle preflighted requests (https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Preflighted_requests) .
+		// https://stackoverflow.com/questions/46026409/what-are-proper-status-codes-for-cors-preflight-requests
 		if ctx.Method == http.MethodOptions {
 			ctx.Res.Vary(gear.HeaderAccessControlRequestMethod)
 			ctx.Res.Vary(gear.HeaderAccessControlRequestHeaders)
@@ -107,7 +112,7 @@ func New(options ...Options) gear.Middleware {
 			if requestMethod == "" {
 				ctx.Res.Del(gear.HeaderAccessControlAllowOrigin)
 				ctx.Res.Del(gear.HeaderAccessControlAllowCredentials)
-				return gear.ErrForbidden.WithMsg("invalid preflighted request, missing Access-Control-Request-Method header")
+				return ctx.End(http.StatusOK)
 			}
 			if len(opts.AllowMethods) > 0 {
 				ctx.SetHeader(gear.HeaderAccessControlAllowMethods, strings.Join(opts.AllowMethods, ", "))
@@ -126,7 +131,7 @@ func New(options ...Options) gear.Middleware {
 			if opts.MaxAge > 0 {
 				ctx.SetHeader(gear.HeaderAccessControlMaxAge, strconv.Itoa(int(opts.MaxAge.Seconds())))
 			}
-			return ctx.End(http.StatusNoContent)
+			return ctx.End(http.StatusOK)
 		}
 
 		if len(opts.ExposeHeaders) > 0 {

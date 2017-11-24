@@ -5,6 +5,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.9.2] - 2017-11-24
+
+**Changed:**
+
+- Add HTTP Status code 103 Early Hints.
+
+**Fixed:**
+
+- Fix CORS middleware.
+
 ## [1.9.1] - 2017-11-18
 
 **Changed:**
