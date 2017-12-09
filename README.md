@@ -19,6 +19,7 @@ A lightweight, composable and high performance web service framework for Go.
 - Integrated JSON, JSONP, XML and HTML renderer
 - Integrated CORS, Secure, Favicon and Static middlewares
 - More useful methods on gear.Context to manipulate HTTP Request/Response
+- Run HTTP and gRPC on the same port
 - Completely HTTP/2.0 supported
 
 ## Documentation

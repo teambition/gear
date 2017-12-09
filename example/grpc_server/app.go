@@ -34,8 +34,9 @@ func main() {
 		// "application/grpc", "application/grpc+proto"
 		if strings.HasPrefix(ctx.GetHeader(gear.HeaderContentType), "application/grpc") {
 			rpc.ServeHTTP(ctx.Res, ctx.Req)
+			ctx.End(204) // Must end with 204 to handle rpc error
 		}
-		return ctx.End(204) // Must end with 204 to handle rpc error
+		return nil
 	})
 	app.Use(func(ctx *gear.Context) error {
 		return ctx.HTML(200, "<h1>gRPC</h1>")

@@ -364,7 +364,7 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ctx.respondError(ErrorWithStack(err))
 		}
 		// execute "end hooks" with LIFO order after Response.WriteHeader.
-		// they run in a goroutine, in order to not block current process.
+		// they run in a goroutine, in order to not block current HTTP Request/Response.
 		if len(ctx.Res.endHooks) > 0 {
 			go runHooks(ctx.Res.endHooks)
 		}

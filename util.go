@@ -536,11 +536,11 @@ func ContentDisposition(fileName, dispositionType string) (header string) {
 //
 //  func main() {
 //  	app := gear.New() // Create app
+//  	app.Set(gear.SetLogger, log.New(gear.DefaultFilterWriter(), "", 0))
 //  	app.Use(func(ctx *gear.Context) error {
 //  		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
 //  	})
 //
-//  	app.Set(gear.SetLogger, log.New(gear.DefaultFilterWriter(), "", 0))
 //  	app.Listen(":3000")
 //  }
 //
