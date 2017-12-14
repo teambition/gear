@@ -1478,7 +1478,7 @@ func TestGearContextAttachment(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
-		assert.Equal(`attachment; filename="Gear 设计说明.md"; filename*=UTF-8''Gear%20%E8%AE%BE%E8%AE%A1%E8%AF%B4%E6%98%8E.md`,
+		assert.Equal(`attachment; filename="Gear+%E8%AE%BE%E8%AE%A1%E8%AF%B4%E6%98%8E.md"; filename*=UTF-8''Gear%20%E8%AE%BE%E8%AE%A1%E8%AF%B4%E6%98%8E.md`,
 			res.Header.Get(HeaderContentDisposition))
 		assert.Equal(MIMETextPlainCharsetUTF8, res.Header.Get(HeaderContentType))
 		assert.Equal(string(data), PickRes(res.Text()).(string))

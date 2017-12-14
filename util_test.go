@@ -632,11 +632,11 @@ func TestGearContentDisposition(t *testing.T) {
 		assert.Equal("attachment", ContentDisposition("", ""))
 		assert.Equal("inline", ContentDisposition("", "inline"))
 		assert.Equal(`inline; filename="abc.txt"`, ContentDisposition(`abc.txt`, "inline"))
-		assert.Equal(`attachment; filename="\"abc\".txt"; filename*=UTF-8''%22abc%22.txt`,
+		assert.Equal(`attachment; filename="%22abc%22.txt"; filename*=UTF-8''%22abc%22.txt`,
 			ContentDisposition(`"abc".txt`, ""))
-		assert.Equal(`attachment; filename="统计数据.txt"; filename*=UTF-8''%E7%BB%9F%E8%AE%A1%E6%95%B0%E6%8D%AE.txt`,
+		assert.Equal(`attachment; filename="%E7%BB%9F%E8%AE%A1%E6%95%B0%E6%8D%AE.txt"; filename*=UTF-8''%E7%BB%9F%E8%AE%A1%E6%95%B0%E6%8D%AE.txt`,
 			ContentDisposition(`统计数据.txt`, ""))
-		assert.Equal(`inline; filename="€ rates.txt"; filename*=UTF-8''%E2%82%AC%20rates.txt`,
+		assert.Equal(`inline; filename="%E2%82%AC+rates.txt"; filename*=UTF-8''%E2%82%AC%20rates.txt`,
 			ContentDisposition(`€ rates.txt`, "inline"))
 
 		mType, params, _ := mime.ParseMediaType(ContentDisposition(`统计数据.txt`, ""))
@@ -650,6 +650,15 @@ func TestGearContentDisposition(t *testing.T) {
 		mType, params, _ = mime.ParseMediaType(ContentDisposition(`"abc".txt`, ""))
 		assert.Equal("attachment", mType)
 		assert.Equal(`"abc".txt`, params["filename"])
+
+		mType, params, _ = mime.ParseMediaType(ContentDisposition(`统计 数据+统计 数+据_20171201.xlsx`, ""))
+		assert.Equal("attachment", mType)
+		assert.Equal(`统计 数据+统计 数+据_20171201.xlsx`, params["filename"])
+
+		mType, params, _ = mime.ParseMediaType(`attachment; filename="%E7%BB%9F%E8%AE%A1+%E6%95%B0%E6%8D%AE%2B%E7%BB%9F%E8%AE%A1+%E6%95%B0%2B%E6%8D%AE_20171201.xlsx"`)
+		assert.Equal("attachment", mType)
+		val, _ := url.QueryUnescape(params["filename"])
+		assert.Equal(`统计 数据+统计 数+据_20171201.xlsx`, val)
 	})
 }
 

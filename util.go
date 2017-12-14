@@ -506,8 +506,6 @@ func isEmptyStatus(status int) bool {
 	}
 }
 
-var quoteEscaper = strings.NewReplacer("\\", "\\\\", "\"", "\\\"")
-
 // ContentDisposition implements a simple version of https://tools.ietf.org/html/rfc2183
 // Use mime.ParseMediaType to parse Content-Disposition header.
 func ContentDisposition(fileName, dispositionType string) (header string) {
@@ -518,7 +516,7 @@ func ContentDisposition(fileName, dispositionType string) (header string) {
 		return dispositionType
 	}
 
-	header = fmt.Sprintf(`%s; filename="%s"`, dispositionType, quoteEscaper.Replace(fileName))
+	header = fmt.Sprintf(`%s; filename="%s"`, dispositionType, url.QueryEscape(fileName))
 	fallbackName := url.PathEscape(fileName)
 	if len(fallbackName) != len(fileName) {
 		header = fmt.Sprintf(`%s; filename*=UTF-8''%s`, header, fallbackName)
