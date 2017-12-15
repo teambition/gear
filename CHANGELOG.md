@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.9.3] - 2017-12-15
+
+**Fixed:**
+
+- Fix gear.ContentDisposition for IE7/8.
+
 ## [1.9.2] - 2017-11-24
 
 **Changed:**
