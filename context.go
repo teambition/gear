@@ -585,8 +585,50 @@ func (ctx *Context) XMLBlob(code int, buf []byte) error {
 	return ctx.End(code, buf)
 }
 
+// Send handle code and data with Sender interface.
+// Sender can be registered using `app.Set(gear.SetSender, someSender)`.
+// It will end the ctx. The middlewares after current middleware will not run.
+// "after hooks" (if no error) and "end hooks" will run normally.
+// You can define a custom send function like this:
+//
+//  type mySenderT struct{}
+//
+//  func (s *mySenderT) Send(ctx *Context, code int, data interface{}) error {
+// 	 switch v := data.(type) {
+// 	 case []byte:
+//  		ctx.Type(MIMETextPlainCharsetUTF8)
+//  		return ctx.End(code, v)
+//  	case string:
+//  		return ctx.HTML(code, v)
+//  	case error:
+//  		return ctx.Error(v)
+//  	default:
+//  		return ctx.JSON(code, data)
+//  	}
+//  }
+//
+//  app.Set(gear.SetSender, &mySenderT{})
+//  app.Use(func(ctx *Context) error {
+//  	switch ctx.Path {
+//  	case "/text":
+//  		return ctx.Send(http.StatusOK, []byte("Hello, Gear!"))
+//  	case "/html":
+//  		return ctx.Send(http.StatusOK, "<h1>Hello, Gear!</h1>")
+//  	case "/error":
+//  		return ctx.Send(http.StatusOK, Err.WithMsg("some error"))
+//  	default:
+//  		return ctx.Send(http.StatusOK, map[string]string{"value": "Hello, Gear!"})
+//  	}
+//  })
+func (ctx *Context) Send(code int, data interface{}) (err error) {
+	if ctx.app.sender == nil {
+		return Err.WithMsg("sender not registered")
+	}
+	return ctx.app.sender.Send(ctx, code, data)
+}
+
 // Render renders a template with data and sends a text/html response with status
-// code. Templates can be registered using `app.Renderer = Renderer`.
+// code. Templates can be registered using `app.Set(gear.SetRenderer, someRenderer)`.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" (if no error) and "end hooks" will run normally.
 func (ctx *Context) Render(code int, name string, data interface{}) (err error) {

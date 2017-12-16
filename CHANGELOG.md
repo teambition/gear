@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.9.4] - 2017-12-16
+
+**Changed:**
+
+- Add ctx.Send method.
 
 ## [1.9.3] - 2017-12-15
 

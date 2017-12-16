@@ -21,6 +21,11 @@ type Handler interface {
 	Serve(ctx *Context) error
 }
 
+// Sender interface is used by ctx.Send.
+type Sender interface {
+	Send(ctx *Context, code int, data interface{}) error
+}
+
 // Renderer interface is used by ctx.Render.
 type Renderer interface {
 	Render(ctx *Context, w io.Writer, name string, data interface{}) error
@@ -112,6 +117,7 @@ type App struct {
 
 	keys        []string
 	renderer    Renderer
+	sender      Sender
 	bodyParser  BodyParser
 	urlParser   URLParser
 	compress    Compressible  // Default to nil, do not compress response content.
@@ -189,6 +195,10 @@ const (
 	// Set a on-error hook to app, value should be `func(ctx *Context, err *Error)`, no default value.
 	SetOnError
 
+	// Set a SetSender to app, it will be used by `ctx.Send`, value should implements `gear.Sender` interface,
+	// no default value.
+	SetSender
+
 	// Set a renderer to app, it will be used by `ctx.Render`, value should implements `gear.Renderer` interface,
 	// no default value.
 	SetRenderer
@@ -249,6 +259,12 @@ func (app *App) Set(key, val interface{}) *App {
 				panic(Err.WithMsg("SetOnError setting must be func(ctx *Context, err *Error)"))
 			} else {
 				app.onerror = onerror
+			}
+		case SetSender:
+			if sender, ok := val.(Sender); !ok {
+				panic(Err.WithMsg("SetSender setting must implemented gear.Sender interface"))
+			} else {
+				app.sender = sender
 			}
 		case SetRenderer:
 			if renderer, ok := val.(Renderer); !ok {

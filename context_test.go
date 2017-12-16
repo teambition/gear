@@ -1325,6 +1325,90 @@ func TestGearContextXML(t *testing.T) {
 	assert.Equal(MIMEApplicationJSONCharsetUTF8, res.Header.Get(HeaderContentType))
 }
 
+type SenderTest struct{}
+
+func (s *SenderTest) Send(ctx *Context, code int, data interface{}) error {
+	switch v := data.(type) {
+	case []byte:
+		ctx.Type(MIMETextPlainCharsetUTF8)
+		return ctx.End(code, v)
+	case string:
+		return ctx.HTML(code, v)
+	case error:
+		return ctx.Error(v)
+	default:
+		return ctx.JSON(code, data)
+	}
+}
+
+func TestGearContextSend(t *testing.T) {
+	t.Run("should panic when sender not registered", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			return ctx.Send(http.StatusOK, "data")
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal(`{"error":"Error","message":"sender not registered"}`, PickRes(res.Text()).(string))
+	})
+
+	t.Run("should work", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		assert.Panics(func() {
+			app.Set(SetSender, struct{}{})
+		})
+		app.Set(SetSender, &SenderTest{})
+		app.Use(func(ctx *Context) error {
+			switch ctx.Path {
+			case "/text":
+				return ctx.Send(http.StatusOK, []byte("Hello, Gear!"))
+			case "/html":
+				return ctx.Send(http.StatusOK, "<h1>Hello, Gear!</h1>")
+			case "/error":
+				return ctx.Send(http.StatusOK, Err.WithMsg("some error"))
+			default:
+				return ctx.Send(http.StatusOK, map[string]string{"value": "Hello, Gear!"})
+			}
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String()+"/text")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal(MIMETextPlainCharsetUTF8, res.Header.Get(HeaderContentType))
+		assert.Equal("Hello, Gear!", PickRes(res.Text()).(string))
+
+		res, err = RequestBy("GET", "http://"+srv.Addr().String()+"/html")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal(MIMETextHTMLCharsetUTF8, res.Header.Get(HeaderContentType))
+		assert.Equal("<h1>Hello, Gear!</h1>", PickRes(res.Text()).(string))
+
+		res, err = RequestBy("GET", "http://"+srv.Addr().String()+"/error")
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal(MIMEApplicationJSONCharsetUTF8, res.Header.Get(HeaderContentType))
+		assert.Equal(`{"error":"Error","message":"some error"}`, PickRes(res.Text()).(string))
+
+		res, err = RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal(MIMEApplicationJSONCharsetUTF8, res.Header.Get(HeaderContentType))
+		assert.Equal(`{"value":"Hello, Gear!"}`, PickRes(res.Text()).(string))
+	})
+}
+
 type RenderTest struct {
 	tpl *template.Template
 }
