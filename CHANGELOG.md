@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+
+## [1.9.5] - 2017-12-17
+
+**Fixed:**
+
+- Make ctx.ParseBody support application/jrd+json, application/jose+json and so on.
+
 ## [1.9.4] - 2017-12-16
 
 **Changed:**

@@ -698,6 +698,18 @@ func TestGearContextParseBody(t *testing.T) {
 		assert.Equal("password", body.Pass)
 	})
 
+	t.Run("should parse JSON type like content", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo",
+			bytes.NewBuffer([]byte(`{"id":"subject","pass":"password"}`)))
+		ctx.Req.Header.Set(HeaderContentType, "application/jrd+json")
+
+		body := jsonBodyTemplate{}
+		assert.Nil(ctx.ParseBody(&body))
+		assert.Equal("subject", body.ID)
+	})
+
 	t.Run("should parse Form content", func(t *testing.T) {
 		assert := assert.New(t)
 

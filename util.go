@@ -589,3 +589,9 @@ func Decompress(encoding string, r io.Reader) (io.ReadCloser, error) {
 		return nil, ErrUnsupportedMediaType.WithMsgf("Unsupported Content-Encoding: %s", encoding)
 	}
 }
+
+// https://www.iana.org/assignments/media-types/media-types.xml
+// application/jrd+json, application/jose+json, application/geo+json, application/geo+json-seq and so on.
+func isLikeJSONType(s string) bool {
+	return strings.HasPrefix(s, "application/") && strings.Contains(s, "+json")
+}

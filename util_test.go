@@ -951,3 +951,15 @@ func TestDecompress(t *testing.T) {
 		assert.Equal(415, err.(*Error).Status())
 	})
 }
+
+func TestIsLikeJSONType(t *testing.T) {
+	t.Run("should ok", func(t *testing.T) {
+		assert := assert.New(t)
+		assert.True(isLikeJSONType("application/jrd+json"))
+		assert.True(isLikeJSONType("application/jose+json"))
+		assert.True(isLikeJSONType("application/geo+json"))
+		assert.True(isLikeJSONType("application/geo+json-seq"))
+		assert.False(isLikeJSONType("application1/jrd+json"))
+		assert.False(isLikeJSONType("application/json"))
+	})
+}
