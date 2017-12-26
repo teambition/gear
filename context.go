@@ -283,19 +283,23 @@ func (ctx *Context) Setting(key interface{}) interface{} {
 
 // IP returns the client's network address based on `X-Forwarded-For`
 // or `X-Real-IP` request header.
-func (ctx *Context) IP() net.IP {
+func (ctx *Context) IP(trustedProxy ...bool) net.IP {
+	if len(trustedProxy) > 0 && trustedProxy[0] {
+		ip := ctx.Req.Header.Get(HeaderXForwardedFor)
+		if ip == "" {
+			ip = ctx.Req.Header.Get(HeaderXRealIP)
+		} else if i := strings.IndexByte(ip, ','); i >= 0 {
+			ip = ip[0:i]
+		}
+
+		if realIP := net.ParseIP(ip); realIP != nil {
+			return realIP
+		}
+	}
+
 	ra := ctx.Req.RemoteAddr
-	if ip := ctx.Req.Header.Get(HeaderXForwardedFor); ip != "" {
-		ra = ip
-	} else if ip := ctx.Req.Header.Get(HeaderXRealIP); ip != "" {
-		ra = ip
-	} else {
-		ra, _, _ = net.SplitHostPort(ra)
-	}
-	if index := strings.IndexByte(ra, ','); index >= 0 {
-		ra = ra[0:index]
-	}
-	return net.ParseIP(strings.TrimSpace(ra))
+	ra, _, _ = net.SplitHostPort(ra)
+	return net.ParseIP(ra)
 }
 
 // Protocol returns the protocol ("http" or "https") that a client used to connect to your proxy or load balancer.

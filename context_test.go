@@ -397,19 +397,23 @@ func TestGearContextIP(t *testing.T) {
 	app := New()
 	r := NewRouter()
 	r.Get("/XForwardedFor", func(ctx *Context) error {
-		assert.Equal("192.168.0.99", ctx.IP().String())
+		assert.True(ctx.IP().IsLoopback())
+		assert.Equal("192.168.0.99", ctx.IP(true).String())
 		return ctx.End(http.StatusNoContent)
 	})
 	r.Get("/XRealIP", func(ctx *Context) error {
-		assert.Equal("127.0.0.20", ctx.IP().String())
+		assert.True(ctx.IP().IsLoopback())
+		assert.Equal("192.168.0.99", ctx.IP(true).String())
 		return ctx.End(http.StatusNoContent)
 	})
 	r.Get("/", func(ctx *Context) error {
-		assert.NotNil(ctx.IP())
+		assert.True(ctx.IP().IsLoopback())
+		assert.True(ctx.IP(true).IsLoopback())
 		return ctx.End(http.StatusNoContent)
 	})
-	r.Get("/err", func(ctx *Context) error {
-		assert.Nil(ctx.IP())
+	r.Get("/invalidXRealIP", func(ctx *Context) error {
+		assert.True(ctx.IP().IsLoopback())
+		assert.True(ctx.IP(true).IsLoopback())
 		return ctx.End(http.StatusNoContent)
 	})
 	app.UseHandler(r)
@@ -426,7 +430,7 @@ func TestGearContextIP(t *testing.T) {
 	assert.Equal(204, res.StatusCode)
 
 	req, _ = NewRequst("GET", host+"/XRealIP")
-	req.Header.Set("X-Real-IP", "127.0.0.20")
+	req.Header.Set("X-Real-IP", "192.168.0.99")
 
 	res, err = DefaultClientDo(req)
 	assert.Nil(err)
@@ -437,7 +441,7 @@ func TestGearContextIP(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(204, res.StatusCode)
 
-	req, _ = NewRequst("GET", host+"/err")
+	req, _ = NewRequst("GET", host+"/invalidXRealIP")
 	req.Header.Set("X-Real-IP", "1.2.3")
 
 	res, err = DefaultClientDo(req)

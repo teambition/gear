@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.9.6] - 2017-12-26
+
+**Fixed:**
+
+- Change and fix ctx.IP().
 
 ## [1.9.5] - 2017-12-17
 
