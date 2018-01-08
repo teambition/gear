@@ -321,7 +321,7 @@ func TestGearSetTimeout(t *testing.T) {
 		res.Body.Close()
 	})
 
-	t.Run("respond 500 when cancel", func(t *testing.T) {
+	t.Run("respond 499 when cancel", func(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
@@ -341,7 +341,7 @@ func TestGearSetTimeout(t *testing.T) {
 
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
-		assert.Equal(500, res.StatusCode)
+		assert.Equal(499, res.StatusCode)
 		res.Body.Close()
 	})
 

@@ -151,7 +151,7 @@ func TestGearContextWithContext(t *testing.T) {
 	assert.Nil(err)
 
 	time.Sleep(time.Millisecond)
-	assert.Equal(500, res.StatusCode)
+	assert.Equal(499, res.StatusCode)
 	assert.Equal(3, count.Int())
 }
 

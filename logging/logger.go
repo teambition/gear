@@ -464,9 +464,9 @@ func (l *Logger) SetTo(ctx *gear.Context, key string, val interface{}) {
 //  })
 //
 func (l *Logger) Serve(ctx *gear.Context) error {
-	log := l.FromCtx(ctx)
 	// Add a "end hook" to flush logs
 	ctx.OnEnd(func() {
+		log := l.FromCtx(ctx)
 		// Ignore empty log
 		if len(log) == 0 {
 			return
@@ -580,7 +580,7 @@ func colorStatus(code int) ColorType {
 }
 
 func formatError(i interface{}) string {
-	err := gear.ErrorWithStack(i, 3)
+	err := gear.ErrorWithStack(i)
 	if str, e := err.Format(); e == nil {
 		return str
 	}

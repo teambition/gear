@@ -407,7 +407,9 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// if context canceled abnormally...
 	if e := ctx.Err(); e != nil {
 		if e == context.Canceled {
-			ctx.Res.WriteHeader(http.StatusInternalServerError)
+			// https://stackoverflow.com/questions/46234679/what-is-the-correct-http-status-code-for-a-cancelled-request
+			// 499 Client Closed Request Used when the client has closed the request before the server could send a response.
+			ctx.Res.WriteHeader(ErrClientClosedRequest.Code)
 			return
 		}
 		err = ErrGatewayTimeout.WithMsg(e.Error())

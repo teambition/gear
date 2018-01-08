@@ -140,6 +140,7 @@ var (
 	ErrTooManyRequests               = Err.WithCode(http.StatusTooManyRequests).WithErr("TooManyRequests")
 	ErrRequestHeaderFieldsTooLarge   = Err.WithCode(http.StatusRequestHeaderFieldsTooLarge).WithErr("RequestHeaderFieldsTooLarge")
 	ErrUnavailableForLegalReasons    = Err.WithCode(http.StatusUnavailableForLegalReasons).WithErr("UnavailableForLegalReasons")
+	ErrClientClosedRequest           = Err.WithCode(499).WithErr("ClientClosedRequest")
 	ErrInternalServerError           = Err.WithCode(http.StatusInternalServerError).WithErr("InternalServerError")
 	ErrNotImplemented                = Err.WithCode(http.StatusNotImplemented).WithErr("NotImplemented")
 	ErrBadGateway                    = Err.WithCode(http.StatusBadGateway).WithErr("BadGateway")
