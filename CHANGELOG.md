@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.9.8] - 2018-01-11
+
+**Changed:**
+
+- Add SetTrustedProxy setting.
+
 ## [1.9.7] - 2018-01-08
 
 **Changed:**

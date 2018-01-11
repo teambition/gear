@@ -284,7 +284,12 @@ func (ctx *Context) Setting(key interface{}) interface{} {
 // IP returns the client's network address based on `X-Forwarded-For`
 // or `X-Real-IP` request header.
 func (ctx *Context) IP(trustedProxy ...bool) net.IP {
-	if len(trustedProxy) > 0 && trustedProxy[0] {
+	trusted := ctx.Setting(SetTrustedProxy).(bool)
+	if len(trustedProxy) > 0 {
+		trusted = trustedProxy[0]
+	}
+
+	if trusted {
 		ip := ctx.Req.Header.Get(HeaderXForwardedFor)
 		if ip == "" {
 			ip = ctx.Req.Header.Get(HeaderXRealIP)

@@ -146,6 +146,7 @@ func New() *App {
 	}
 	app.Set(SetEnv, env)
 	app.Set(SetServerName, "Gear/"+Version)
+	app.Set(SetTrustedProxy, false)
 	app.Set(SetBodyParser, DefaultBodyParser(2<<20)) // 2MB
 	app.Set(SetURLParser, DefaultURLParser{})
 	app.Set(SetLogger, log.New(os.Stderr, "", 0))
@@ -222,6 +223,10 @@ const (
 	// Set a server name that respond to client as "Server" header.
 	// Default to "Gear/{version}".
 	SetServerName
+
+	// Set true and proxy header fields will be trusted
+	// Default to false.
+	SetTrustedProxy
 )
 
 // Set add key/value settings to app. The settings can be retrieved by `ctx.Setting(key)`.
@@ -297,6 +302,10 @@ func (app *App) Set(key, val interface{}) *App {
 				panic(Err.WithMsg("SetServerName setting must be string"))
 			} else {
 				app.serverName = name
+			}
+		case SetTrustedProxy:
+			if _, ok := val.(bool); !ok {
+				panic(Err.WithMsg("SetTrustedProxy setting must be bool"))
 			}
 		}
 		app.settings[k] = val
