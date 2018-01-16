@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.9.9] - 2018-01-16
+
+**Fixed:**
+
+- Fix logging.
+
 ## [1.9.8] - 2018-01-11
 
 **Changed:**
