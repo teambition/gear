@@ -191,6 +191,12 @@ func New(w io.Writer) *Logger {
 		log["Proto"] = ctx.Req.Proto
 		log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
 		log["Start"] = time.Now()
+		if s := ctx.GetHeader(gear.HeaderOrigin); s != "" {
+			log["Origin"] = s
+		}
+		if s := ctx.GetHeader(gear.HeaderReferer); s != "" {
+			log["Referer"] = s
+		}
 	}
 
 	logger.consume = func(log Log, _ *gear.Context) {
@@ -220,11 +226,18 @@ func New(w io.Writer) *Logger {
 //  logger := logging.New(os.Stdout)
 //  logger.SetLevel(logging.InfoLevel)
 //  logger.SetLogInit(func(log logging.Log, ctx *gear.Context) {
-//  	log["IP"] = ctx.IP()
-//  	log["Method"] = ctx.Method
-//  	log["URL"] = ctx.Req.URL.String()
-//  	log["Start"] = time.Now()
-//  	log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
+//    log["IP"] = ctx.IP().String()
+//    log["Method"] = ctx.Method
+//    log["URL"] = ctx.Req.URL.String()
+//    log["Proto"] = ctx.Req.Proto
+//    log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
+//    log["Start"] = time.Now()
+//    if s := ctx.GetHeader(gear.HeaderOrigin); s != "" {
+//    	log["Origin"] = s
+//    }
+//    if s := ctx.GetHeader(gear.HeaderReferer); s != "" {
+//    	log["Referer"] = s
+//    }
 //  })
 //  logger.SetLogConsume(func(log logging.Log, _ *gear.Context) {
 //  	end := time.Now()

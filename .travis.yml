@@ -1,12 +1,6 @@
 sudo: false
 language: go
 go:
-  - 1.8
-  - 1.8.1
-  - 1.8.2
-  - 1.8.3
-  - 1.8.4
-  - 1.8.5
   - 1.9
   - 1.9.1
   - 1.9.2
@@ -22,7 +16,8 @@ script:
   - go test -coverprofile=logging.coverprofile ./logging
   - go test -coverprofile=cors.coverprofile ./middleware/cors
   - go test -coverprofile=favicon.coverprofile ./middleware/favicon
-  - go test -coverprofile=static.coverprofile ./middleware/static
+  - go test -coverprofile=grpc.coverprofile ./middleware/grpc
   - go test -coverprofile=secure.coverprofile ./middleware/secure
+  - go test -coverprofile=static.coverprofile ./middleware/static
   - gover
   - goveralls -coverprofile=gover.coverprofile -service=travis-ci

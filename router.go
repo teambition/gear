@@ -330,10 +330,10 @@ func (r *Router) Serve(ctx *Context) error {
 
 // GetRouterNodeFromCtx returns matched Node from router
 //
-// router.Get("/api/:type/:ID", func(ctx *Context) error {
-// 	assert.Equal("/api/:type/:ID", GetRouterNodeFromCtx(ctx).GetPattern())
-// 	return ctx.HTML(200, ctx.Param("type")+ctx.Param("ID"))
-// })
+//  router.Get("/api/:type/:ID", func(ctx *Context) error {
+//  	assert.Equal("/api/:type/:ID", GetRouterNodeFromCtx(ctx).GetPattern())
+//  	return ctx.HTML(200, ctx.Param("type")+ctx.Param("ID"))
+//  })
 func GetRouterNodeFromCtx(ctx *Context) *trie.Node {
 	if res, _ := ctx.Any(routerNodeKey); res != nil {
 		return res.(*trie.Node)

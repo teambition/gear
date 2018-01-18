@@ -287,6 +287,7 @@ id   := matched.Params("ID")
 - Secure handler: [github.com/teambition/gear/middleware/secure](https://github.com/teambition/gear/tree/master/middleware/secure)
 - Static serving: [github.com/teambition/gear/middleware/static](https://github.com/teambition/gear/tree/master/middleware/static)
 - Favicon serving: [github.com/teambition/gear/middleware/favicon](https://github.com/teambition/gear/tree/master/middleware/favicon)
+- gRPC serving: [github.com/teambition/gear/middleware/grpc](https://github.com/teambition/gear/tree/master/middleware/grpc)
 - JWT and Crypto auth: [Gear-Auth](https://github.com/teambition/gear-auth)
 - Cookie session: [Gear-Session](https://github.com/teambition/gear-session)
 - Smart rate limiter: [Gear-Ratelimiter](https://github.com/teambition/gear-ratelimiter)
@@ -301,4 +302,4 @@ id   := matched.Params("ID")
 ## License
 
 Gear is licensed under the [MIT](https://github.com/teambition/gear/blob/master/LICENSE) license.
-Copyright &copy; 2016-2017 [Teambition](https://www.teambition.com).
+Copyright &copy; 2016-2018 [Teambition](https://www.teambition.com).

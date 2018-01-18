@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.9.10] - 2018-01-18
+
+**Changed:**
+
+- Add Referer and Origin header to log.
+- Add gRPC midddleware.
+
 ## [1.9.9] - 2018-01-16
 
 **Fixed:**
