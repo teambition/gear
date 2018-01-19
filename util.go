@@ -564,6 +564,9 @@ func (s *LoggerFilterWriter) SetOutput(out io.Writer) {
 
 // Add add a phrase string to filter
 func (s *LoggerFilterWriter) Add(err string) {
+	if s.out == nil {
+		panic(Err.WithMsg("output io.Writer should be set with SetOutput method"))
+	}
 	s.phrases = append(s.phrases, []byte(err))
 }
 
