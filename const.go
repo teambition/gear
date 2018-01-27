@@ -51,6 +51,7 @@ const (
 	HeaderOrigin             = "Origin"              // Requests
 	HeaderAcceptDatetime     = "Accept-Datetime"     // Requests
 	HeaderXRequestedWith     = "X-Requested-With"    // Requests
+	HeaderXRequestID         = "X-Request-ID"        // Requests
 
 	HeaderAccessControlAllowOrigin      = "Access-Control-Allow-Origin"      // Responses
 	HeaderAccessControlAllowMethods     = "Access-Control-Allow-Methods"     // Responses

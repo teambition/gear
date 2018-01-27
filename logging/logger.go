@@ -185,18 +185,21 @@ func New(w io.Writer) *Logger {
 	logger.SetLogFormat("[%s] %s %s")
 
 	logger.init = func(log Log, ctx *gear.Context) {
+		log["Start"] = time.Now()
 		log["IP"] = ctx.IP().String()
+		log["Proto"] = ctx.Req.Proto
 		log["Method"] = ctx.Method
 		log["URL"] = ctx.Req.URL.String()
-		log["Proto"] = ctx.Req.Proto
-		log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
-		log["Start"] = time.Now()
 		if s := ctx.GetHeader(gear.HeaderOrigin); s != "" {
 			log["Origin"] = s
 		}
 		if s := ctx.GetHeader(gear.HeaderReferer); s != "" {
 			log["Referer"] = s
 		}
+		if s := ctx.GetHeader(gear.HeaderXRequestID); s != "" {
+			log["XRequestID"] = s
+		}
+		log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
 	}
 
 	logger.consume = func(log Log, _ *gear.Context) {
