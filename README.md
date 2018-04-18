@@ -196,7 +196,7 @@ https://github.com/teambition/gear/tree/master/example/grpc_client
 
 ## About Router
 
-[gear.Router](https://godoc.org/github.com/teambition/gear#Router) is a tire base HTTP request handler.
+[gear.Router](https://godoc.org/github.com/teambition/gear#Router) is a trie base HTTP request handler.
 Features:
 
 1. Support named parameter

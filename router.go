@@ -7,7 +7,7 @@ import (
 	"github.com/teambition/trie-mux"
 )
 
-// Router is a tire base HTTP request handler for Gear which can be used to
+// Router is a trie base HTTP request handler for Gear which can be used to
 // dispatch requests to different handler functions.
 // A trivial example is:
 //
