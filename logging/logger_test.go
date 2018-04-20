@@ -115,7 +115,7 @@ func TestGearLogger(t *testing.T) {
 
 		logger := Default()
 		assert.Equal(logger.l, DebugLevel)
-		assert.Equal(logger.tf, "2006-01-02T15:04:05.999Z")
+		assert.Equal(logger.tf, "2006-01-02T15:04:05.000Z")
 		assert.Equal(logger.lf, "[%s] %s %s")
 
 		var buf bytes.Buffer
