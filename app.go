@@ -99,7 +99,7 @@ type HTTPError interface {
 	Status() int
 }
 
-// App is the top-level framework app instance.
+// App is the top-level framework struct.
 //
 // Hello Gear!
 //

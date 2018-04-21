@@ -86,6 +86,7 @@ func New(opts Options) gear.Middleware {
 			if ctx.Method != http.MethodOptions {
 				status = 405
 			}
+			ctx.SetHeader(gear.HeaderContentType, "text/plain; charset=utf-8")
 			ctx.SetHeader(gear.HeaderAllow, "GET, HEAD, OPTIONS")
 			return ctx.End(status)
 		}
