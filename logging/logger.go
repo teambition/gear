@@ -177,11 +177,11 @@ func developmentConsume(log Log, ctx *gear.Context) {
 }
 
 // New creates a Logger instance with given io.Writer and DebugLevel log level.
-// the logger timestamp format is "2006-01-02T15:04:05.999Z"(JavaScript ISO date string), log format is "[%s] %s %s"
+// the logger timestamp format is "2006-01-02T15:04:05.000Z"(JavaScript ISO date string), log format is "[%s] %s %s"
 func New(w io.Writer) *Logger {
 	logger := &Logger{Out: w}
 	logger.SetLevel(DebugLevel)
-	logger.SetTimeFormat("2006-01-02T15:04:05.999Z")
+	logger.SetTimeFormat("2006-01-02T15:04:05.000Z")
 	logger.SetLogFormat("[%s] %s %s")
 
 	logger.init = func(log Log, ctx *gear.Context) {
@@ -403,7 +403,7 @@ func (l *Logger) SetLevel(level Level) *Logger {
 }
 
 // SetTimeFormat set the logger timestamp format
-// The default logger timestamp format is "2006-01-02T15:04:05.999Z"(JavaScript ISO date string)
+// The default logger timestamp format is "2006-01-02T15:04:05.000Z"(JavaScript ISO date string)
 func (l *Logger) SetTimeFormat(timeFormat string) *Logger {
 	l.mu.Lock()
 	defer l.mu.Unlock()
