@@ -241,7 +241,7 @@ func TestGearRouter(t *testing.T) {
 		assert.Equal(501, res.StatusCode)
 		assert.Equal("nosniff", res.Header.Get(HeaderXContentTypeOptions))
 		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal(`{"error":"NotImplemented","message":"\"/\" is not implemented"}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"NotImplemented","message":"\"GET /\" is not implemented"}`, PickRes(res.Text()).(string))
 		res.Body.Close()
 	})
 
@@ -606,7 +606,7 @@ func TestGearRouter(t *testing.T) {
 		assert.NotNil(err)
 		assert.Equal(501, err.(*Error).Code)
 		assert.Equal("NotImplemented", err.(*Error).Err)
-		assert.Equal(`"/abc//efg" is not implemented`, err.(*Error).Msg)
+		assert.Equal(`"GET /abc//efg" is not implemented`, err.(*Error).Msg)
 	})
 
 	t.Run("router with TrailingSlashRedirect = true (defalut)", func(t *testing.T) {
