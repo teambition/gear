@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.9.13] - 2018-05-15
+
+**Changed:**
+
+- Improve error message for gear.Router.
+
+## [1.9.12] - 2018-04-21
+
+**Fixed:**
+
+- Fix logger timestamp format.
+
 ## [1.9.11] - 2018-01-27
 
 **Changed:**
