@@ -299,7 +299,7 @@ func (r *Router) Serve(ctx *Context) error {
 		}
 
 		if r.otherwise == nil {
-			return ErrNotImplemented.WithMsgf(`"%s" is not implemented`, ctx.Path)
+			return ErrNotImplemented.WithMsgf(`"%s %s" is not implemented`, method, ctx.Path)
 		}
 		handler = r.otherwise
 	} else {

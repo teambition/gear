@@ -458,7 +458,7 @@ ErrNotFound                      = Err.WithCode(http.StatusNotFound)
 
 ```go
 if r.otherwise == nil {
-  return ErrNotImplemented.WithMsgf(`"%s" is not implemented`, ctx.Path)
+  return ErrNotImplemented.WithMsgf(`"%s %s" is not implemented`, ctx.Method, ctx.Path)
 }
 ```
 
