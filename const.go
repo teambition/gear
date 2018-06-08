@@ -11,9 +11,10 @@ const (
 	MIMEApplicationJavaScriptCharsetUTF8 = "application/javascript; charset=utf-8"
 	MIMEApplicationXML                   = "application/xml"
 	MIMEApplicationXMLCharsetUTF8        = "application/xml; charset=utf-8"
+	MIMEApplicationYAML                  = "application/yaml"
+	MIMEApplicationTOML                  = "application/toml" // https://github.com/toml-lang/toml
 	MIMEApplicationForm                  = "application/x-www-form-urlencoded"
-	MIMEApplicationProtobuf              = "application/protobuf"
-	MIMEApplicationMsgpack               = "application/msgpack"
+	MIMEApplicationProtobuf              = "application/protobuf" // https://tools.ietf.org/html/draft-rfernando-protocol-buffers-00
 	MIMETextHTML                         = "text/html"
 	MIMETextHTMLCharsetUTF8              = "text/html; charset=utf-8"
 	MIMETextPlain                        = "text/plain"

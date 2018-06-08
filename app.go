@@ -85,8 +85,10 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 		return err
 	}
 
-	if isLikeJSONType(mediaType) {
+	if isLikeMediaType(mediaType, "json") {
 		return json.Unmarshal(buf, body)
+	} else if isLikeMediaType(mediaType, "xml") {
+		return xml.Unmarshal(buf, body)
 	}
 	return ErrUnsupportedMediaType.WithMsg("unsupported media type")
 }

@@ -474,6 +474,7 @@ func (b *atomicBool) setTrue() {
 
 // IsStatusCode returns true if status is HTTP status code.
 // https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+// https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
 func IsStatusCode(status int) bool {
 	switch status {
 	case 100, 101, 102, 103,
@@ -593,8 +594,19 @@ func Decompress(encoding string, r io.Reader) (io.ReadCloser, error) {
 	}
 }
 
+// https://tools.ietf.org/html/rfc6838
 // https://www.iana.org/assignments/media-types/media-types.xml
 // application/jrd+json, application/jose+json, application/geo+json, application/geo+json-seq and so on.
-func isLikeJSONType(s string) bool {
-	return strings.HasPrefix(s, "application/") && strings.Contains(s, "+json")
+func isLikeMediaType(s, t string) bool {
+	if !strings.HasPrefix(s, "application/") {
+		return false
+	}
+	switch t {
+	case "json":
+		return strings.Contains(s, "+json")
+	case "xml":
+		return strings.Contains(s, "+xml")
+	default:
+		return false
+	}
 }

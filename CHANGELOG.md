@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.10.0] - 2018-06-08
+
+**Changed:**
+
+- Add MIMEApplicationYAML (for OpenAPI 3) and MIMEApplicationTOML, remove MIMEApplicationMsgpack.
+
 ## [1.9.13] - 2018-05-15
 
 **Changed:**

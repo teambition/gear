@@ -952,14 +952,17 @@ func TestDecompress(t *testing.T) {
 	})
 }
 
-func TestIsLikeJSONType(t *testing.T) {
+func TestIsLikeMediaType(t *testing.T) {
 	t.Run("should ok", func(t *testing.T) {
 		assert := assert.New(t)
-		assert.True(isLikeJSONType("application/jrd+json"))
-		assert.True(isLikeJSONType("application/jose+json"))
-		assert.True(isLikeJSONType("application/geo+json"))
-		assert.True(isLikeJSONType("application/geo+json-seq"))
-		assert.False(isLikeJSONType("application1/jrd+json"))
-		assert.False(isLikeJSONType("application/json"))
+		assert.True(isLikeMediaType("application/jrd+json", "json"))
+		assert.True(isLikeMediaType("application/jose+json", "json"))
+		assert.True(isLikeMediaType("application/geo+json", "json"))
+		assert.True(isLikeMediaType("application/geo+json-seq", "json"))
+		assert.False(isLikeMediaType("application1/jrd+json", "json"))
+		assert.False(isLikeMediaType("application/json", "json"))
+
+		assert.True(isLikeMediaType("application/gml+xml", "xml"))
+		assert.False(isLikeMediaType("application/xml", "xml"))
 	})
 }
