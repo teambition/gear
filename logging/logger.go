@@ -147,6 +147,31 @@ func (l Level) String() string {
 	}
 }
 
+// ParseLevel takes a string level and returns the gear logging level constant.
+func ParseLevel(lvl string) (Level, error) {
+	switch strings.ToUpper(lvl) {
+	case "EMERGENCY", "EMERG":
+		return EmergLevel, nil
+	case "ALERT":
+		return AlertLevel, nil
+	case "CRITICAL", "CRIT", "CRITI":
+		return CritiLevel, nil
+	case "ERROR", "ERR":
+		return ErrLevel, nil
+	case "WARNING", "WARN":
+		return WarningLevel, nil
+	case "NOTICE":
+		return NoticeLevel, nil
+	case "INFO":
+		return InfoLevel, nil
+	case "DEBUG":
+		return DebugLevel, nil
+	}
+
+	var l Level
+	return l, fmt.Errorf("not a valid gear logging Level: %q", lvl)
+}
+
 var std = New(os.Stderr)
 
 // Default returns the default logger
@@ -388,6 +413,13 @@ func (l *Logger) Output(t time.Time, level Level, s string) (err error) {
 		l.Out.Write([]byte{'\n'})
 	}
 	return
+}
+
+// GetLevel get the logger's log level
+func (l *Logger) GetLevel() Level {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.l
 }
 
 // SetLevel set the logger's log level
