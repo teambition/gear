@@ -282,6 +282,15 @@ func TestGearLogger(t *testing.T) {
 
 	})
 
+	t.Run("GetLevel", func(t *testing.T) {
+		assert := assert.New(t)
+
+		log := Logger{}
+		log.SetLevel(ErrLevel)
+
+		assert.Equal(ErrLevel, log.GetLevel())
+	})
+
 	t.Run("logger setting", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -523,5 +532,39 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		assert.Equal(ColorCyan, colorStatus(304))
 		assert.Equal(ColorYellow, colorStatus(404))
 		assert.Equal(ColorRed, colorStatus(504))
+	})
+}
+
+func TestParseLevel(t *testing.T) {
+	t.Run("ParseLevel", func(t *testing.T) {
+		assert := assert.New(t)
+
+		expected := map[string]Level{
+			"emerg":     EmergLevel,
+			"emergency": EmergLevel,
+			"alert":     AlertLevel,
+			"crit":      CritiLevel,
+			"critical":  CritiLevel,
+			"err":       ErrLevel,
+			"error":     ErrLevel,
+			"warn":      WarningLevel,
+			"warning":   WarningLevel,
+			"notice":    NoticeLevel,
+			"info":      InfoLevel,
+			"debug":     DebugLevel,
+		}
+
+		for key, expectedLevel := range expected {
+			level, err := ParseLevel(key)
+			assert.Equal(nil, err)
+			assert.Equal(expectedLevel, level)
+
+			level, err = ParseLevel(strings.ToUpper(key))
+			assert.Equal(nil, err)
+			assert.Equal(expectedLevel, level)
+		}
+
+		_, err := ParseLevel("unknown")
+		assert.NotEqual(nil, err)
 	})
 }
