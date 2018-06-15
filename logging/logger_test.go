@@ -544,6 +544,7 @@ func TestParseLevel(t *testing.T) {
 			"emergency": EmergLevel,
 			"alert":     AlertLevel,
 			"crit":      CritiLevel,
+			"criti":     CritiLevel,
 			"critical":  CritiLevel,
 			"err":       ErrLevel,
 			"error":     ErrLevel,

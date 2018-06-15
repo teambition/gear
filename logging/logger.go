@@ -154,7 +154,7 @@ func ParseLevel(lvl string) (Level, error) {
 		return EmergLevel, nil
 	case "ALERT":
 		return AlertLevel, nil
-	case "CRITICAL", "CRIT":
+	case "CRITICAL", "CRIT", "CRITI":
 		return CritiLevel, nil
 	case "ERROR", "ERR":
 		return ErrLevel, nil
