@@ -773,6 +773,34 @@ func TestGearContextParseBody(t *testing.T) {
 		assert.Equal("subject", body.ID)
 	})
 
+	t.Run("should parse JSON fail if invalid field type", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo",
+			bytes.NewBuffer([]byte(`{"id":"subject","pass":12345678}`)))
+		ctx.Req.Header.Set(HeaderContentType, "application/json")
+
+		body := jsonBodyTemplate{}
+
+		err := ctx.ParseBody(&body)
+		assert.Equal(400, err.(*Error).Code)
+		assert.Equal("BadRequest: Unmarshal type error: field=pass, expected=string, got=number, offset=31", err.Error())
+	})
+
+	t.Run("should parse JSON fail if invalid json", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "POST", "http://example.com/foo",
+			bytes.NewBuffer([]byte(`{abc}`)))
+		ctx.Req.Header.Set(HeaderContentType, "application/json")
+
+		body := jsonBodyTemplate{}
+
+		err := ctx.ParseBody(&body)
+		assert.Equal(400, err.(*Error).Code)
+		assert.Equal("BadRequest: Syntax error: offset=2, error=invalid character 'a' looking for beginning of object key string", err.Error())
+	})
+
 	t.Run("should parse Form content", func(t *testing.T) {
 		assert := assert.New(t)
 

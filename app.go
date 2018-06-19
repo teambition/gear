@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -72,12 +73,23 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 	if len(buf) == 0 {
 		return ErrBadRequest.WithMsg("request entity empty")
 	}
-	switch mediaType {
-	case MIMEApplicationJSON:
-		return json.Unmarshal(buf, body)
-	case MIMEApplicationXML:
+	switch true {
+	case mediaType == MIMEApplicationJSON, isLikeMediaType(mediaType, "json"):
+		err := json.Unmarshal(buf, body)
+		if err == nil {
+			return nil
+		}
+
+		if ute, ok := err.(*json.UnmarshalTypeError); ok {
+			return fmt.Errorf("Unmarshal type error: field=%v, expected=%v, got=%v, offset=%v", ute.Field, ute.Type, ute.Value, ute.Offset)
+		} else if se, ok := err.(*json.SyntaxError); ok {
+			return fmt.Errorf("Syntax error: offset=%v, error=%v", se.Offset, se.Error())
+		} else {
+			return err
+		}
+	case mediaType == MIMEApplicationXML, isLikeMediaType(mediaType, "xml"):
 		return xml.Unmarshal(buf, body)
-	case MIMEApplicationForm:
+	case mediaType == MIMEApplicationForm:
 		val, err := url.ParseQuery(string(buf))
 		if err == nil {
 			err = ValuesToStruct(val, body, "form")
@@ -85,11 +97,6 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 		return err
 	}
 
-	if isLikeMediaType(mediaType, "json") {
-		return json.Unmarshal(buf, body)
-	} else if isLikeMediaType(mediaType, "xml") {
-		return xml.Unmarshal(buf, body)
-	}
 	return ErrUnsupportedMediaType.WithMsg("unsupported media type")
 }
 
