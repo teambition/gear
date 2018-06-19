@@ -5,6 +5,7 @@ test:
 	go test --race ./middleware/favicon
 	go test --race ./middleware/static
 	go test --race ./middleware/secure
+	go test --race ./middleware/requestid
 
 bench:
 	go test -bench=.
@@ -17,6 +18,7 @@ cover:
 	go test -coverprofile=favicon.coverprofile ./middleware/favicon
 	go test -coverprofile=static.coverprofile ./middleware/static
 	go test -coverprofile=secure.coverprofile ./middleware/secure
+	go test -coverprofile=secure.coverprofile ./middleware/requestid
 	gover
 	go tool cover -html=gover.coverprofile
 	rm -f *.coverprofile
