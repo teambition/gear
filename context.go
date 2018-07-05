@@ -702,9 +702,8 @@ func (ctx *Context) Redirect(url string) (err error) {
 }
 
 // Error send a error with application/json type to response.
-// It will not reset response headers and not use app.OnError hook
-// It will end the ctx. The middlewares after current middleware and "after hooks" will not run.
-// "end hooks" will run normally.
+// The middlewares after current middleware and "after hooks" will not run,
+// but "end hooks" will run normally.
 func (ctx *Context) Error(e error) error {
 	ctx.Res.afterHooks = nil // clear afterHooks when any error
 	ctx.Res.ResetHeader()
