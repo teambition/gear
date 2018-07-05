@@ -269,6 +269,30 @@ func TestGearAppOnError(t *testing.T) {
 		res.Body.Close()
 	})
 
+	t.Run("modify error", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := New()
+		app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
+		app.Set(SetOnError, func(ctx *Context, err error) error {
+			return errors.New("modified " + err.Error())
+		})
+
+		app.Use(func(ctx *Context) error {
+			return errors.New("some error")
+		})
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal(`{"error":"InternalServerError","message":"modified some error"}`, PickRes(res.Text()).(string))
+		assert.True(strings.Contains(buf.String(), `"message":"modified some error"`))
+		res.Body.Close()
+	})
+
 	t.Run("panic recovered", func(t *testing.T) {
 		assert := assert.New(t)
 
