@@ -137,7 +137,7 @@ type App struct {
 	timeout     time.Duration // Default to 0, no time out.
 	serverName  string        // Gear/1.7.6
 	logger      *log.Logger
-	onerror     func(*Context, HTTPError)
+	onerror     func(*Context, error) error
 	withContext func(*http.Request) context.Context
 	settings    map[interface{}]interface{}
 }
@@ -206,7 +206,8 @@ const (
 	// We recommand set logger flags to 0.
 	SetLogger
 
-	// Set a on-error hook to app, value should be `func(ctx *Context, err *Error)`, no default value.
+	// Set a on-error hook to app, value should be `func(ctx *Context, err error) error`.
+	// Return a new error to response or nil if you want response by yourself with ctx.End etc.
 	SetOnError
 
 	// Set a SetSender to app, it will be used by `ctx.Send`, value should implements `gear.Sender` interface,
@@ -273,10 +274,15 @@ func (app *App) Set(key, val interface{}) *App {
 				app.logger = logger
 			}
 		case SetOnError:
-			if onerror, ok := val.(func(ctx *Context, err HTTPError)); !ok {
-				panic(Err.WithMsg("SetOnError setting must be func(ctx *Context, err *Error)"))
-			} else {
+			if fn, ok := val.(func(ctx *Context, err HTTPError)); ok {
+				app.onerror = func(ctx *Context, err error) error {
+					fn(ctx, ParseError(err, ctx.Res.Status()))
+					return nil
+				}
+			} else if onerror, ok := val.(func(ctx *Context, err error) error); ok {
 				app.onerror = onerror
+			} else {
+				panic(Err.WithMsg("SetOnError setting must be func(ctx *Context, err error) error"))
 			}
 		case SetSender:
 			if sender, ok := val.(Sender); !ok {
