@@ -474,7 +474,7 @@ if allowOrigin == "" {
 
 如果你觉得 `gear.Error` 还无法满足需求，你完全可以参考它实现一个更复杂的 `gear.HTTPError` interface 的 error 类型。Gear 框架下完全可以自定义更复杂的，充满想象力的错误处理机制。
 
-框架内的任何 `error` interface 的错误，都会经过 `gear.ParseError` 处理成 `gear.HTTPError` interface，然后再交给 `gear.SetOnError` 做进一步自定义处理：
+框架内的任何 `error` interface 的错误，都会经过 `gear.SetOnError` 处理后再交给 `gear.ParseError` 处理成 `gear.HTTPError` interface：
 
 ```go
 func ParseError(e error, code ...int) HTTPError {
@@ -504,6 +504,16 @@ func ParseError(e error, code ...int) HTTPError {
 我们可以定义自己的 `MyError` 类型，然后通过设置 `gear.SetOnError` 对它进行特殊处理。下面我们通过 `switch type` 判断如果 `httpError` 是我们自定义的 `MyError` 类型（也就是我们预期的在业务逻辑中使用的）则用 `ctx.JSON` 主动处理，否则不处理，而是由框架自动处理：
 
 ```go
+app.Set(gear.SetOnError, func(ctx *gear.Context, err error) error {
+  switch err := err.(type) {
+  case MyError, *MyError:
+    return ctx.JSON(err.Code, err)
+  default:
+    return err
+  }
+})
+
+// 旧的回调方式
 app.Set(gear.SetOnError, func(ctx *gear.Context, httpError gear.HTTPError) {
   switch err := httpError.(type) {
   case MyError, *MyError:
