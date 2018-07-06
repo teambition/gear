@@ -707,13 +707,18 @@ func (ctx *Context) Redirect(url string) (err error) {
 func (ctx *Context) Error(e error) error {
 	ctx.Res.afterHooks = nil // clear afterHooks when any error
 	ctx.Res.ResetHeader()
+
+	if ctx.app.onerror != nil {
+		if err := ctx.app.onerror(ctx, e); err != nil {
+			e = err
+		}
+	}
+
 	err := ParseError(e, ctx.Res.status)
 	if err == nil {
 		err = ErrInternalServerError.WithMsg("nil error")
 	}
-	if ctx.app.onerror != nil {
-		ctx.app.onerror(ctx, err)
-	}
+
 	//  try to respond error if `OnError` does't do it.
 	ctx.respondError(err)
 	return nil
