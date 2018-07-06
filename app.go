@@ -137,6 +137,7 @@ type App struct {
 	timeout     time.Duration // Default to 0, no time out.
 	serverName  string        // Gear/1.7.6
 	logger      *log.Logger
+	parseError  func(err error) HTTPError
 	onerror     func(*Context, HTTPError)
 	withContext func(*http.Request) context.Context
 	settings    map[interface{}]interface{}
@@ -159,6 +160,12 @@ func New() *App {
 	app.Set(SetBodyParser, DefaultBodyParser(2<<20)) // 2MB
 	app.Set(SetURLParser, DefaultURLParser{})
 	app.Set(SetLogger, log.New(os.Stderr, "", 0))
+	app.Set(SetParseError, func(err error) HTTPError {
+		return ParseError(err)
+	})
+	app.Set(SetOnError, func(ctx *Context, err HTTPError) {
+		ctx.Error(err)
+	})
 	return app
 }
 
@@ -206,7 +213,18 @@ const (
 	// We recommand set logger flags to 0.
 	SetLogger
 
-	// Set a on-error hook to app, value should be `func(ctx *Context, err *Error)`, no default value.
+	// Set a ParseError hook to app that convert middleware error to HTTPError,
+	// value should be `func(err error) HTTPError`, default to:
+	//  app.Set(SetParseError, func(err error) HTTPError {
+	//  	return ParseError(err)
+	//  })
+	SetParseError
+
+	// Set a on-error hook to app that handle middleware error.
+	// value should be `func(ctx *Context, err HTTPError)`, default to:
+	//  app.Set(SetOnError, func(ctx *Context, err HTTPError) {
+	//  	ctx.Error(err)
+	//  })
 	SetOnError
 
 	// Set a SetSender to app, it will be used by `ctx.Send`, value should implements `gear.Sender` interface,
@@ -244,77 +262,83 @@ func (app *App) Set(key, val interface{}) *App {
 		switch key {
 		case SetBodyParser:
 			if bodyParser, ok := val.(BodyParser); !ok {
-				panic(Err.WithMsg("SetBodyParser setting must implemented gear.BodyParser interface"))
+				panic(Err.WithMsg("SetBodyParser setting must implemented `gear.BodyParser` interface"))
 			} else {
 				app.bodyParser = bodyParser
 			}
 		case SetURLParser:
 			if urlParser, ok := val.(URLParser); !ok {
-				panic(Err.WithMsg("SetURLParser setting must implemented gear.URLParser interface"))
+				panic(Err.WithMsg("SetURLParser setting must implemented `gear.URLParser` interface"))
 			} else {
 				app.urlParser = urlParser
 			}
 		case SetCompress:
 			if compress, ok := val.(Compressible); !ok {
-				panic(Err.WithMsg("SetCompress setting must implemented gear.Compressible interface"))
+				panic(Err.WithMsg("SetCompress setting must implemented `gear.Compressible` interface"))
 			} else {
 				app.compress = compress
 			}
 		case SetKeys:
 			if keys, ok := val.([]string); !ok {
-				panic(Err.WithMsg("SetKeys setting must be []string"))
+				panic(Err.WithMsg("SetKeys setting must be `[]string`"))
 			} else {
 				app.keys = keys
 			}
 		case SetLogger:
 			if logger, ok := val.(*log.Logger); !ok {
-				panic(Err.WithMsg("SetLogger setting must be *log.Logger instance"))
+				panic(Err.WithMsg("SetLogger setting must be `*log.Logger` instance"))
 			} else {
 				app.logger = logger
 			}
+		case SetParseError:
+			if parseError, ok := val.(func(err error) HTTPError); !ok {
+				panic(Err.WithMsg("SetParseError setting must be `func(err error) HTTPError`"))
+			} else {
+				app.parseError = parseError
+			}
 		case SetOnError:
 			if onerror, ok := val.(func(ctx *Context, err HTTPError)); !ok {
-				panic(Err.WithMsg("SetOnError setting must be func(ctx *Context, err *Error)"))
+				panic(Err.WithMsg("SetOnError setting must be `func(ctx *Context, err HTTPError)`"))
 			} else {
 				app.onerror = onerror
 			}
 		case SetSender:
 			if sender, ok := val.(Sender); !ok {
-				panic(Err.WithMsg("SetSender setting must implemented gear.Sender interface"))
+				panic(Err.WithMsg("SetSender setting must implemented `gear.Sender` interface"))
 			} else {
 				app.sender = sender
 			}
 		case SetRenderer:
 			if renderer, ok := val.(Renderer); !ok {
-				panic(Err.WithMsg("SetRenderer setting must implemented gear.Renderer interface"))
+				panic(Err.WithMsg("SetRenderer setting must implemented `gear.Renderer` interface"))
 			} else {
 				app.renderer = renderer
 			}
 		case SetTimeout:
 			if timeout, ok := val.(time.Duration); !ok {
-				panic(Err.WithMsg("SetTimeout setting must be time.Duration instance"))
+				panic(Err.WithMsg("SetTimeout setting must be `time.Duration` instance"))
 			} else {
 				app.timeout = timeout
 			}
 		case SetWithContext:
 			if withContext, ok := val.(func(*http.Request) context.Context); !ok {
-				panic(Err.WithMsg("SetWithContext setting must be func(*http.Request) context.Context"))
+				panic(Err.WithMsg("SetWithContext setting must be `func(*http.Request) context.Context`"))
 			} else {
 				app.withContext = withContext
 			}
 		case SetEnv:
 			if _, ok := val.(string); !ok {
-				panic(Err.WithMsg("SetEnv setting must be string"))
+				panic(Err.WithMsg("SetEnv setting must be `string`"))
 			}
 		case SetServerName:
 			if name, ok := val.(string); !ok {
-				panic(Err.WithMsg("SetServerName setting must be string"))
+				panic(Err.WithMsg("SetServerName setting must be `string`"))
 			} else {
 				app.serverName = name
 			}
 		case SetTrustedProxy:
 			if _, ok := val.(bool); !ok {
-				panic(Err.WithMsg("SetTrustedProxy setting must be bool"))
+				panic(Err.WithMsg("SetTrustedProxy setting must be `bool`"))
 			}
 		}
 		app.settings[k] = val
@@ -399,7 +423,10 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err := recover(); err != nil && err != http.ErrAbortHandler {
 			ctx.Res.afterHooks = nil
 			ctx.Res.ResetHeader()
-			ctx.respondError(ErrorWithStack(err))
+			e := ErrorWithStack(err)
+			app.onerror(ctx, e)
+			// try to ensure respond error if `app.onerror` does't do it.
+			ctx.respondError(e)
 		}
 		// execute "end hooks" with LIFO order after Response.WriteHeader.
 		// they run in a goroutine, in order to not block current HTTP Request/Response.
@@ -433,10 +460,16 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		err = ErrGatewayTimeout.WithMsg(e.Error())
 	}
 
+	// handle middleware errors
 	if !IsNil(err) {
-		ctx.Error(err)
+		ctx.Res.afterHooks = nil // clear afterHooks when any error
+		ctx.Res.ResetHeader()
+		e := app.parseError(err)
+		app.onerror(ctx, e)
+		// try to ensure respond error if `app.onerror` does't do it.
+		ctx.respondError(e)
 	} else {
-		// ensure respond
+		// try to ensure respond
 		ctx.Res.WriteHeader(0)
 	}
 }

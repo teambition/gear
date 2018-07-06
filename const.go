@@ -155,3 +155,91 @@ var (
 	ErrNotExtended                   = Err.WithCode(http.StatusNotExtended).WithErr("NotExtended")
 	ErrNetworkAuthenticationRequired = Err.WithCode(http.StatusNetworkAuthenticationRequired).WithErr("NetworkAuthenticationRequired")
 )
+
+// ErrByStatus returns a gear.Error by http status.
+func ErrByStatus(status int) *Error {
+	switch status {
+	case 400:
+		return ErrBadRequest
+	case 401:
+		return ErrUnauthorized
+	case 402:
+		return ErrPaymentRequired
+	case 403:
+		return ErrForbidden
+	case 404:
+		return ErrNotFound
+	case 405:
+		return ErrMethodNotAllowed
+	case 406:
+		return ErrNotAcceptable
+	case 407:
+		return ErrProxyAuthRequired
+	case 408:
+		return ErrRequestTimeout
+	case 409:
+		return ErrConflict
+	case 410:
+		return ErrGone
+	case 411:
+		return ErrLengthRequired
+	case 412:
+		return ErrPreconditionFailed
+	case 413:
+		return ErrRequestEntityTooLarge
+	case 414:
+		return ErrRequestURITooLong
+	case 415:
+		return ErrUnsupportedMediaType
+	case 416:
+		return ErrRequestedRangeNotSatisfiable
+	case 417:
+		return ErrExpectationFailed
+	case 418:
+		return ErrTeapot
+	case 421:
+		return ErrMisdirectedRequest
+	case 422:
+		return ErrUnprocessableEntity
+	case 423:
+		return ErrLocked
+	case 424:
+		return ErrFailedDependency
+	case 426:
+		return ErrUpgradeRequired
+	case 428:
+		return ErrPreconditionRequired
+	case 429:
+		return ErrTooManyRequests
+	case 431:
+		return ErrRequestHeaderFieldsTooLarge
+	case 451:
+		return ErrUnavailableForLegalReasons
+	case 499:
+		return ErrClientClosedRequest
+	case 500:
+		return ErrInternalServerError
+	case 501:
+		return ErrNotImplemented
+	case 502:
+		return ErrBadGateway
+	case 503:
+		return ErrServiceUnavailable
+	case 504:
+		return ErrGatewayTimeout
+	case 505:
+		return ErrHTTPVersionNotSupported
+	case 506:
+		return ErrVariantAlsoNegotiates
+	case 507:
+		return ErrInsufficientStorage
+	case 508:
+		return ErrLoopDetected
+	case 510:
+		return ErrNotExtended
+	case 511:
+		return ErrNetworkAuthenticationRequired
+	default:
+		return Err.WithCode(status)
+	}
+}

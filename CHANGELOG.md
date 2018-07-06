@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.12.0] - 2018-07-06
+
+**Fixed:**
+
+- Fix gear.SetOnError hook.
+
+**Changed:**
+
+- ctx.Error and ctx.ErrorStatus will not trigger gear.SetOnError hook now.
+- Add gear.SetParseError hook.
+
 ## [1.11.0] - 2018-06-20
 
 **Changed:**

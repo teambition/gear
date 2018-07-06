@@ -702,7 +702,8 @@ func (ctx *Context) Redirect(url string) (err error) {
 }
 
 // Error send a error with application/json type to response.
-// The middlewares after current middleware and "after hooks" will not run,
+// It will not trigger gear.SetOnError hook.
+// It will end the ctx. The middlewares after current middleware and "after hooks" will not run,
 // but "end hooks" will run normally.
 func (ctx *Context) Error(e error) error {
 	ctx.Res.afterHooks = nil // clear afterHooks when any error
@@ -711,21 +712,15 @@ func (ctx *Context) Error(e error) error {
 	if err == nil {
 		err = ErrInternalServerError.WithMsg("nil error")
 	}
-	if ctx.app.onerror != nil {
-		ctx.app.onerror(ctx, err)
-	}
-	//  try to respond error if `OnError` does't do it.
 	ctx.respondError(err)
 	return nil
 }
 
-// ErrorStatus send a error by status code with application/json type  to response. The status should be 4xx or 5xx code.
-// It will not reset response headers and not use app.OnError hook
-// It will end the ctx. The middlewares after current middleware and "after hooks" will not run.
-// "end hooks" will run normally.
+// ErrorStatus send a error by status code to response.
+// It is sugar of ctx.Error
 func (ctx *Context) ErrorStatus(status int) error {
-	if status >= 400 && status < 600 {
-		return ctx.Error(Err.WithCode(status))
+	if status >= 400 && IsStatusCode(status) {
+		return ctx.Error(ErrByStatus(status))
 	}
 	return ErrInternalServerError.WithMsg("invalid error status")
 }

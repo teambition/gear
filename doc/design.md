@@ -470,12 +470,20 @@ if allowOrigin == "" {
 }
 ```
 
-### `gear.ParseError`，`gear.SetOnError`
+### `gear.SetParseError`，`gear.SetOnError`
 
 如果你觉得 `gear.Error` 还无法满足需求，你完全可以参考它实现一个更复杂的 `gear.HTTPError` interface 的 error 类型。Gear 框架下完全可以自定义更复杂的，充满想象力的错误处理机制。
 
-框架内的任何 `error` interface 的错误，都会经过 `gear.ParseError` 处理成 `gear.HTTPError` interface，然后再交给 `gear.SetOnError` 做进一步自定义处理：
+框架内中间件返回的任何 `error` 错误，包括 panic 时被 recover 的错误，都会经过 `gear.SetParseError` hook 处理成 `gear.HTTPError` interface，然后再交给 `gear.SetOnError` hook 做进一步自定义处理：
 
+默认的 `gear.SetParseError` hook：
+```go
+app.Set(SetParseError, func(err error) HTTPError {
+	return ParseError(err)
+})
+```
+
+其中 ParseError：
 ```go
 func ParseError(e error, code ...int) HTTPError {
   if IsNil(e) {
@@ -503,16 +511,24 @@ func ParseError(e error, code ...int) HTTPError {
 
 我们可以定义自己的 `MyError` 类型，然后通过设置 `gear.SetOnError` 对它进行特殊处理。下面我们通过 `switch type` 判断如果 `httpError` 是我们自定义的 `MyError` 类型（也就是我们预期的在业务逻辑中使用的）则用 `ctx.JSON` 主动处理，否则不处理，而是由框架自动处理：
 
+默认的 `gear.SetOnError` hook：
+```go
+app.Set(SetOnError, func(ctx *Context, err HTTPError) {
+	ctx.Error(err)
+})
+```
+
+自定义：
 ```go
 app.Set(gear.SetOnError, func(ctx *gear.Context, httpError gear.HTTPError) {
   switch err := httpError.(type) {
   case MyError, *MyError:
     ctx.JSON(err.Code, err)
+  default:
+    ctx.Error(err)
   }
 })
 ```
-
-这里再次强调，框架内捕捉的所有错误，包括 `ctx.Error(error)` 和 `ctx.ErrorStatus(statusCode)` 主动发起的，包括中间件 `return error` 返回的，包括 panic 的，也包括 `context.Context` cancel 引发的错误等，都是经过上面叙述的错误处理流程处理，响应给客户端，有必要的则输出到日志。
 
 ## 6. After Hook 和 End Hook 的后置处理
 
