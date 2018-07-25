@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.12.1] - 2018-07-25
+
+**Changed:**
+
+- Add x-request-XXX to header filter whitelist
+
 ## [1.12.0] - 2018-07-06
 
 **Fixed:**
