@@ -27,6 +27,7 @@ func TestGearRouter(t *testing.T) {
 		})
 		r.Handle("GET", "/users", func(ctx *Context) error {
 			assert.Equal("/users", GetRouterNodeFromCtx(ctx).GetPattern())
+			assert.Equal("/api/users", GetRouterPatternFromCtx(ctx))
 			return ctx.HTML(200, "OK")
 		})
 
@@ -229,6 +230,7 @@ func TestGearRouter(t *testing.T) {
 		r := NewRouter()
 		r.Get("/abc", func(ctx *Context) error {
 			assert.Equal("/abc", GetRouterNodeFromCtx(ctx).GetPattern())
+			assert.Equal("/abc", GetRouterPatternFromCtx(ctx))
 			return ctx.End(204)
 		})
 
@@ -278,6 +280,7 @@ func TestGearRouter(t *testing.T) {
 		})
 		r.Get("/api/:type/:ID", func(ctx *Context) error {
 			assert.Equal("/api/:type/:ID", GetRouterNodeFromCtx(ctx).GetPattern())
+			assert.Equal("/api/:type/:ID", GetRouterPatternFromCtx(ctx))
 			return ctx.HTML(200, ctx.Param("type")+ctx.Param("ID"))
 		})
 
@@ -304,6 +307,7 @@ func TestGearRouter(t *testing.T) {
 		})
 		r.Get("/api/::/:ID", func(ctx *Context) error {
 			assert.Equal("/api/::/:ID", GetRouterNodeFromCtx(ctx).GetPattern())
+			assert.Equal("/api/::/:ID", GetRouterPatternFromCtx(ctx))
 			return ctx.HTML(200, ctx.Param("ID"))
 		})
 
@@ -330,6 +334,7 @@ func TestGearRouter(t *testing.T) {
 		})
 		r.Get("/api/:type*", func(ctx *Context) error {
 			assert.Equal("/api/:type*", GetRouterNodeFromCtx(ctx).GetPattern())
+			assert.Equal("/api/:type*", GetRouterPatternFromCtx(ctx))
 			return ctx.HTML(200, ctx.Param("type"))
 		})
 
@@ -353,10 +358,12 @@ func TestGearRouter(t *testing.T) {
 		r.Use(func(ctx *Context) error {
 			count++
 			assert.Equal(`/api/:type/:ID(^\d+$)`, GetRouterNodeFromCtx(ctx).GetPattern())
+			assert.Equal(`/api/:type/:ID(^\d+$)`, GetRouterPatternFromCtx(ctx))
 			return nil
 		})
 		r.Get(`/api/:type/:ID(^\d+$)`, func(ctx *Context) error {
 			assert.Equal(`/api/:type/:ID(^\d+$)`, GetRouterNodeFromCtx(ctx).GetPattern())
+			assert.Equal(`/api/:type/:ID(^\d+$)`, GetRouterPatternFromCtx(ctx))
 			return ctx.HTML(200, ctx.Param("type")+ctx.Param("ID"))
 		})
 
@@ -394,8 +401,10 @@ func TestGearRouter(t *testing.T) {
 			switch ctx.Method {
 			case "GET":
 				assert.Nil(GetRouterNodeFromCtx(ctx))
+				assert.Equal("", GetRouterPatternFromCtx(ctx))
 			case "PUT":
 				assert.Equal("/api", GetRouterNodeFromCtx(ctx).GetPattern())
+				assert.Equal("/api", GetRouterPatternFromCtx(ctx))
 			}
 			return ctx.HTML(404, ctx.Method+" "+ctx.Path)
 		})
@@ -885,11 +894,15 @@ func TestGearRouter(t *testing.T) {
 
 		r1 := NewRouter(RouterOptions{Root: "/abc"})
 		r1.Get("/:name", func(ctx *Context) error {
+			assert.Equal("/:name", GetRouterNodeFromCtx(ctx).GetPattern())
+			assert.Equal("/abc/:name", GetRouterPatternFromCtx(ctx))
 			return ctx.End(200, []byte(ctx.Param("name")))
 		})
 
 		r2 := NewRouter(RouterOptions{Root: "/abcd"})
 		r2.Get("/:name", func(ctx *Context) error {
+			assert.Equal("/:name", GetRouterNodeFromCtx(ctx).GetPattern())
+			assert.Equal("/abcd/:name", GetRouterPatternFromCtx(ctx))
 			return ctx.End(200, []byte(ctx.Param("name")))
 		})
 

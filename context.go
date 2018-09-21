@@ -26,6 +26,7 @@ const (
 	isRecursive
 	paramsKey
 	routerNodeKey
+	routerRootKey
 )
 
 // Any interface is used by ctx.Any.

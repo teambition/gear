@@ -322,6 +322,7 @@ func (r *Router) Serve(ctx *Context) error {
 
 	ctx.SetAny(paramsKey, matched.Params)
 	ctx.SetAny(routerNodeKey, matched.Node)
+	ctx.SetAny(routerRootKey, r.rt)
 	if len(r.mds) > 0 {
 		handler = Compose(r.middleware, handler)
 	}
@@ -339,4 +340,18 @@ func GetRouterNodeFromCtx(ctx *Context) *trie.Node {
 		return res.(*trie.Node)
 	}
 	return nil
+}
+
+// GetRouterPatternFromCtx returns matched Node from router
+//
+//  routerV2.Get("/api/:type/:ID", func(ctx *Context) error {
+//  	assert.Equal("/v2/api/:type/:ID", GetRouterPatternFromCtx(ctx))
+//  	return ctx.HTML(200, "ok")
+//  })
+func GetRouterPatternFromCtx(ctx *Context) string {
+	if node := GetRouterNodeFromCtx(ctx); node != nil {
+		rt := ctx.MustAny(routerRootKey)
+		return rt.(string) + node.GetPattern()
+	}
+	return ""
 }

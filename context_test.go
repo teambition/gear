@@ -784,7 +784,9 @@ func TestGearContextParseBody(t *testing.T) {
 
 		err := ctx.ParseBody(&body)
 		assert.Equal(400, err.(*Error).Code)
-		assert.Equal("BadRequest: Unmarshal type error: field=pass, expected=string, got=number, offset=31", err.Error())
+		// "BadRequest: Unmarshal type error: field=pass, expected=string, got=number, offset=31"
+		// go1.11: "BadRequest: Unmarshal type error: expected=string, got=number, offset=31"
+		assert.Contains(err.Error(), "expected=string, got=number, offset=31")
 	})
 
 	t.Run("should parse JSON fail if invalid json", func(t *testing.T) {

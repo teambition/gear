@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.12.2] - 2018-09-21
+
+**Changed:**
+
+- Add GetRouterPatternFromCtx function
+
 ## [1.12.1] - 2018-07-25
 
 **Changed:**
