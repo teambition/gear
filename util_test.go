@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/http2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // ----- Test Helpers -----
