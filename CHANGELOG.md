@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.13.1] - 2018-12-27
+
+**Fixed:**
+
+- Fix and improve ctx.ParseURL
+
+## [1.13.0] - 2018-12-02
+
+**Changed:**
+
+- Add go.mod
+
 ## [1.12.2] - 2018-09-21
 
 **Changed:**

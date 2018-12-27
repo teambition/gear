@@ -194,7 +194,7 @@ func developmentConsume(log Log, ctx *gear.Context) {
 
 	end := time.Now().UTC()
 	FprintWithColor(std.Out, fmt.Sprintf("%s", log["IP"]), ColorGreen)
-	fmt.Fprintf(std.Out, ` - - [%s] "%s %s %s" `, end.Format(std.tf), log["Method"], log["URL"], log["Proto"])
+	fmt.Fprintf(std.Out, ` - - [%s] "%s %s %s" `, end.Format(std.tf), log["Method"], log["URI"], log["Proto"])
 	status := log["Status"].(int)
 	FprintWithColor(std.Out, strconv.Itoa(status), colorStatus(status))
 	resTime := float64(end.Sub(log["Start"].(time.Time))) / 1e6
@@ -214,7 +214,7 @@ func New(w io.Writer) *Logger {
 		log["IP"] = ctx.IP().String()
 		log["Proto"] = ctx.Req.Proto
 		log["Method"] = ctx.Method
-		log["URL"] = ctx.Req.URL.String()
+		log["URI"] = ctx.Req.RequestURI
 		if s := ctx.GetHeader(gear.HeaderOrigin); s != "" {
 			log["Origin"] = s
 		}
@@ -256,7 +256,7 @@ func New(w io.Writer) *Logger {
 //  logger.SetLogInit(func(log logging.Log, ctx *gear.Context) {
 //    log["IP"] = ctx.IP().String()
 //    log["Method"] = ctx.Method
-//    log["URL"] = ctx.Req.URL.String()
+//    log["URI"] = ctx.Req.RequestURI
 //    log["Proto"] = ctx.Req.Proto
 //    log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
 //    log["Start"] = time.Now()

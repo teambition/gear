@@ -75,7 +75,7 @@ https://github.com/teambition/gear/tree/master/example/hello
       "Host":    ctx.Host,
       "Method":  ctx.Method,
       "Path":    ctx.Path,
-      "URL":     ctx.Req.URL.String(),
+      "URI":     ctx.Req.RequestURI,
       "Headers": ctx.Req.Header,
     })
   })

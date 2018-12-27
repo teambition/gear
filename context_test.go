@@ -975,9 +975,15 @@ func TestGearContextParseBody(t *testing.T) {
 	})
 }
 
+type PaginationEmbedTemplate struct {
+	PageSize  int    `json:"page_size" query:"page_size"`
+	PageToken string `json:"page_token" query:"page_token"`
+}
+
 type jsonQueryTemplate struct {
 	ID   string `json:"id" query:"id"`
 	Pass string `json:"pass" query:"pass"`
+	PaginationEmbedTemplate
 }
 
 func (b *jsonQueryTemplate) Validate() error {
@@ -1072,19 +1078,21 @@ func TestGearContextParseURL(t *testing.T) {
 	t.Run("should parse query content", func(t *testing.T) {
 		assert := assert.New(t)
 
-		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin", nil)
+		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin&page_token=xxx&page_size=2", nil)
 
 		body := jsonQueryTemplate{}
 		err := ctx.ParseURL(&body)
 		assert.Nil(err)
 		assert.Equal("admin", body.ID)
 		assert.Equal("password", body.Pass)
+		assert.Equal(2, body.PageSize)
+		assert.Equal("xxx", body.PageToken)
 	})
 
 	t.Run("should parse query error with invalid data type", func(t *testing.T) {
 		assert := assert.New(t)
 
-		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin&name=admin&time=1898", nil)
+		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin&name=admin&time=vdfvdf", nil)
 		body := invalidQueryTemplate{}
 		err := ctx.ParseURL(&body)
 		assert.NotNil(err)

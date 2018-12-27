@@ -273,25 +273,40 @@ func ValuesToStruct(values map[string][]string, target interface{}, tag string) 
 		return fmt.Errorf("invalid struct: %v", rv)
 	}
 
+	return valuesToStruct(values, rv, tag)
+}
+
+func valuesToStruct(values map[string][]string, rv reflect.Value, tag string) (err error) {
 	rv = rv.Elem()
 	rt := rv.Type()
 	n := rv.NumField()
 	for i := 0; i < n; i++ {
-		fv := rv.Field(i)
-		if !fv.CanSet() {
+		structField := rt.Field(i)
+		value := rv.Field(i)
+		if structField.Anonymous {
+			// embedded field
+			if value.Kind() == reflect.Struct && value.CanAddr() {
+				if err = valuesToStruct(values, value.Addr(), tag); err != nil {
+					return
+				}
+			}
 			continue
 		}
 
-		fk := rt.Field(i).Tag.Get(tag)
+		if !value.CanSet() {
+			continue
+		}
+
+		fk := structField.Tag.Get(tag)
 		if fk == "" {
 			continue
 		}
 
 		if vals, ok := values[fk]; ok {
-			if fv.Kind() == reflect.Slice {
-				err = setRefSlice(fv, vals)
+			if value.Kind() == reflect.Slice {
+				err = setRefSlice(value, vals)
 			} else if len(vals) > 0 {
-				err = setRefField(fv, vals[0])
+				err = setRefField(value, vals[0])
 			}
 			if err != nil {
 				return
