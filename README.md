@@ -303,4 +303,4 @@ id   := matched.Params("ID")
 ## License
 
 Gear is licensed under the [MIT](https://github.com/teambition/gear/blob/master/LICENSE) license.
-Copyright &copy; 2016-2018 [Teambition](https://www.teambition.com).
+Copyright &copy; 2016-2019 [Teambition](https://www.teambition.com).

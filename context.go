@@ -702,6 +702,38 @@ func (ctx *Context) Redirect(url string) (err error) {
 	return
 }
 
+// OkHTML is a wrap of ctx.HTML with http.StatusOK
+func (ctx *Context) OkHTML(str string) error {
+	return ctx.HTML(http.StatusOK, str)
+}
+
+// OkJSON is a wrap of ctx.JSON with http.StatusOK
+//
+//  ctx.OkJSON(struct{}{})
+func (ctx *Context) OkJSON(val interface{}) error {
+	return ctx.JSON(http.StatusOK, val)
+}
+
+// OkXML is a wrap of ctx.XML with http.StatusOK
+func (ctx *Context) OkXML(val interface{}) error {
+	return ctx.XML(http.StatusOK, val)
+}
+
+// OkSend is a wrap of ctx.Send with http.StatusOK
+func (ctx *Context) OkSend(val interface{}) error {
+	return ctx.Send(http.StatusOK, val)
+}
+
+// OkRender is a wrap of ctx.Render with http.StatusOK
+func (ctx *Context) OkRender(name string, val interface{}) error {
+	return ctx.Render(http.StatusOK, name, val)
+}
+
+// OkStream is a wrap of ctx.Stream with http.StatusOK
+func (ctx *Context) OkStream(contentType string, r io.Reader) error {
+	return ctx.Stream(http.StatusOK, contentType, r)
+}
+
 // Error send a error with application/json type to response.
 // It will not trigger gear.SetOnError hook.
 // It will end the ctx. The middlewares after current middleware and "after hooks" will not run,

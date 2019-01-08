@@ -1320,6 +1320,26 @@ func TestGearContextJSON(t *testing.T) {
 	assert.Equal(MIMEApplicationJSONCharsetUTF8, res.Header.Get(HeaderContentType))
 }
 
+func TestGearContextOkJSON(t *testing.T) {
+	assert := assert.New(t)
+
+	app := New()
+	app.Use(func(ctx *Context) error {
+		return ctx.OkJSON(struct{}{})
+	})
+
+	srv := app.Start()
+	defer srv.Close()
+
+	host := "http://" + srv.Addr().String()
+	res, err := RequestBy("GET", host)
+	assert.Nil(err)
+
+	assert.Equal(200, res.StatusCode)
+	assert.Equal(`{}`, PickRes(res.Text()).(string))
+	assert.Equal(MIMEApplicationJSONCharsetUTF8, res.Header.Get(HeaderContentType))
+}
+
 func TestGearContextJSONP(t *testing.T) {
 	assert := assert.New(t)
 

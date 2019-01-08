@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.14.0] - 2019-01-08
+
+**Changed:**
+
+- Add ctx.OkHTML, ctx.OkJSON, ctx.OkXML, ctx.OkSend, ctx.OkRender, ctx.OkStream
+
 ## [1.13.1] - 2018-12-27
 
 **Fixed:**
