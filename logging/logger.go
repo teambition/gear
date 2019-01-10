@@ -227,6 +227,7 @@ func New(w io.Writer) *Logger {
 	logger.consume = func(log Log, ctx *gear.Context) {
 		end := time.Now()
 		if t, ok := log["Start"].(time.Time); ok {
+			log["Start"] = t.UTC().Format(logger.tf)
 			log["Time"] = end.Sub(t) / 1e6 // ms
 		}
 
