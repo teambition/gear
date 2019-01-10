@@ -221,16 +221,24 @@ func New(w io.Writer) *Logger {
 		if s := ctx.GetHeader(gear.HeaderReferer); s != "" {
 			log["Referer"] = s
 		}
-		if s := ctx.GetHeader(gear.HeaderXRequestID); s != "" {
-			log["XRequestID"] = s
-		}
 		log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
 	}
 
-	logger.consume = func(log Log, _ *gear.Context) {
+	logger.consume = func(log Log, ctx *gear.Context) {
 		end := time.Now()
 		if t, ok := log["Start"].(time.Time); ok {
+			log["Start"] = t.UTC().Format(logger.tf)
 			log["Time"] = end.Sub(t) / 1e6 // ms
+		}
+
+		if s := ctx.GetHeader(gear.HeaderXRequestID); s != "" {
+			log["XRequestID"] = s
+		} else if s := ctx.Res.Get(gear.HeaderXRequestID); s != "" {
+			log["XRequestID"] = s
+		}
+
+		if router := gear.GetRouterPatternFromCtx(ctx); router != "" {
+			log["Router"] = fmt.Sprintf("%s %s", ctx.Method, router)
 		}
 
 		if str, err := log.Format(); err == nil {
