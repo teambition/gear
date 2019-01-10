@@ -237,6 +237,10 @@ func New(w io.Writer) *Logger {
 			log["XRequestID"] = s
 		}
 
+		if router := gear.GetRouterPatternFromCtx(ctx); router != "" {
+			log["Router"] = fmt.Sprintf("%s %s", ctx.Method, router)
+		}
+
 		if str, err := log.Format(); err == nil {
 			logger.Output(end, InfoLevel, str)
 		} else {
