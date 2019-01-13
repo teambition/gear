@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.15.0] - 2019-01-13
+
+**Changed:**
+
+- Remove `501 Not Implemented` for gear.Router.
+
 ## [1.14.1] - 2019-01-10
 
 **Changed:**

@@ -207,7 +207,6 @@ Features:
 1. Support fixed path automatic redirection
 1. Support trailing slash automatic redirection
 1. Automatic handle `405 Method Not Allowed`
-1. Automatic handle `501 Not Implemented`
 1. Automatic handle `OPTIONS` method
 1. Best Performance
 
@@ -294,11 +293,6 @@ id   := matched.Params("ID")
 - Smart rate limiter: [Gear-Ratelimiter](https://github.com/teambition/gear-ratelimiter)
 - CSRF: [Gear-CSRF](https://github.com/teambition/gear-csrf)
 - Opentracing with Zipkin: [Gear-Tracing](https://github.com/teambition/gear-tracing)
-
-## Applications with Gear
-
-- [KPass](https://github.com/seccom/kpass) - a web application to manage password safe.
-- [IP Service](https://github.com/zensh/ipservice) - a simple IP service.
 
 ## License
 

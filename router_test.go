@@ -45,7 +45,7 @@ func TestGearRouter(t *testing.T) {
 		res, err = RequestBy("GET", host+"/api")
 		assert.Nil(err)
 		assert.Equal(0, called)
-		assert.Equal(501, res.StatusCode)
+		assert.Equal(421, res.StatusCode)
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/api/users")
@@ -224,7 +224,7 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 	})
 
-	t.Run("router with 501", func(t *testing.T) {
+	t.Run("router with 421", func(t *testing.T) {
 		assert := assert.New(t)
 
 		r := NewRouter()
@@ -240,10 +240,7 @@ func TestGearRouter(t *testing.T) {
 
 		res, err := RequestBy("GET", host)
 		assert.Nil(err)
-		assert.Equal(501, res.StatusCode)
-		assert.Equal("nosniff", res.Header.Get(HeaderXContentTypeOptions))
-		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
-		assert.Equal(`{"error":"NotImplemented","message":"\"GET /\" is not implemented"}`, PickRes(res.Text()).(string))
+		assert.Equal(421, res.StatusCode)
 		res.Body.Close()
 	})
 
@@ -374,7 +371,7 @@ func TestGearRouter(t *testing.T) {
 		res, err := RequestBy("GET", host+"/api/user/abc")
 		assert.Nil(err)
 		assert.Equal(0, count)
-		assert.Equal(501, res.StatusCode)
+		assert.Equal(421, res.StatusCode)
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/api/user/123")
@@ -512,7 +509,7 @@ func TestGearRouter(t *testing.T) {
 
 		res, err := RequestBy("GET", host+"/api/user/123")
 		assert.Nil(err)
-		assert.Equal(501, res.StatusCode)
+		assert.Equal(421, res.StatusCode)
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/Api/User/Abc")
@@ -607,15 +604,12 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/abc//efg")
-		assert.Equal(501, res.StatusCode)
+		assert.Equal(421, res.StatusCode)
 		res.Body.Close()
 
 		ctx := CtxTest(app, "GET", "/abc//efg", nil)
 		err = r.Serve(ctx)
-		assert.NotNil(err)
-		assert.Equal(501, err.(*Error).Code)
-		assert.Equal("NotImplemented", err.(*Error).Err)
-		assert.Equal(`"GET /abc//efg" is not implemented`, err.(*Error).Msg)
+		assert.Nil(err)
 	})
 
 	t.Run("router with TrailingSlashRedirect = true (defalut)", func(t *testing.T) {
@@ -781,13 +775,12 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/abc/efg/")
-		assert.Equal(501, res.StatusCode)
+		assert.Equal(421, res.StatusCode)
 		res.Body.Close()
 
 		ctx := CtxTest(app, "GET", "/abc/efg/", nil)
 		err = r.Serve(ctx)
-		assert.NotNil(err)
-		assert.Equal(501, err.(*Error).Code)
+		assert.Nil(r.Serve(ctx))
 
 		res, err = RequestBy("PUT", host+"/abc/xyz/")
 		assert.Nil(err)
@@ -796,11 +789,11 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 
 		res, err = RequestBy("PUT", host+"/abc/xyz")
-		assert.Equal(501, res.StatusCode)
+		assert.Equal(421, res.StatusCode)
 		res.Body.Close()
 
 		ctx = CtxTest(app, "PUT", "/abc/xyz", nil)
-		assert.NotNil(r.Serve(ctx))
+		assert.Nil(r.Serve(ctx))
 	})
 
 	t.Run("when router middleware ended early", func(t *testing.T) {
@@ -892,6 +885,18 @@ func TestGearRouter(t *testing.T) {
 	t.Run("multi-routers", func(t *testing.T) {
 		assert := assert.New(t)
 
+		r0 := NewRouter()
+		r0.Get("/", func(ctx *Context) error {
+			assert.Equal("/", GetRouterNodeFromCtx(ctx).GetPattern())
+			assert.Equal("/", GetRouterPatternFromCtx(ctx))
+			return ctx.End(200, []byte("ok"))
+		})
+		r0.Get("/xyz", func(ctx *Context) error {
+			assert.Equal("/xyz", GetRouterNodeFromCtx(ctx).GetPattern())
+			assert.Equal("/xyz", GetRouterPatternFromCtx(ctx))
+			return ctx.End(200, []byte("xyz"))
+		})
+
 		r1 := NewRouter(RouterOptions{Root: "/abc"})
 		r1.Get("/:name", func(ctx *Context) error {
 			assert.Equal("/:name", GetRouterNodeFromCtx(ctx).GetPattern())
@@ -907,6 +912,7 @@ func TestGearRouter(t *testing.T) {
 		})
 
 		app := New()
+		app.UseHandler(r0)
 		app.UseHandler(r1)
 		app.UseHandler(r2)
 
@@ -915,6 +921,18 @@ func TestGearRouter(t *testing.T) {
 		host := "http://" + srv.Addr().String()
 
 		res, err := RequestBy("GET", host)
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("ok", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = RequestBy("GET", host+"/xyz")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("xyz", PickRes(res.Text()).(string))
+		res.Body.Close()
+
+		res, err = RequestBy("GET", host+"/xyzz")
 		assert.Nil(err)
 		assert.Equal(421, res.StatusCode)
 		res.Body.Close()
