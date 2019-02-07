@@ -19,33 +19,36 @@ type Response struct {
 	endHooks    []func()
 	ended       atomicBool // indicate that app middlewares run out.
 	wroteHeader atomicBool
-	w           http.ResponseWriter // the origin http.ResponseWriter, should not be override.
-	rw          http.ResponseWriter // maybe a http.ResponseWriter wrapper
+	// some http.ResponseWriter implementations will reset http.Header to nil.
+	// we capture it for ctx.OnEnd hooks. https://github.com/teambition/gear/issues/49
+	handlerHeader http.Header
+	w             http.ResponseWriter // the origin http.ResponseWriter, should not be override.
+	rw            http.ResponseWriter // maybe a http.ResponseWriter wrapper
 }
 
 // Get gets the first value associated with the given key. If there are no values associated with the key, Get returns "". To access multiple values of a key, access the map directly with CanonicalHeaderKey.
 func (r *Response) Get(key string) string {
-	return r.Header().Get(key)
+	return r.handlerHeader.Get(key)
 }
 
 // Set sets the header entries associated with key to the single element value. It replaces any existing values associated with key.
 func (r *Response) Set(key, value string) {
-	r.Header().Set(key, value)
+	r.handlerHeader.Set(key, value)
 }
 
 // Del deletes the header entries associated with key.
 func (r *Response) Del(key string) {
-	r.Header().Del(key)
+	r.handlerHeader.Del(key)
 }
 
 // Vary manipulate the HTTP Vary header.
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Vary
 func (r *Response) Vary(field string) {
-	if field != "" && r.Get(HeaderVary) != "*" {
+	if field != "" && r.handlerHeader.Get(HeaderVary) != "*" {
 		if field == "*" {
-			r.Header().Set(HeaderVary, field)
+			r.handlerHeader.Set(HeaderVary, field)
 		} else {
-			r.Header().Add(HeaderVary, field)
+			r.handlerHeader.Add(HeaderVary, field)
 		}
 	}
 }
@@ -82,7 +85,7 @@ func (r *Response) ResetHeader(filterReg ...*regexp.Regexp) {
 
 // Header returns the header map that will be sent by WriteHeader.
 func (r *Response) Header() http.Header {
-	return r.rw.Header()
+	return r.handlerHeader
 }
 
 // Write writes the data to the connection as part of an HTTP reply.

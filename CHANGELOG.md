@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.15.1] - 2019-02-07
+
+**Fixed:**
+
+- Fix gear.Response https://github.com/teambition/gear/issues/49.
+
 ## [1.15.0] - 2019-01-13
 
 **Changed:**

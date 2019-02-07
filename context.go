@@ -63,7 +63,7 @@ func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	ctx := Context{
 		app: app,
 		Req: r,
-		Res: &Response{w: w, rw: w},
+		Res: &Response{w: w, rw: w, handlerHeader: w.Header()},
 
 		Host:   r.Host,
 		Method: r.Method,
