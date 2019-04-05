@@ -182,10 +182,3 @@ func (r *Response) respond(status int, body []byte) (err error) {
 	}
 	return
 }
-
-func runHooks(hooks []func()) {
-	// run hooks in LIFO order
-	for i := len(hooks) - 1; i >= 0; i-- {
-		hooks[i]()
-	}
-}

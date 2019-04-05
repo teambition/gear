@@ -196,23 +196,13 @@ func (ctx *Context) Timing(dt time.Duration, fn func(context.Context)) (err erro
 	ct, cancel := ctx.WithTimeout(dt)
 	defer cancel()
 
-	ch := make(chan struct{})
-	defFn := func() {
-		// recover the fn call
-		if e := recover(); e != nil {
-			err = ErrInternalServerError.WithMsgf("Timing panic: %#v", e)
-		}
-		close(ch)
-	}
-	go func() {
-		defer defFn()
-		fn(ct)
-	}()
+	ch := make(chan error, 1) // not block tryRunTiming
+	go tryRunTiming(ct, fn, ch)
 
 	select {
 	case <-ct.Done():
 		err = ct.Err()
-	case <-ch:
+	case err = <-ch:
 	}
 	return
 }
@@ -817,4 +807,17 @@ func (ctx *Context) handleCompress() (cw *compressWriter) {
 		}
 	}
 	return
+}
+
+func catchTiming(ch chan error) {
+	defer close(ch)
+	// recover the fn call
+	if e := recover(); e != nil {
+		ch <- ErrInternalServerError.WithMsgf("Timing panic: %#v", e)
+	}
+}
+
+func tryRunTiming(ct context.Context, fn func(context.Context), ch chan error) {
+	defer catchTiming(ch)
+	fn(ct)
 }

@@ -269,7 +269,7 @@ func TestGearAppOnError(t *testing.T) {
 		res.Body.Close()
 	})
 
-	t.Run("panic recovered", func(t *testing.T) {
+	t.Run("middleware panic recovered", func(t *testing.T) {
 		assert := assert.New(t)
 
 		var buf bytes.Buffer
@@ -289,6 +289,38 @@ func TestGearAppOnError(t *testing.T) {
 
 		log := buf.String()
 		assert.True(strings.Contains(log, "github.com/teambition/gear"))
+		res.Body.Close()
+	})
+
+	t.Run("end hook panic recovered", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Use(func(ctx *Context) error {
+			if ctx.Path == "/ok" {
+				ctx.OkHTML("")
+				return nil
+			}
+
+			ctx.Status(400)
+			ctx.OnEnd(func() {
+				panic("Some end hook error")
+			})
+			return nil
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(400, res.StatusCode)
+		res.Body.Close()
+
+		time.Sleep(time.Millisecond * 100)
+		res, err = RequestBy("GET", "http://"+srv.Addr().String()+"/ok")
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
 		res.Body.Close()
 	})
 }

@@ -219,7 +219,7 @@ func TestGearContextTiming(t *testing.T) {
 					<-c.Done()
 					assert.Equal(context.Canceled, c.Err())
 				}()
-				panic("some error")
+				panic("some timing error")
 			})
 			assert.NotNil(err)
 			return err
@@ -231,7 +231,7 @@ func TestGearContextTiming(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String())
 		assert.Nil(err)
 		assert.Equal(500, res.StatusCode)
-		assert.Equal(`{"error":"InternalServerError","message":"Timing panic: \"some error\""}`, PickRes(res.Text()).(string))
+		assert.Equal(`{"error":"InternalServerError","message":"Timing panic: \"some timing error\""}`, PickRes(res.Text()).(string))
 	})
 
 	t.Run("when timeout", func(t *testing.T) {

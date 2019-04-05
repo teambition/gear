@@ -399,7 +399,7 @@ func (app *App) Start(addr ...string) *ServerListener {
 }
 
 // Error writes error to underlayer logging system.
-func (app *App) Error(err error) {
+func (app *App) Error(err interface{}) {
 	if err := ErrorWithStack(err, 4); err != nil {
 		str, e := err.Format()
 		f := app.logger.Flags() == 0
@@ -424,26 +424,8 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// recover panic error
-	defer func() {
-		if err := recover(); err != nil && err != http.ErrAbortHandler {
-			ctx.Res.afterHooks = nil
-			ctx.Res.ResetHeader()
-			e := ErrorWithStack(err)
-			app.onerror(ctx, e)
-			// try to ensure respond error if `app.onerror` does't do it.
-			ctx.respondError(e)
-		}
-		// execute "end hooks" with LIFO order after Response.WriteHeader.
-		// they run in a goroutine, in order to not block current HTTP Request/Response.
-		if len(ctx.Res.endHooks) > 0 {
-			go runHooks(ctx.Res.endHooks)
-		}
-	}()
-
-	go func() {
-		<-ctx.Done()
-		ctx.Res.ended.setTrue()
-	}()
+	defer catchRequest(ctx)
+	go handleCtxEnd(ctx)
 
 	// process app middleware
 	err := app.mds.run(ctx)
@@ -458,7 +440,8 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e := ctx.Err(); e != nil {
 		if e == context.Canceled {
 			// https://stackoverflow.com/questions/46234679/what-is-the-correct-http-status-code-for-a-cancelled-request
-			// 499 Client Closed Request Used when the client has closed the request before the server could send a response.
+			// 499 Client Closed Request Used when the client has closed
+			// the request before the server could send a response.
 			ctx.Res.WriteHeader(ErrClientClosedRequest.Code)
 			return
 		}
@@ -508,4 +491,43 @@ func (s *ServerListener) Addr() net.Addr {
 // Wait make the non-blocking app instance blocking.
 func (s *ServerListener) Wait() error {
 	return <-s.c
+}
+
+func catchRequest(ctx *Context) {
+	if err := recover(); err != nil && err != http.ErrAbortHandler {
+		ctx.Res.afterHooks = nil
+		ctx.Res.ResetHeader()
+		e := ErrorWithStack(err)
+		ctx.app.onerror(ctx, e)
+		// try to ensure respond error if `app.onerror` does't do it.
+		ctx.respondError(e)
+	}
+	// execute "end hooks" with LIFO order after Response.WriteHeader.
+	// they run in a goroutine, in order to not block current HTTP Request/Response.
+	if len(ctx.Res.endHooks) > 0 {
+		go tryRunHooks(ctx.app, ctx.Res.endHooks)
+	}
+}
+
+func handleCtxEnd(ctx *Context) {
+	<-ctx.Done()
+	ctx.Res.ended.setTrue()
+}
+
+func runHooks(hooks []func()) {
+	// run hooks in LIFO order
+	for i := len(hooks) - 1; i >= 0; i-- {
+		hooks[i]()
+	}
+}
+
+func tryRunHooks(app *App, hooks []func()) {
+	defer catchErr(app)
+	runHooks(hooks)
+}
+
+func catchErr(app *App) {
+	if err := recover(); err != nil && err != http.ErrAbortHandler {
+		app.Error(err)
+	}
 }
