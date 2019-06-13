@@ -767,8 +767,8 @@ func (ctx *Context) End(code int, buf ...[]byte) (err error) {
 // After add a "after hook" to the ctx that will run after middleware process,
 // but before Response.WriteHeader. So it will block response writing.
 func (ctx *Context) After(hook func()) {
-	if ctx.Res.ended.isTrue() { // should not add afterHooks if ctx.Res.ended
-		panic(Err.WithMsg(`can't add "after hook" after middleware process ended`))
+	if ctx.Res.wroteHeader.isTrue() {
+		panic(Err.WithMsg(`can't add "after hook" after header wrote`))
 	}
 	ctx.Res.afterHooks = append(ctx.Res.afterHooks, hook)
 }
@@ -778,8 +778,8 @@ func (ctx *Context) After(hook func()) {
 // Take care that http.ResponseWriter and http.Request maybe reset for reusing.
 // Issue https://github.com/teambition/gear/issues/24
 func (ctx *Context) OnEnd(hook func()) {
-	if ctx.Res.ended.isTrue() { // should not add endHooks if ctx.Res.ended
-		panic(Err.WithMsg(`can't add "end hook" after middleware process ended`))
+	if ctx.Res.wroteHeader.isTrue() {
+		panic(Err.WithMsg(`can't add "end hook" after header wrote`))
 	}
 	ctx.Res.endHooks = append(ctx.Res.endHooks, hook)
 }

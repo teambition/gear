@@ -2033,7 +2033,38 @@ func TestGearContextAfter(t *testing.T) {
 		assert.Equal(204, res.StatusCode)
 	})
 
-	t.Run("can't add hook if ctx ended", func(t *testing.T) {
+	t.Run("add hook when ctx ended", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		count := Counter(0)
+		app.Use(func(ctx *Context) error {
+			ctx.After(func() {
+				assert.Equal(3, count.Add())
+			})
+
+			count.Add()
+			assert.Equal(1, count.Int())
+			ctx.Status(204)
+			ctx.Res.ended.setTrue()
+			ctx.After(func() {
+				assert.Equal(2, count.Add())
+			})
+			return nil
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+
+		time.Sleep(time.Millisecond)
+		assert.Equal(3, count.Int())
+		assert.Equal(204, res.StatusCode)
+	})
+
+	t.Run("can't add hook if header wrote", func(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
@@ -2048,8 +2079,7 @@ func TestGearContextAfter(t *testing.T) {
 
 			count.Add()
 			assert.Equal(1, count.Int())
-			ctx.Status(204)
-			ctx.Res.ended.setTrue()
+			ctx.End(204)
 			assert.Panics(func() {
 				ctx.After(func() {})
 			})
@@ -2101,7 +2131,38 @@ func TestGearContextOnEnd(t *testing.T) {
 		assert.Equal(204, res.StatusCode)
 	})
 
-	t.Run("can't add hook if ctx ended", func(t *testing.T) {
+	t.Run("add hook when ctx ended", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		count := Counter(0)
+		app.Use(func(ctx *Context) error {
+			ctx.OnEnd(func() {
+				assert.Equal(3, count.Add())
+			})
+
+			count.Add()
+			assert.Equal(1, count.Int())
+			ctx.Status(204)
+			ctx.Res.ended.setTrue()
+			ctx.OnEnd(func() {
+				assert.Equal(2, count.Add())
+			})
+			return nil
+		})
+
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+
+		time.Sleep(time.Millisecond)
+		assert.Equal(3, count.Int())
+		assert.Equal(204, res.StatusCode)
+	})
+
+	t.Run("can't add hook if header wrote", func(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
@@ -2122,8 +2183,7 @@ func TestGearContextOnEnd(t *testing.T) {
 			})
 
 			assert.Equal(1, count.Add())
-			ctx.Status(204)
-			ctx.Res.ended.setTrue()
+			ctx.End(204)
 			assert.Panics(func() {
 				ctx.OnEnd(func() {})
 			})

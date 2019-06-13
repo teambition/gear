@@ -4,11 +4,18 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+
+## [1.15.3] - 2019-06-13
+
+**Fixed:**
+
+- Allow add "after hook" and "end hook" after context ended but before header wrote.
+
 ## [1.15.2] - 2019-02-07
 
 **Fixed:**
 
-- Panic in end hook will be recovered.
+- Panic in "end hook" will be recovered.
 
 ## [1.15.1] - 2019-02-07
 
