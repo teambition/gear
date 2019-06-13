@@ -12,7 +12,7 @@ A lightweight, composable and high performance web service framework for Go.
 https://github.com/square/certstrap
 
 ```sh
-certstrap init --common-name "GearTest"
+certstrap init --common-name "GearTest" --expires "10 year"
 certstrap request-cert --common-name test -ip 127.0.0.1 -domain localhost
 certstrap sign test --CA GearTest
 ```

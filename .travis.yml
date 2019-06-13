@@ -23,6 +23,6 @@ script:
   - go test -coverprofile=grpc.coverprofile ./middleware/grpc
   - go test -coverprofile=secure.coverprofile ./middleware/secure
   - go test -coverprofile=static.coverprofile ./middleware/static
-  - go test -coverprofile=static.coverprofile ./middleware/requestid
+  - go test -coverprofile=requestid.coverprofile ./middleware/requestid
   - gover
   - goveralls -coverprofile=gover.coverprofile -service=travis-ci
