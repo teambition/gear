@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.15.4] - 2019-07-03
+
+**Fixed:**
+
+- Fix DefaultBodyParser's mediaType.
 
 ## [1.15.3] - 2019-06-13
 

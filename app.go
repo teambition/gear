@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -74,7 +75,7 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 		return ErrBadRequest.WithMsg("request entity empty")
 	}
 	switch true {
-	case mediaType == MIMEApplicationJSON, isLikeMediaType(mediaType, "json"):
+	case strings.HasPrefix(mediaType, MIMEApplicationJSON), isLikeMediaType(mediaType, "json"):
 		err := json.Unmarshal(buf, body)
 		if err == nil {
 			return nil
@@ -92,9 +93,9 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 		} else {
 			return err
 		}
-	case mediaType == MIMEApplicationXML, isLikeMediaType(mediaType, "xml"):
+	case strings.HasPrefix(mediaType, MIMEApplicationXML), isLikeMediaType(mediaType, "xml"):
 		return xml.Unmarshal(buf, body)
-	case mediaType == MIMEApplicationForm:
+	case strings.HasPrefix(mediaType, MIMEApplicationForm):
 		val, err := url.ParseQuery(string(buf))
 		if err == nil {
 			err = ValuesToStruct(val, body, "form")
