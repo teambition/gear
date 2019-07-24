@@ -241,7 +241,12 @@ func New(w io.Writer) *Logger {
 			log["Router"] = fmt.Sprintf("%s %s", ctx.Method, router)
 		}
 
-		if str, err := log.Format(); err == nil {
+		if logger.json {
+			log["Timestamp"] = end.UTC().Format(logger.tf)
+			if err := logger.OutputJSON(log); err != nil {
+				logger.OutputJSON(Log{"ERR": "WriteLogError", "Message": err.Error()})
+			}
+		} else if str, err := log.Format(); err == nil {
 			logger.Output(end, InfoLevel, str)
 		} else {
 			logger.Output(end, WarningLevel, log.String())
@@ -296,6 +301,7 @@ type Logger struct {
 	// file, or `os.Stderr`. You can also set this to
 	// something more adventorous, such as logging to Kafka.
 	Out     io.Writer
+	json    bool
 	l       Level                    // logging level
 	tf, lf  string                   // time format, log format
 	mu      sync.Mutex               // ensures atomic writes; protects the following fields
@@ -407,7 +413,6 @@ func (l *Logger) Println(args ...interface{}) {
 }
 
 // Output writes a string log with timestamp and log level to the output.
-// If the level is greater than logger level, the log will be omitted.
 // The log will be format by timeFormat and logFormat.
 func (l *Logger) Output(t time.Time, level Level, s string) (err error) {
 	l.mu.Lock()
@@ -419,6 +424,21 @@ func (l *Logger) Output(t time.Time, level Level, s string) (err error) {
 	_, err = fmt.Fprintf(l.Out, l.lf, t.UTC().Format(l.tf), level.String(), crlfEscaper.Replace(s))
 	if err == nil {
 		l.Out.Write([]byte{'\n'})
+	}
+	return
+}
+
+// OutputJSON writes a Log log as JSON string to the output.
+func (l *Logger) OutputJSON(log Log) (err error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	var str string
+	if str, err = log.Format(); err == nil {
+		_, err = fmt.Fprint(l.Out, crlfEscaper.Replace(str))
+		if err == nil {
+			l.Out.Write([]byte{'\n'})
+		}
 	}
 	return
 }
@@ -439,6 +459,14 @@ func (l *Logger) SetLevel(level Level) *Logger {
 		panic(gear.Err.WithMsg("invalid logger level"))
 	}
 	l.l = level
+	return l
+}
+
+// SetJSONLog set the logger writing JSON string log.
+func (l *Logger) SetJSONLog() *Logger {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.json = true
 	return l
 }
 

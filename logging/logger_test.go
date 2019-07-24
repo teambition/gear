@@ -468,6 +468,38 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		res.Body.Close()
 	})
 
+	t.Run("json log", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := gear.New()
+
+		logger := New(&buf)
+		logger.SetJSONLog()
+		app.UseHandler(logger)
+		app.Use(func(ctx *gear.Context) error {
+			logger.SetTo(ctx, "Data", []int{1, 2, 3})
+			return ctx.HTML(200, "OK")
+		})
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(200, res.StatusCode)
+		assert.Equal("text/html; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		time.Sleep(10 * time.Millisecond)
+		logger.mu.Lock()
+		log := buf.String()
+		logger.mu.Unlock()
+		assert.True(strings.HasPrefix(log, "{"))
+		assert.True(strings.HasSuffix(log, "}\n"))
+		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:18])
+		assert.Contains(log, `"Data":[1,2,3]`)
+		assert.Contains(log, `"Method":"GET"`)
+		res.Body.Close()
+	})
+
 	t.Run("Work with panic", func(t *testing.T) {
 		assert := assert.New(t)
 
