@@ -91,7 +91,7 @@ func (l Log) With(log map[string]interface{}) Log {
 //  if ctx.Path == "/" {
 //  	log.Reset() // reset log, don't logging for path "/"
 //  } else {
-//  	log["Data"] = someData
+//  	log["data"] = someData
 //  }
 //
 func (l Log) Reset() {
@@ -193,12 +193,12 @@ func developmentConsume(log Log, ctx *gear.Context) {
 	defer std.mu.Unlock()
 
 	end := time.Now().UTC()
-	FprintWithColor(std.Out, fmt.Sprintf("%s", log["IP"]), ColorGreen)
-	fmt.Fprintf(std.Out, ` - - [%s] "%s %s %s" `, end.Format(std.tf), log["Method"], log["URI"], log["Proto"])
-	status := log["Status"].(int)
+	FprintWithColor(std.Out, fmt.Sprintf("%s", log["ip"]), ColorGreen)
+	fmt.Fprintf(std.Out, ` - - [%s] "%s %s %s" `, end.Format(std.tf), log["method"], log["uri"], log["proto"])
+	status := log["status"].(int)
 	FprintWithColor(std.Out, strconv.Itoa(status), colorStatus(status))
-	resTime := float64(end.Sub(log["Start"].(time.Time))) / 1e6
-	fmt.Fprintln(std.Out, fmt.Sprintf(" %d %.3fms", log["Length"], resTime))
+	resTime := float64(end.Sub(log["start"].(time.Time))) / 1e6
+	fmt.Fprintln(std.Out, fmt.Sprintf(" %d %.3fms", log["length"], resTime))
 }
 
 // New creates a Logger instance with given io.Writer and DebugLevel log level.
@@ -210,46 +210,39 @@ func New(w io.Writer) *Logger {
 	logger.SetLogFormat("[%s] %s %s")
 
 	logger.init = func(log Log, ctx *gear.Context) {
-		log["Start"] = time.Now()
-		log["IP"] = ctx.IP().String()
-		log["Proto"] = ctx.Req.Proto
-		log["Method"] = ctx.Method
-		log["URI"] = ctx.Req.RequestURI
+		log["start"] = time.Now()
+		log["ip"] = ctx.IP().String()
+		log["proto"] = ctx.Req.Proto
+		log["method"] = ctx.Method
+		log["uri"] = ctx.Req.RequestURI
 		if s := ctx.GetHeader(gear.HeaderOrigin); s != "" {
-			log["Origin"] = s
+			log["origin"] = s
 		}
 		if s := ctx.GetHeader(gear.HeaderReferer); s != "" {
-			log["Referer"] = s
+			log["referer"] = s
 		}
-		log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
+		log["userAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
 	}
 
 	logger.consume = func(log Log, ctx *gear.Context) {
 		end := time.Now()
-		if t, ok := log["Start"].(time.Time); ok {
-			log["Start"] = t.UTC().Format(logger.tf)
-			log["Time"] = end.Sub(t) / 1e6 // ms
+		if t, ok := log["start"].(time.Time); ok {
+			log["start"] = t.UTC().Format(logger.tf)
+			log["time"] = end.Sub(t) / 1e6 // ms
 		}
 
 		if s := ctx.GetHeader(gear.HeaderXRequestID); s != "" {
-			log["XRequestID"] = s
+			log["xRequestId"] = s
 		} else if s := ctx.Res.Get(gear.HeaderXRequestID); s != "" {
-			log["XRequestID"] = s
+			log["xRequestId"] = s
 		}
 
 		if router := gear.GetRouterPatternFromCtx(ctx); router != "" {
-			log["Router"] = fmt.Sprintf("%s %s", ctx.Method, router)
+			log["router"] = fmt.Sprintf("%s %s", ctx.Method, router)
 		}
 
-		if logger.json {
-			log["Timestamp"] = end.UTC().Format(logger.tf)
-			if err := logger.OutputJSON(log); err != nil {
-				logger.OutputJSON(Log{"ERR": "WriteLogError", "Message": err.Error()})
-			}
-		} else if str, err := log.Format(); err == nil {
-			logger.Output(end, InfoLevel, str)
-		} else {
-			logger.Output(end, WarningLevel, log.String())
+		if err := logger.output(end, InfoLevel, log); err != nil {
+			logger.output(end, ErrLevel, err)
 		}
 	}
 	return logger
@@ -267,17 +260,17 @@ func New(w io.Writer) *Logger {
 //  logger := logging.New(os.Stdout)
 //  logger.SetLevel(logging.InfoLevel)
 //  logger.SetLogInit(func(log logging.Log, ctx *gear.Context) {
-//    log["IP"] = ctx.IP().String()
-//    log["Method"] = ctx.Method
-//    log["URI"] = ctx.Req.RequestURI
-//    log["Proto"] = ctx.Req.Proto
-//    log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
-//    log["Start"] = time.Now()
+//    log["ip"] = ctx.IP().String()
+//    log["method"] = ctx.Method
+//    log["uri"] = ctx.Req.RequestURI
+//    log["proto"] = ctx.Req.Proto
+//    log["userAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
+//    log["start"] = time.Now()
 //    if s := ctx.GetHeader(gear.HeaderOrigin); s != "" {
-//    	log["Origin"] = s
+//    	log["origin"] = s
 //    }
 //    if s := ctx.GetHeader(gear.HeaderReferer); s != "" {
-//    	log["Referer"] = s
+//    	log["referer"] = s
 //    }
 //  })
 //  logger.SetLogConsume(func(log logging.Log, _ *gear.Context) {
@@ -292,7 +285,7 @@ func New(w io.Writer) *Logger {
 //  app.UseHandler(logger)
 //  app.Use(func(ctx *gear.Context) error {
 //  	log := logger.FromCtx(ctx)
-//  	log["Data"] = []int{1, 2, 3}
+//  	log["data"] = []int{1, 2, 3}
 //  	return ctx.HTML(200, "OK")
 //  })
 //
@@ -317,62 +310,62 @@ func (l *Logger) checkLogLevel(level Level) bool {
 
 // Emerg produce a "Emergency" log
 func (l *Logger) Emerg(v interface{}) {
-	l.Output(time.Now(), EmergLevel, formatError(v))
+	l.output(time.Now(), EmergLevel, v)
 }
 
 // Alert produce a "Alert" log
 func (l *Logger) Alert(v interface{}) {
 	if l.checkLogLevel(AlertLevel) {
-		l.Output(time.Now(), AlertLevel, formatError(v))
+		l.output(time.Now(), AlertLevel, v)
 	}
 }
 
 // Crit produce a "Critical" log
 func (l *Logger) Crit(v interface{}) {
 	if l.checkLogLevel(CritiLevel) {
-		l.Output(time.Now(), CritiLevel, formatError(v))
+		l.output(time.Now(), CritiLevel, v)
 	}
 }
 
 // Err produce a "Error" log
 func (l *Logger) Err(v interface{}) {
 	if l.checkLogLevel(ErrLevel) {
-		l.Output(time.Now(), ErrLevel, formatError(v))
+		l.output(time.Now(), ErrLevel, v)
 	}
 }
 
 // Warning produce a "Warning" log
 func (l *Logger) Warning(v interface{}) {
 	if l.checkLogLevel(WarningLevel) {
-		l.Output(time.Now(), WarningLevel, format(v))
+		l.output(time.Now(), WarningLevel, v)
 	}
 }
 
 // Notice produce a "Notice" log
 func (l *Logger) Notice(v interface{}) {
 	if l.checkLogLevel(NoticeLevel) {
-		l.Output(time.Now(), NoticeLevel, format(v))
+		l.output(time.Now(), NoticeLevel, v)
 	}
 }
 
 // Info produce a "Informational" log
 func (l *Logger) Info(v interface{}) {
 	if l.checkLogLevel(InfoLevel) {
-		l.Output(time.Now(), InfoLevel, format(v))
+		l.output(time.Now(), InfoLevel, v)
 	}
 }
 
 // Debug produce a "Debug" log
 func (l *Logger) Debug(v interface{}) {
 	if l.checkLogLevel(DebugLevel) {
-		l.Output(time.Now(), DebugLevel, format(v))
+		l.output(time.Now(), DebugLevel, v)
 	}
 }
 
 // Debugf produce a "Debug" log in the manner of fmt.Printf
 func (l *Logger) Debugf(format string, args ...interface{}) {
 	if l.checkLogLevel(DebugLevel) {
-		l.Output(time.Now(), DebugLevel, fmt.Sprintf(format, args...))
+		l.output(time.Now(), DebugLevel, fmt.Sprintf(format, args...))
 	}
 }
 
@@ -410,6 +403,28 @@ func (l *Logger) Println(args ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	fmt.Fprintln(l.Out, args...)
+}
+
+func (l *Logger) output(t time.Time, level Level, v interface{}) (err error) {
+	if l.json {
+		var log Log
+		if level > ErrLevel {
+			log = format2Log(v)
+		} else {
+			log = formatError2Log(v)
+		}
+		log["timestamp"] = t.Format(l.tf)
+		log["level"] = level.String()
+		return l.OutputJSON(log)
+	}
+
+	var s string
+	if level > ErrLevel {
+		s = format(v)
+	} else {
+		s = formatError(v)
+	}
+	return l.Output(t, level, s)
 }
 
 // Output writes a string log with timestamp and log level to the output.
@@ -543,7 +558,7 @@ func (l *Logger) SetTo(ctx *gear.Context, key string, val interface{}) {
 //  app.UseHandler(logging.Default())
 //  app.Use(func(ctx *gear.Context) error {
 //  	log := logging.FromCtx(ctx)
-//  	log["Data"] = []int{1, 2, 3}
+//  	log["data"] = []int{1, 2, 3}
 //  	return ctx.HTML(200, "OK")
 //  })
 //
@@ -556,8 +571,8 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 		if len(log) == 0 {
 			return
 		}
-		log["Status"] = ctx.Res.Status()
-		log["Length"] = len(ctx.Res.Body())
+		log["status"] = ctx.Res.Status()
+		log["length"] = len(ctx.Res.Body())
 		l.consume(log, ctx)
 	})
 	return nil
@@ -666,10 +681,27 @@ func colorStatus(code int) ColorType {
 
 func formatError(i interface{}) string {
 	err := gear.ErrorWithStack(i)
+	if err == nil {
+		return ""
+	}
 	if str, e := err.Format(); e == nil {
 		return str
 	}
 	return err.String()
+}
+
+func formatError2Log(i interface{}) Log {
+	err := gear.ErrorWithStack(i)
+	if err == nil {
+		return Log{}
+	}
+	return Log{
+		"code":    err.Code,
+		"error":   err.Err,
+		"message": err.Msg,
+		"data":    err.Data,
+		"stack":   err.Stack,
+	}
 }
 
 func format(i interface{}) string {
@@ -681,5 +713,16 @@ func format(i interface{}) string {
 		return v.String()
 	default:
 		return fmt.Sprint(i)
+	}
+}
+
+func format2Log(i interface{}) Log {
+	switch v := i.(type) {
+	case Log:
+		return v
+	case map[string]interface{}:
+		return Log(v)
+	default:
+		return Log{"message": format(i)}
 	}
 }

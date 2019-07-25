@@ -543,8 +543,8 @@ func (l *Logger) Serve(ctx *gear.Context) error {
     if len(log) == 0 {
       return
     }
-    log["Status"] = ctx.Res.Status()
-    log["Length"] = len(ctx.Res.Body())
+    log["status"] = ctx.Res.Status()
+    log["length"] = len(ctx.Res.Body())
     l.consume(log, ctx)
   })
   return nil

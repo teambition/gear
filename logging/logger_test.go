@@ -327,9 +327,9 @@ func TestGearLoggerMiddleware(t *testing.T) {
 			if ctx.Path == "/reset" {
 				log.Reset()
 			} else if ctx.Path == "/nan" {
-				log["Data"] = math.NaN()
+				log["data"] = math.NaN()
 			} else {
-				log["Data"] = []int{1, 2, 3}
+				log["data"] = []int{1, 2, 3}
 			}
 			return ctx.HTML(200, "OK")
 		})
@@ -346,10 +346,10 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		logger.mu.Unlock()
 		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:16])
 		assert.Contains(log, "] INFO ")
-		assert.Contains(log, `"Data":[1,2,3]`)
-		assert.Contains(log, `"Method":"GET"`)
-		assert.Contains(log, `"Length":2`)
-		assert.Contains(log, `"Status":200`)
+		assert.Contains(log, `"data":[1,2,3]`)
+		assert.Contains(log, `"method":"GET"`)
+		assert.Contains(log, `"length":2`)
+		assert.Contains(log, `"status":200`)
 		res.Body.Close()
 
 		buf.Reset()
@@ -362,11 +362,11 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		log = buf.String()
 		logger.mu.Unlock()
 		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:16])
-		assert.Contains(log, "] WARNING ")
-		assert.Contains(log, `Data:NaN`)
-		assert.Contains(log, `Method:"GET"`)
-		assert.Contains(log, `Length:2`)
-		assert.Contains(log, `Status:200`)
+		assert.Contains(log, "] INFO ")
+		assert.Contains(log, `data:NaN`)
+		assert.Contains(log, `method:"GET"`)
+		assert.Contains(log, `length:2`)
+		assert.Contains(log, `status:200`)
 		res.Body.Close()
 
 		buf.Reset()
@@ -424,16 +424,16 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		logger := New(&buf)
 		logger.
 			SetLogInit(func(log Log, ctx *gear.Context) {
-				log["IP"] = ctx.IP()
-				log["Method"] = ctx.Method
-				log["URL"] = ctx.Req.URL.String()
-				log["Start"] = time.Now()
-				log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
+				log["ip"] = ctx.IP()
+				log["method"] = ctx.Method
+				log["url"] = ctx.Req.URL.String()
+				log["start"] = time.Now()
+				log["userAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
 			}).
 			SetLogConsume(func(log Log, _ *gear.Context) {
 				end := time.Now()
-				log["Time"] = end.Sub(log["Start"].(time.Time)) / 1e6
-				delete(log, "Start")
+				log["time"] = end.Sub(log["start"].(time.Time)) / 1e6
+				delete(log, "start")
 				if res, err := log.Format(); err == nil {
 					logger.Output(end, InfoLevel, res)
 				} else {
@@ -443,7 +443,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 
 		app.UseHandler(logger)
 		app.Use(func(ctx *gear.Context) error {
-			logger.SetTo(ctx, "Data", []int{1, 2, 3})
+			logger.SetTo(ctx, "data", []int{1, 2, 3})
 			return ctx.HTML(200, "OK")
 		})
 		srv := app.Start()
@@ -459,11 +459,11 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		logger.mu.Unlock()
 		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:18])
 		assert.Contains(log, "] INFO ")
-		assert.Contains(log, `"Data":[1,2,3],`)
-		assert.Contains(log, `"Method":"GET",`)
-		assert.Contains(log, `"Length":2,`)
-		assert.Contains(log, `"Status":200,`)
-		assert.Contains(log, `"UserAgent":`)
+		assert.Contains(log, `"data":[1,2,3],`)
+		assert.Contains(log, `"method":"GET",`)
+		assert.Contains(log, `"length":2,`)
+		assert.Contains(log, `"status":200,`)
+		assert.Contains(log, `"userAgent":`)
 		assert.Equal(rune(log[len(log)-1]), '\n')
 		res.Body.Close()
 	})
@@ -478,7 +478,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		logger.SetJSONLog()
 		app.UseHandler(logger)
 		app.Use(func(ctx *gear.Context) error {
-			logger.SetTo(ctx, "Data", []int{1, 2, 3})
+			logger.SetTo(ctx, "data", []int{1, 2, 3})
 			return ctx.HTML(200, "OK")
 		})
 		srv := app.Start()
@@ -495,8 +495,8 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		assert.True(strings.HasPrefix(log, "{"))
 		assert.True(strings.HasSuffix(log, "}\n"))
 		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:18])
-		assert.Contains(log, `"Data":[1,2,3]`)
-		assert.Contains(log, `"Method":"GET"`)
+		assert.Contains(log, `"data":[1,2,3]`)
+		assert.Contains(log, `"method":"GET"`)
 		res.Body.Close()
 	})
 
@@ -512,16 +512,16 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		logger := New(&buf)
 		logger.
 			SetLogInit(func(log Log, ctx *gear.Context) {
-				log["IP"] = ctx.IP()
-				log["Method"] = ctx.Method
-				log["URL"] = ctx.Req.URL.String()
-				log["Start"] = time.Now()
-				log["UserAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
+				log["ip"] = ctx.IP()
+				log["method"] = ctx.Method
+				log["uri"] = ctx.Req.URL.String()
+				log["start"] = time.Now()
+				log["userAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
 			}).
 			SetLogConsume(func(log Log, _ *gear.Context) {
 				end := time.Now()
-				log["Time"] = end.Sub(log["Start"].(time.Time)) / 1e6
-				delete(log, "Start")
+				log["time"] = end.Sub(log["start"].(time.Time)) / 1e6
+				delete(log, "start")
 				if res, err := log.Format(); err == nil {
 					logger.Output(end, InfoLevel, res)
 				} else {
@@ -532,7 +532,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		app.UseHandler(logger)
 		app.Use(func(ctx *gear.Context) (err error) {
 			log := logger.FromCtx(ctx)
-			log["Data"] = map[string]interface{}{"a": 0}
+			log["data"] = map[string]interface{}{"a": 0}
 			panic("Some error")
 		})
 		srv := app.Start()
@@ -548,10 +548,10 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		logger.mu.Unlock()
 		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:18])
 		assert.Contains(log, "] INFO ")
-		assert.Contains(log, `"Data":{"a":0}`)
-		assert.Contains(log, `"Method":"POST"`)
-		assert.Contains(log, `"Status":500`)
-		assert.Contains(log, `"UserAgent":`)
+		assert.Contains(log, `"data":{"a":0}`)
+		assert.Contains(log, `"method":"POST"`)
+		assert.Contains(log, `"status":500`)
+		assert.Contains(log, `"userAgent":`)
 		assert.Contains(errbuf.String(), "Some error")
 		res.Body.Close()
 	})

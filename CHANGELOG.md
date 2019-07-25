@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.16.1] - 2019-07-25
+
+**Fixed:**
+
+- Fix logging middleware: support JSON log.
+
 ## [1.16.0] - 2019-07-24
 
 **Changed:**
