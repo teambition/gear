@@ -110,8 +110,8 @@ const (
 	EmergLevel Level = iota
 	// AlertLevel is 1, "Alert", action must be taken immediately
 	AlertLevel
-	// CritiLevel is 2, "Critical", critical conditions
-	CritiLevel
+	// CritLevel is 2, "Critical", critical conditions
+	CritLevel
 	// ErrLevel is 3, "Error", error conditions
 	ErrLevel
 	// WarningLevel is 4, "Warning", warning conditions
@@ -124,47 +124,51 @@ const (
 	DebugLevel
 )
 
+// CritiLevel is an alias of CritLevel
+const CritiLevel = CritLevel
+
+// https://en.wikipedia.org/wiki/Syslog
 func (l Level) String() string {
 	switch l {
 	case EmergLevel:
-		return "EMERG"
+		return "emerg"
 	case AlertLevel:
-		return "ALERT"
-	case CritiLevel:
-		return "CRIT"
+		return "alert"
+	case CritLevel:
+		return "crit"
 	case ErrLevel:
-		return "ERR"
+		return "err"
 	case WarningLevel:
-		return "WARNING"
+		return "warning"
 	case NoticeLevel:
-		return "NOTICE"
+		return "notice"
 	case InfoLevel:
-		return "INFO"
+		return "info"
 	case DebugLevel:
-		return "DEBUG"
+		return "debug"
 	default:
-		return "LOG"
+		return "log"
 	}
 }
 
 // ParseLevel takes a string level and returns the gear logging level constant.
 func ParseLevel(lvl string) (Level, error) {
-	switch strings.ToUpper(lvl) {
-	case "EMERGENCY", "EMERG":
+	switch strings.ToLower(lvl) {
+	case "emergency", "emerg":
 		return EmergLevel, nil
-	case "ALERT":
+	case "alert":
 		return AlertLevel, nil
-	case "CRITICAL", "CRIT", "CRITI":
-		return CritiLevel, nil
-	case "ERROR", "ERR":
+	case "critical", "crit", "criti":
+		return CritLevel, nil
+	case "error", "err":
 		return ErrLevel, nil
-	case "WARNING", "WARN":
+	case "warning", "warn":
 		return WarningLevel, nil
-	case "NOTICE":
+	case "notice":
 		return NoticeLevel, nil
-	case "INFO":
+	case "info":
 		return InfoLevel, nil
-	case "DEBUG":
+	case "debug":
 		return DebugLevel, nil
 	}
 
@@ -210,7 +214,7 @@ func New(w io.Writer) *Logger {
 	logger.SetLogFormat("[%s] %s %s")
 
 	logger.init = func(log Log, ctx *gear.Context) {
-		log["start"] = time.Now()
+		log["start"] = time.Now().UTC()
 		log["ip"] = ctx.IP().String()
 		log["proto"] = ctx.Req.Proto
 		log["method"] = ctx.Method
@@ -225,9 +229,9 @@ func New(w io.Writer) *Logger {
 	}
 
 	logger.consume = func(log Log, ctx *gear.Context) {
-		end := time.Now()
+		end := time.Now().UTC()
 		if t, ok := log["start"].(time.Time); ok {
-			log["start"] = t.UTC().Format(logger.tf)
+			log["start"] = t.Format(logger.tf)
 			log["time"] = end.Sub(t) / 1e6 // ms
 		}
 
@@ -265,7 +269,7 @@ func New(w io.Writer) *Logger {
 //    log["uri"] = ctx.Req.RequestURI
 //    log["proto"] = ctx.Req.Proto
 //    log["userAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
-//    log["start"] = time.Now()
+//    log["start"] = time.Now().UTC()
 //    if s := ctx.GetHeader(gear.HeaderOrigin); s != "" {
 //    	log["origin"] = s
 //    }
@@ -274,7 +278,7 @@ func New(w io.Writer) *Logger {
 //    }
 //  })
 //  logger.SetLogConsume(func(log logging.Log, _ *gear.Context) {
-//  	end := time.Now()
+//  	end := time.Now().UTC()
 //  	if str, err := log.Format(); err == nil {
 //  		logger.Output(end, logging.InfoLevel, str)
 //  	} else {
@@ -310,62 +314,62 @@ func (l *Logger) checkLogLevel(level Level) bool {
 
 // Emerg produce a "Emergency" log
 func (l *Logger) Emerg(v interface{}) {
-	l.output(time.Now(), EmergLevel, v)
+	l.output(time.Now().UTC(), EmergLevel, v)
 }
 
 // Alert produce a "Alert" log
 func (l *Logger) Alert(v interface{}) {
 	if l.checkLogLevel(AlertLevel) {
-		l.output(time.Now(), AlertLevel, v)
+		l.output(time.Now().UTC(), AlertLevel, v)
 	}
 }
 
 // Crit produce a "Critical" log
 func (l *Logger) Crit(v interface{}) {
-	if l.checkLogLevel(CritiLevel) {
-		l.output(time.Now(), CritiLevel, v)
+	if l.checkLogLevel(CritLevel) {
+		l.output(time.Now().UTC(), CritLevel, v)
 	}
 }
 
 // Err produce a "Error" log
 func (l *Logger) Err(v interface{}) {
 	if l.checkLogLevel(ErrLevel) {
-		l.output(time.Now(), ErrLevel, v)
+		l.output(time.Now().UTC(), ErrLevel, v)
 	}
 }
 
 // Warning produce a "Warning" log
 func (l *Logger) Warning(v interface{}) {
 	if l.checkLogLevel(WarningLevel) {
-		l.output(time.Now(), WarningLevel, v)
+		l.output(time.Now().UTC(), WarningLevel, v)
 	}
 }
 
 // Notice produce a "Notice" log
 func (l *Logger) Notice(v interface{}) {
 	if l.checkLogLevel(NoticeLevel) {
-		l.output(time.Now(), NoticeLevel, v)
+		l.output(time.Now().UTC(), NoticeLevel, v)
 	}
 }
 
 // Info produce a "Informational" log
 func (l *Logger) Info(v interface{}) {
 	if l.checkLogLevel(InfoLevel) {
-		l.output(time.Now(), InfoLevel, v)
+		l.output(time.Now().UTC(), InfoLevel, v)
 	}
 }
 
 // Debug produce a "Debug" log
 func (l *Logger) Debug(v interface{}) {
 	if l.checkLogLevel(DebugLevel) {
-		l.output(time.Now(), DebugLevel, v)
+		l.output(time.Now().UTC(), DebugLevel, v)
 	}
 }
 
 // Debugf produce a "Debug" log in the manner of fmt.Printf
 func (l *Logger) Debugf(format string, args ...interface{}) {
 	if l.checkLogLevel(DebugLevel) {
-		l.output(time.Now(), DebugLevel, fmt.Sprintf(format, args...))
+		l.output(time.Now().UTC(), DebugLevel, fmt.Sprintf(format, args...))
 	}
 }
 

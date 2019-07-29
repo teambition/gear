@@ -122,35 +122,35 @@ func TestGearLogger(t *testing.T) {
 
 		logger.Out = &buf
 		logger.Emerg("Hello")
-		assert.True(strings.Index(buf.String(), "Z] EMERG {") > 0)
+		assert.True(strings.Index(buf.String(), "Z] emerg {") > 0)
 		buf.Reset()
 
 		Emerg("Hello1")
-		assert.True(strings.Index(buf.String(), "Z] EMERG {") > 0)
+		assert.True(strings.Index(buf.String(), "Z] emerg {") > 0)
 		buf.Reset()
 
 		logger.Alert("Hello")
-		assert.True(strings.Index(buf.String(), "Z] ALERT {") > 0)
+		assert.True(strings.Index(buf.String(), "Z] alert {") > 0)
 		buf.Reset()
 
 		Alert("Hello1")
-		assert.True(strings.Index(buf.String(), "Z] ALERT {") > 0)
+		assert.True(strings.Index(buf.String(), "Z] alert {") > 0)
 		buf.Reset()
 
 		logger.Crit("Hello")
-		assert.True(strings.Index(buf.String(), "Z] CRIT {") > 0)
+		assert.True(strings.Index(buf.String(), "Z] crit {") > 0)
 		buf.Reset()
 
 		Crit("Hello1")
-		assert.True(strings.Index(buf.String(), "Z] CRIT {") > 0)
+		assert.True(strings.Index(buf.String(), "Z] crit {") > 0)
 		buf.Reset()
 
 		logger.Err("Hello")
-		assert.True(strings.Index(buf.String(), "Z] ERR {") > 0)
+		assert.True(strings.Index(buf.String(), "Z] err {") > 0)
 		buf.Reset()
 
 		Err("Hello1")
-		assert.True(strings.Index(buf.String(), "Z] ERR {") > 0)
+		assert.True(strings.Index(buf.String(), "Z] err {") > 0)
 		buf.Reset()
 
 		logger.Err(Log{"error": math.NaN()})
@@ -160,84 +160,84 @@ func TestGearLogger(t *testing.T) {
 		err := gear.Err.WithMsg("test")
 		err.Data = math.NaN()
 		logger.Err(err)
-		assert.True(strings.Contains(buf.String(), "] ERR Error{"))
+		assert.True(strings.Contains(buf.String(), "] err Error{"))
 		assert.True(strings.Contains(buf.String(), "Data:NaN"))
 		buf.Reset()
 
 		logger.Warning("Hello")
-		assert.True(strings.HasSuffix(buf.String(), "Z] WARNING Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z] warning Hello\n"))
 		buf.Reset()
 
 		Warning("Hello1")
-		assert.True(strings.HasSuffix(buf.String(), "Z] WARNING Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z] warning Hello1\n"))
 		buf.Reset()
 
 		logger.Warning(Log{"error": "some \n err\r\nor"})
-		assert.True(strings.HasSuffix(buf.String(), "Z] WARNING {\"error\":\"some \\n err\\r\\nor\"}\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z] warning {\"error\":\"some \\n err\\r\\nor\"}\n"))
 		buf.Reset()
 
 		logger.Notice("Hello")
-		assert.True(strings.HasSuffix(buf.String(), "Z] NOTICE Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z] notice Hello\n"))
 		buf.Reset()
 
 		Notice("Hello\r1\n")
-		assert.True(strings.HasSuffix(buf.String(), "Z] NOTICE Hello\\r1\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z] notice Hello\\r1\n"))
 		buf.Reset()
 
 		logger.Notice(Log{"msg": "some\r\nmsg\n"})
-		assert.True(strings.HasSuffix(buf.String(), "Z] NOTICE {\"msg\":\"some\\r\\nmsg\\n\"}\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z] notice {\"msg\":\"some\\r\\nmsg\\n\"}\n"))
 		buf.Reset()
 
 		logger.Info("Hello")
-		assert.True(strings.HasSuffix(buf.String(), "Z] INFO Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z] info Hello\n"))
 		buf.Reset()
 
 		logger.Info(Log{"name": "gear"})
-		assert.True(strings.HasSuffix(buf.String(), "Z] INFO {\"name\":\"gear\"}\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z] info {\"name\":\"gear\"}\n"))
 		buf.Reset()
 
 		logger.Info(Log{"nan": math.NaN()})
-		assert.True(strings.HasSuffix(buf.String(), "Z] INFO Log{nan:NaN}\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z] info Log{nan:NaN}\n"))
 		buf.Reset()
 
 		Info("Hello\r\n1\r\n")
-		assert.True(strings.HasSuffix(buf.String(), "Z] INFO Hello\\r\\n1\\r\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z] info Hello\\r\\n1\\r\n"))
 		buf.Reset()
 
 		logger.Debug("Hello")
-		assert.True(strings.HasSuffix(buf.String(), "Z] DEBUG Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z] debug Hello\n"))
 		buf.Reset()
 
 		Debug("Hello1")
-		assert.True(strings.HasSuffix(buf.String(), "Z] DEBUG Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z] debug Hello1\n"))
 		buf.Reset()
 
 		logger.Debugf(":%s\n", "Hello")
-		assert.True(strings.HasSuffix(buf.String(), "Z] DEBUG :Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z] debug :Hello\n"))
 		buf.Reset()
 
 		Debugf(":%s\n", "Hello1")
-		assert.True(strings.HasSuffix(buf.String(), "Z] DEBUG :Hello1\n"))
+		assert.True(strings.HasSuffix(buf.String(), "Z] debug :Hello1\n"))
 		buf.Reset()
 
 		assert.Panics(func() {
 			logger.Panic("Hello")
 		})
-		assert.True(strings.Index(buf.String(), "EMERG {") > 0)
+		assert.True(strings.Index(buf.String(), "emerg {") > 0)
 		buf.Reset()
 
 		assert.Panics(func() {
 			Panic("Hello1")
 		})
-		assert.True(strings.Index(buf.String(), "EMERG {") > 0)
+		assert.True(strings.Index(buf.String(), "emerg {") > 0)
 		buf.Reset()
 
 		logger.Fatal("Hello")
-		assert.True(strings.Index(buf.String(), "EMERG {") > 0)
+		assert.True(strings.Index(buf.String(), "emerg {") > 0)
 		buf.Reset()
 
 		Fatal("Hello1")
-		assert.True(strings.Index(buf.String(), "EMERG {") > 0)
+		assert.True(strings.Index(buf.String(), "emerg {") > 0)
 		buf.Reset()
 
 		logger.Print("Hello")
@@ -265,19 +265,19 @@ func TestGearLogger(t *testing.T) {
 		buf.Reset()
 
 		logger.Output(time.Now(), InfoLevel, "Hello")
-		assert.True(strings.HasSuffix(buf.String(), "INFO Hello\n"))
+		assert.True(strings.HasSuffix(buf.String(), "info Hello\n"))
 		buf.Reset()
 
 		logger.Output(time.Now(), InfoLevel, "")
-		assert.True(strings.HasSuffix(buf.String(), "INFO \n"))
+		assert.True(strings.HasSuffix(buf.String(), "info \n"))
 		buf.Reset()
 
 		logger.Output(time.Now(), InfoLevel, "\n")
-		assert.True(strings.HasSuffix(buf.String(), "INFO \n"))
+		assert.True(strings.HasSuffix(buf.String(), "info \n"))
 		buf.Reset()
 
 		logger.Output(time.Now(), InfoLevel, "\r")
-		assert.True(strings.HasSuffix(buf.String(), "INFO \\r\n"))
+		assert.True(strings.HasSuffix(buf.String(), "info \\r\n"))
 		buf.Reset()
 
 	})
@@ -308,7 +308,7 @@ func TestGearLogger(t *testing.T) {
 		logger.SetLogFormat("%s") // with invalid format
 		logger.SetLevel(DebugLevel)
 		logger.Info("Hello")
-		assert.Equal(strings.Contains(buf.String(), "INFO"), true)
+		assert.Equal(strings.Contains(buf.String(), "info"), true)
 		buf.Reset()
 	})
 }
@@ -345,7 +345,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		log := buf.String()
 		logger.mu.Unlock()
 		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:16])
-		assert.Contains(log, "] INFO ")
+		assert.Contains(log, "] info ")
 		assert.Contains(log, `"data":[1,2,3]`)
 		assert.Contains(log, `"method":"GET"`)
 		assert.Contains(log, `"length":2`)
@@ -362,7 +362,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		log = buf.String()
 		logger.mu.Unlock()
 		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:16])
-		assert.Contains(log, "] INFO ")
+		assert.Contains(log, "] info ")
 		assert.Contains(log, `data:NaN`)
 		assert.Contains(log, `method:"GET"`)
 		assert.Contains(log, `length:2`)
@@ -458,7 +458,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		log := buf.String()
 		logger.mu.Unlock()
 		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:18])
-		assert.Contains(log, "] INFO ")
+		assert.Contains(log, "] info ")
 		assert.Contains(log, `"data":[1,2,3],`)
 		assert.Contains(log, `"method":"GET",`)
 		assert.Contains(log, `"length":2,`)
@@ -547,7 +547,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		log := buf.String()
 		logger.mu.Unlock()
 		assert.Contains(log, time.Now().UTC().Format(time.RFC3339)[0:18])
-		assert.Contains(log, "] INFO ")
+		assert.Contains(log, "] info ")
 		assert.Contains(log, `"data":{"a":0}`)
 		assert.Contains(log, `"method":"POST"`)
 		assert.Contains(log, `"status":500`)

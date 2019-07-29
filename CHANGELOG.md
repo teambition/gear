@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.16.2] - 2019-07-29
+
+**Fixed:**
+
+- Fix logging middleware: fix time format.
+- Fix logging middleware: change severity level to lowercase (https://en.wikipedia.org/wiki/Syslog).
+
 ## [1.16.1] - 2019-07-25
 
 **Fixed:**
