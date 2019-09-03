@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.17.0] - 2019-09-03
+
+**Changed:**
+
+- Remove "application/x-www-form-urlencoded" supporting from DefaultBodyParser.
+
 ## [1.16.2] - 2019-07-29
 
 **Fixed:**

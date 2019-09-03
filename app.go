@@ -9,7 +9,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -95,15 +94,9 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 		}
 	case strings.HasPrefix(mediaType, MIMEApplicationXML), isLikeMediaType(mediaType, "xml"):
 		return xml.Unmarshal(buf, body)
-	case strings.HasPrefix(mediaType, MIMEApplicationForm):
-		val, err := url.ParseQuery(string(buf))
-		if err == nil {
-			err = ValuesToStruct(val, body, "form")
-		}
-		return err
 	}
 
-	return ErrUnsupportedMediaType.WithMsg("unsupported media type")
+	return ErrUnsupportedMediaType.WithMsgf("unsupported media type: %s", mediaType)
 }
 
 // HTTPError interface is used to create a server error that include status code and error message.

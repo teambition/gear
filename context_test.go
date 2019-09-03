@@ -14,7 +14,6 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"reflect"
 	"strings"
@@ -801,20 +800,6 @@ func TestGearContextParseBody(t *testing.T) {
 		err := ctx.ParseBody(&body)
 		assert.Equal(400, err.(*Error).Code)
 		assert.Equal("BadRequest: Syntax error: offset=2, error=invalid character 'a' looking for beginning of object key string", err.Error())
-	})
-
-	t.Run("should parse Form content", func(t *testing.T) {
-		assert := assert.New(t)
-
-		data := url.Values{"id": {"admin"}, "pass": {"password"}}
-
-		ctx := CtxTest(app, "POST", "http://example.com/foo", strings.NewReader(data.Encode()))
-		ctx.Req.Header.Set(HeaderContentType, MIMEApplicationForm)
-
-		body := jsonBodyTemplate{}
-		assert.Nil(ctx.ParseBody(&body))
-		assert.Equal("admin", body.ID)
-		assert.Equal("password", body.Pass)
 	})
 
 	t.Run("should parse XML content", func(t *testing.T) {
