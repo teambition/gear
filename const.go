@@ -21,6 +21,8 @@ const (
 	MIMETextPlainCharsetUTF8             = "text/plain; charset=utf-8"
 	MIMEMultipartForm                    = "multipart/form-data"
 	MIMEOctetStream                      = "application/octet-stream"
+	MIMEApplicationSchemaJSON            = "application/schema+json"
+	MIMEApplicationSchemaInstanceJSON    = "application/schema-instance+json"
 )
 
 // HTTP Header Fields
