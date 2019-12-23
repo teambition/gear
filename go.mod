@@ -21,7 +21,7 @@ require (
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
 	golang.org/x/text v0.3.1-0.20181010134911-4d1c5fb19474 // indirect
 	google.golang.org/genproto v0.0.0-20181016170114-94acd270e44e // indirect
-	google.golang.org/grpc v1.23.0
+	google.golang.org/grpc v1.26.0
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 )
@@ -33,5 +33,7 @@ replace (
 	golang.org/x/text => github.com/golang/text v0.3.1-0.20181010134911-4d1c5fb19474
 	golang.org/x/tools => github.com/golang/tools v0.0.0-20181016205153-5ef16f43e633
 	google.golang.org/genproto => github.com/google/go-genproto v0.0.0-20181016170114-94acd270e44e
-	google.golang.org/grpc => github.com/grpc/grpc-go v1.23.0
+	google.golang.org/grpc => github.com/grpc/grpc-go v1.26.0
 )
+
+go 1.13

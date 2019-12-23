@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.17.1] - 2019-12-23
+
+**Fixed:**
+
+- Fix error's stack.
+
 ## [1.17.0] - 2019-09-03
 
 **Changed:**

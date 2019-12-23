@@ -394,7 +394,7 @@ func (app *App) Start(addr ...string) *ServerListener {
 
 // Error writes error to underlayer logging system.
 func (app *App) Error(err interface{}) {
-	if err := ErrorWithStack(err, 4); err != nil {
+	if err := ErrorWithStack(err, 3); err != nil {
 		str, e := err.Format()
 		f := app.logger.Flags() == 0
 		switch {
@@ -491,7 +491,7 @@ func catchRequest(ctx *Context) {
 	if err := recover(); err != nil && err != http.ErrAbortHandler {
 		ctx.Res.afterHooks = nil
 		ctx.Res.ResetHeader()
-		e := ErrorWithStack(err)
+		e := ErrorWithStack(err, 3)
 		ctx.app.onerror(ctx, e)
 		// try to ensure respond error if `app.onerror` does't do it.
 		ctx.respondError(e)
