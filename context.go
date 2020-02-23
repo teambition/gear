@@ -379,7 +379,7 @@ func (ctx *Context) QueryAll(name string) []string {
 //
 // Use it in middleware:
 //  body := jsonBodyTemplate{}
-//  if err := ctx.ParseBody(&body) {
+//  if err := ctx.ParseBody(&body); err != nil {
 //  	return err
 //  }
 //
@@ -446,7 +446,7 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 //
 // Use it in APIhandler:
 //  body := taskTemplate{}
-//  if err := ctx.ParseURL(&body) {
+//  if err := ctx.ParseURL(&body); err != nil {
 //  	return err
 //  }
 //

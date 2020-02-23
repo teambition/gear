@@ -7,8 +7,9 @@ import (
 	"regexp"
 )
 
-var defaultHeaderFilterReg = regexp.MustCompile(
-	`(?i)^(accept|allow|retry-after|warning|vary|server|x-powered-by|access-control-allow-|x-ratelimit-|x-request-)`)
+var misdirectedResponseBody []byte = []byte(`{"error":"MisdirectedRequest","message":"The request was directed at a server that is not able to produce a response."}`)
+
+var defaultHeaderFilterReg = regexp.MustCompile(`(?i)^(accept|allow|retry-after|warning|vary|server|access-control-allow-|x-)`)
 
 // Response wraps an http.ResponseWriter and implements its interface to be used
 // by an HTTP handler to construct an HTTP response.
@@ -69,7 +70,7 @@ func (r *Response) Body() []byte {
 }
 
 // ResetHeader reset headers. The default filterReg is
-// `(?i)^(accept|allow|retry-after|warning|vary|server|x-powered-by|access-control-allow-|x-ratelimit-)`.
+// `(?i)^(accept|allow|retry-after|warning|vary|server|access-control-allow-|x-)`.
 func (r *Response) ResetHeader(filterReg ...*regexp.Regexp) {
 	reg := defaultHeaderFilterReg
 	if len(filterReg) > 0 {
@@ -127,11 +128,13 @@ func (r *Response) WriteHeader(code int) {
 			// Misdirected request, http://tools.ietf.org/html/rfc7540#section-9.1.2
 			// The request was directed at a server that is not able to produce a response.
 			r.status = 421
+			r.Set(HeaderContentType, MIMEApplicationJSONCharsetUTF8)
+			r.Set(HeaderXContentTypeOptions, "nosniff")
+			r.body = misdirectedResponseBody
 		}
 	} else if isEmptyStatus(r.status) {
 		r.body = nil
 	}
-
 	// we don't need to set Content-Length, http.Server will handle it
 	r.rw.WriteHeader(r.status)
 }

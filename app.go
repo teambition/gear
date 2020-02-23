@@ -394,7 +394,7 @@ func (app *App) Start(addr ...string) *ServerListener {
 
 // Error writes error to underlayer logging system.
 func (app *App) Error(err interface{}) {
-	if err := ErrorWithStack(err, 3); err != nil {
+	if err := ErrorWithStack(err, 2); err != nil {
 		str, e := err.Format()
 		f := app.logger.Flags() == 0
 		switch {
@@ -452,7 +452,7 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx.respondError(e)
 	} else {
 		// try to ensure respond
-		ctx.Res.WriteHeader(0)
+		ctx.Res.respond(0, nil)
 	}
 }
 

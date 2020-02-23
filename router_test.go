@@ -39,7 +39,7 @@ func TestGearRouter(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(0, called)
 		assert.Equal(421, res.StatusCode)
-		assert.Equal("", PickRes(res.Text()).(string))
+		assert.Equal(string(misdirectedResponseBody), PickRes(res.Text()).(string))
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/api")

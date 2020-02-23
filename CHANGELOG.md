@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.18.0] - 2020-02-23
+
+**Changed:**
+
+- Improve misdirected response with message (421).
+
+**Fixed:**
+
+- Fix error's stack.
+
 ## [1.17.1] - 2019-12-23
 
 **Fixed:**
