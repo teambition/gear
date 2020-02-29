@@ -298,14 +298,14 @@ func (ctx *Context) IP(trustedProxy ...bool) net.IP {
 	return net.ParseIP(ra)
 }
 
-// Protocol returns the protocol ("http" or "https") that a client used to connect to your proxy or load balancer.
+// Protocol returns the protocol ("http", "https", "ws", "wss") that a client used to connect to your proxy or load balancer.
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
 func (ctx *Context) Protocol() string {
 	if ctx.Req.TLS != nil {
 		return "https"
 	}
 	switch p := ctx.GetHeader(HeaderXForwardedProto); p {
-	case "http", "https":
+	case "http", "https", "ws", "wss":
 		return p
 	default:
 		return "http"

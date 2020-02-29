@@ -369,6 +369,35 @@ func (app *App) ListenTLS(addr, certFile, keyFile string) error {
 	return app.Server.ListenAndServeTLS(certFile, keyFile)
 }
 
+// ListenWithContext starts the HTTP server (or HTTPS server with keyPair) with a context
+//
+// Usage:
+//
+//  func main() {
+//  	app := gear.New() // Create app
+//  	do some thing...
+//
+//  	app.ListenWithContext(gear.ContextWithSignal(context.Background()), addr)
+//	  // starts the HTTPS server.
+//	  // app.ListenWithContext(gear.ContextWithSignal(context.Background()), addr, certFile, keyFile)
+//  }
+//
+func (app *App) ListenWithContext(ctx context.Context, addr string, keyPair ...string) error {
+	go func() {
+		<-ctx.Done()
+		c, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := app.Close(c); err != nil {
+			app.Error(err)
+		}
+	}()
+
+	if len(keyPair) >= 2 && keyPair[0] != "" && keyPair[1] != "" {
+		return app.ListenTLS(addr, keyPair[0], keyPair[1])
+	}
+	return app.Listen(addr)
+}
+
 // Start starts a non-blocking app instance. It is useful for testing.
 // If addr omit, the app will listen on a random addr, use ServerListener.Addr() to get it.
 // The non-blocking app instance must close by ServerListener.Close().

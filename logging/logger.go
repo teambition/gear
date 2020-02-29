@@ -176,6 +176,15 @@ func ParseLevel(lvl string) (Level, error) {
 	return l, fmt.Errorf("not a valid gear logging Level: %q", lvl)
 }
 
+// SetLoggerLevel set a string level to the logger.
+func SetLoggerLevel(logger *Logger, lvl string) error {
+	level, err := ParseLevel(lvl)
+	if err == nil {
+		logger.SetLevel(level)
+	}
+	return err
+}
+
 var std = New(os.Stderr)
 
 // Default returns the default logger

@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/teambition/gear"
 	"github.com/teambition/gear/logging"
 )
@@ -31,5 +34,10 @@ func main() {
 		})
 	})
 	app.UseHandler(router)
-	app.Error(app.Listen(":3000"))
+
+	addr := ":3000"
+	fmt.Printf("hello server start: %s", addr)
+	app.ListenWithContext(gear.ContextWithSignal(context.Background()), addr)
+	// starts the HTTPS server.
+	// app.ListenWithContext(gear.ContextWithSignal(context.Background()), addr, certFile, keyFile)
 }

@@ -600,4 +600,13 @@ func TestParseLevel(t *testing.T) {
 		_, err := ParseLevel("unknown")
 		assert.NotEqual(nil, err)
 	})
+
+	t.Run("SetLoggerLevel", func(t *testing.T) {
+		assert := assert.New(t)
+
+		logger := &Logger{}
+		SetLoggerLevel(logger, "crit")
+		assert.Nil(SetLoggerLevel(logger, "crit"))
+		assert.Equal(CritLevel, logger.GetLevel())
+	})
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
+	"context"
 	"encoding"
 	"encoding/json"
 	"fmt"
@@ -12,11 +13,13 @@ import (
 	"net/textproto"
 	"net/url"
 	"os"
+	"os/signal"
 	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"unicode/utf8"
 )
 
@@ -624,4 +627,28 @@ func isLikeMediaType(s, t string) bool {
 	default:
 		return false
 	}
+}
+
+// ContextWithSignal creates a context canceled when SIGINT or SIGTERM are notified
+//
+// Usage:
+//
+//  func main() {
+//  	app := gear.New() // Create app
+//  	do some thing...
+//
+//  	app.ListenWithContext(gear.ContextWithSignal(context.Background()), addr)
+//	  // starts the HTTPS server.
+//	  // app.ListenWithContext(gear.ContextWithSignal(context.Background()), addr, certFile, keyFile)
+//  }
+//
+func ContextWithSignal(ctx context.Context) context.Context {
+	newCtx, cancel := context.WithCancel(ctx)
+	signals := make(chan os.Signal)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-signals
+		cancel()
+	}()
+	return newCtx
 }
