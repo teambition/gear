@@ -26,6 +26,9 @@ func TestGearResponse(t *testing.T) {
 		res.Set("Set-Cookie", "foo=bar; Path=/; HttpOnly")
 		assert.Equal(res.Get("Set-Cookie"), header.Get("Set-Cookie"))
 
+		res.Add("Set-Cookie", "a=b; Path=/; HttpOnly")
+		assert.Equal([]string{"foo=bar; Path=/; HttpOnly", "a=b; Path=/; HttpOnly"}, getHeaderValues(header, "Set-Cookie"))
+
 		res.Del("Set-Cookie")
 		assert.Equal("", res.Get("Set-Cookie"))
 

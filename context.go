@@ -47,9 +47,10 @@ type Context struct {
 	Res     *Response
 	Cookies *cookie.Cookies // https://github.com/go-http-utils/cookie
 
-	Host   string
-	Method string
-	Path   string
+	Host    string
+	Method  string
+	Path    string
+	StartAt time.Time
 
 	query     url.Values
 	ctx       context.Context
@@ -65,9 +66,10 @@ func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 		Req: r,
 		Res: &Response{w: w, rw: w, handlerHeader: w.Header()},
 
-		Host:   r.Host,
-		Method: r.Method,
-		Path:   r.URL.Path,
+		Host:    r.Host,
+		Method:  r.Method,
+		Path:    r.URL.Path,
+		StartAt: time.Now().UTC(),
 
 		Cookies: cookie.New(w, r, app.keys...),
 		kv:      make(map[interface{}]interface{}),
@@ -485,7 +487,7 @@ func (ctx *Context) Set(key, value string) {
 	ctx.SetHeader(key, value)
 }
 
-// GetHeader retrieves data from the request Header.
+// GetHeader returns the first value associated with the given key from the request Header.
 func (ctx *Context) GetHeader(key string) string {
 	switch key {
 	case "Referer", "referer", "Referrer", "referrer":
@@ -495,6 +497,19 @@ func (ctx *Context) GetHeader(key string) string {
 		return ctx.Req.Header.Get("Referrer")
 	default:
 		return ctx.Req.Header.Get(key)
+	}
+}
+
+// GetHeaders returns all values associated with the given key from the request Header.
+func (ctx *Context) GetHeaders(key string) []string {
+	switch key {
+	case "Referer", "referer", "Referrer", "referrer":
+		if vals := getHeaderValues(ctx.Req.Header, "Referer"); len(vals) > 0 {
+			return vals
+		}
+		return getHeaderValues(ctx.Req.Header, "Referrer")
+	default:
+		return getHeaderValues(ctx.Req.Header, key)
 	}
 }
 

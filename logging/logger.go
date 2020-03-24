@@ -223,7 +223,7 @@ func New(w io.Writer) *Logger {
 	logger.SetLogFormat("[%s] %s %s")
 
 	logger.init = func(log Log, ctx *gear.Context) {
-		log["start"] = time.Now().UTC()
+		log["start"] = ctx.StartAt.Format(logger.tf)
 		log["ip"] = ctx.IP().String()
 		log["proto"] = ctx.Req.Proto
 		log["method"] = ctx.Method
@@ -234,15 +234,15 @@ func New(w io.Writer) *Logger {
 		if s := ctx.GetHeader(gear.HeaderReferer); s != "" {
 			log["referer"] = s
 		}
+		if vals := ctx.GetHeaders(gear.HeaderXCanary); len(vals) > 0 {
+			log["xCanary"] = vals
+		}
 		log["userAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
 	}
 
 	logger.consume = func(log Log, ctx *gear.Context) {
 		end := time.Now().UTC()
-		if t, ok := log["start"].(time.Time); ok {
-			log["start"] = t.Format(logger.tf)
-			log["time"] = end.Sub(t) / 1e6 // ms
-		}
+		log["time"] = end.Sub(ctx.StartAt) / 1e6 // ms
 
 		if s := ctx.GetHeader(gear.HeaderXRequestID); s != "" {
 			log["xRequestId"] = s
@@ -278,7 +278,7 @@ func New(w io.Writer) *Logger {
 //    log["uri"] = ctx.Req.RequestURI
 //    log["proto"] = ctx.Req.Proto
 //    log["userAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
-//    log["start"] = time.Now().UTC()
+//    log["start"] = ctx.StartAt
 //    if s := ctx.GetHeader(gear.HeaderOrigin); s != "" {
 //    	log["origin"] = s
 //    }

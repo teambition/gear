@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+
+## [1.20.0] - 2020-03-24
+
+**Changed:**
+
+- Add "X-Canary" Header.
+- Add ctx.StartAt property.
+- Add ctx.GetHeaders method.
+
 ## [1.19.0] - 2020-02-29
 
 **Changed:**

@@ -37,6 +37,11 @@ func (r *Response) Set(key, value string) {
 	r.handlerHeader.Set(key, value)
 }
 
+// Add adds the key, value pair to the header. It appends to any existing values associated with key.
+func (r *Response) Add(key, value string) {
+	r.handlerHeader.Add(key, value)
+}
+
 // Del deletes the header entries associated with key.
 func (r *Response) Del(key string) {
 	r.handlerHeader.Del(key)

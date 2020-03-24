@@ -1201,6 +1201,16 @@ func TestGearContextGetSet(t *testing.T) {
 		assert.Equal("http://test.com", ctx.GetHeader("Referrer"))
 		assert.Equal("http://test.com", ctx.GetHeader("referrer"))
 	})
+
+	t.Run("GetHeaders should work", func(t *testing.T) {
+		assert := assert.New(t)
+
+		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
+		assert.Equal(0, len(ctx.GetHeaders(HeaderXCanary)))
+		ctx.Req.Header.Set(HeaderXCanary, "label=stable")
+		ctx.Req.Header.Add(HeaderXCanary, "product=gear")
+		assert.Equal([]string{"label=stable", "product=gear"}, ctx.GetHeaders(HeaderXCanary))
+	})
 }
 
 func TestGearContextStatus(t *testing.T) {
