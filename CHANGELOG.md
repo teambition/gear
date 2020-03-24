@@ -5,6 +5,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.21.0] - 2020-03-24
+
+**Changed:**
+
+- Add request body and response body to access log when 500 error.
+
+**Fixed:**
+
+- Fix start time error for development logging.
+
 ## [1.20.0] - 2020-03-24
 
 **Changed:**

@@ -210,7 +210,7 @@ func developmentConsume(log Log, ctx *gear.Context) {
 	fmt.Fprintf(std.Out, ` - - [%s] "%s %s %s" `, end.Format(std.tf), log["method"], log["uri"], log["proto"])
 	status := log["status"].(int)
 	FprintWithColor(std.Out, strconv.Itoa(status), colorStatus(status))
-	resTime := float64(end.Sub(log["start"].(time.Time))) / 1e6
+	resTime := float64(end.Sub(ctx.StartAt)) / 1e6
 	fmt.Fprintln(std.Out, fmt.Sprintf(" %d %.3fms", log["length"], resTime))
 }
 
@@ -278,7 +278,7 @@ func New(w io.Writer) *Logger {
 //    log["uri"] = ctx.Req.RequestURI
 //    log["proto"] = ctx.Req.Proto
 //    log["userAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
-//    log["start"] = ctx.StartAt
+//    log["start"] = ctx.StartAt.Format("2006-01-02T15:04:05.000Z")
 //    if s := ctx.GetHeader(gear.HeaderOrigin); s != "" {
 //    	log["origin"] = s
 //    }
@@ -586,6 +586,23 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 		}
 		log["status"] = ctx.Res.Status()
 		log["length"] = len(ctx.Res.Body())
+
+		if ctx.Res.Status() == 500 {
+			if body, _ := ctx.Any("GEAR_REQUEST_BODY"); body != nil {
+				if b, ok := body.([]byte); ok {
+					log["requestBody"] = string(b)
+					if contentType, _ := ctx.Any("GEAR_REQUEST_CONTENT_TYPE"); contentType != nil {
+						log["requestContentType"] = contentType
+					}
+				}
+			}
+
+			if b := ctx.Res.Body(); b != nil {
+				log["responseBody"] = string(b)
+				log["responseContentType"] = ctx.Res.Get(gear.HeaderContentType)
+			}
+		}
+
 		l.consume(log, ctx)
 	})
 	return nil

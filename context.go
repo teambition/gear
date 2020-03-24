@@ -403,6 +403,8 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 		// RFC 2616, section 7.2.1 - empty type SHOULD be treated as application/octet-stream
 		mediaType = MIMEOctetStream
 	}
+
+	ctx.SetAny("GEAR_REQUEST_CONTENT_TYPE", mediaType)
 	if mediaType, params, err = mime.ParseMediaType(mediaType); err != nil {
 		return ErrUnsupportedMediaType.From(err)
 	}
@@ -421,6 +423,8 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 		// err may not be 413 Request entity too large, just make it to 413
 		return ErrRequestEntityTooLarge.From(err)
 	}
+
+	ctx.SetAny("GEAR_REQUEST_BODY", buf[:])
 	if err = ctx.app.bodyParser.Parse(buf, body, mediaType, params["charset"]); err != nil {
 		return ErrBadRequest.From(err)
 	}

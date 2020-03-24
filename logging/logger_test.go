@@ -565,6 +565,42 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		assert.Equal(ColorYellow, colorStatus(404))
 		assert.Equal(ColorRed, colorStatus(504))
 	})
+
+	t.Run("keep request body and response body when 500", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := gear.New()
+		logger := New(&buf)
+		logger.SetJSONLog()
+		app.UseHandler(logger)
+		app.Use(func(ctx *gear.Context) error {
+			var body bodyTpl
+			if err := ctx.ParseBody(&body); err != nil {
+				return err
+			}
+			panic("some error")
+		})
+		srv := app.Start()
+		defer srv.Close()
+
+		req, err := http.NewRequest("POST", "http://"+srv.Addr().String(), bytes.NewReader([]byte(`{"msg":"OK"}`)))
+		assert.Nil(err)
+		req.Header.Set("Content-Type", "application/json")
+		res, err := DefaultClient.Do(req)
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+
+		time.Sleep(10 * time.Millisecond)
+		logger.mu.Lock()
+		log := buf.String()
+		logger.mu.Unlock()
+		assert.Contains(log, `"requestBody":"{\"msg\":\"OK\"}"`)
+		assert.Contains(log, `"requestContentType":"application/json"`)
+		assert.Contains(log, `"responseBody":"{\"error\":\"InternalServerError\",\"message\":\"some error\"}"`)
+		assert.Contains(log, `"responseContentType":"application/json; charset=utf-8"`)
+		res.Body.Close()
+	})
 }
 
 func TestParseLevel(t *testing.T) {
@@ -609,4 +645,10 @@ func TestParseLevel(t *testing.T) {
 		assert.Nil(SetLoggerLevel(logger, "crit"))
 		assert.Equal(CritLevel, logger.GetLevel())
 	})
+}
+
+type bodyTpl map[string]string
+
+func (b *bodyTpl) Validate() error {
+	return nil
 }
