@@ -54,8 +54,15 @@ const (
 	HeaderOrigin             = "Origin"              // Requests
 	HeaderAcceptDatetime     = "Accept-Datetime"     // Requests
 	HeaderXRequestedWith     = "X-Requested-With"    // Requests
-	HeaderXRequestID         = "X-Request-ID"        // Requests
+	HeaderXRequestID         = "X-Request-Id"        // Requests
 	HeaderXCanary            = "X-Canary"            // Requests, Responses
+	HeaderXForwardedScheme   = "X-Forwarded-Scheme"  // Requests
+	HeaderXForwardedProto    = "X-Forwarded-Proto"   // Requests
+	HeaderXForwardedFor      = "X-Forwarded-For"     // Requests
+	HeaderXForwardedHost     = "X-Forwarded-Host"    // Requests
+	HeaderXForwardedServer   = "X-Forwarded-Server"  // Requests
+	HeaderXRealIP            = "X-Real-Ip"           // Requests
+	HeaderXRealScheme        = "X-Real-Scheme"       // Requests
 
 	HeaderAccessControlAllowOrigin      = "Access-Control-Allow-Origin"      // Responses
 	HeaderAccessControlAllowMethods     = "Access-Control-Allow-Methods"     // Responses
@@ -103,11 +110,8 @@ const (
 	HeaderXContentTypeOptions             = "X-Content-Type-Options"              // Responses
 	HeaderXPoweredBy                      = "X-Powered-By"                        // Responses
 	HeaderXUACompatible                   = "X-UA-Compatible"                     // Responses
-	HeaderXForwardedProto                 = "X-Forwarded-Proto"                   // Responses
-	HeaderXHTTPMethodOverride             = "X-HTTP-Method-Override"              // Responses
-	HeaderXForwardedFor                   = "X-Forwarded-For"                     // Responses
-	HeaderXRealIP                         = "X-Real-IP"                           // Responses
 	HeaderXCSRFToken                      = "X-CSRF-Token"                        // Responses
+	HeaderXHTTPMethodOverride             = "X-HTTP-Method-Override"              // Responses
 	HeaderXDNSPrefetchControl             = "X-DNS-Prefetch-Control"              // Responses
 	HeaderXDownloadOptions                = "X-Download-Options"                  // Responses
 )

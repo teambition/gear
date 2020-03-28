@@ -225,6 +225,7 @@ func New(w io.Writer) *Logger {
 	logger.init = func(log Log, ctx *gear.Context) {
 		log["start"] = ctx.StartAt.Format(logger.tf)
 		log["ip"] = ctx.IP().String()
+		log["scheme"] = ctx.Scheme()
 		log["proto"] = ctx.Req.Proto
 		log["method"] = ctx.Method
 		log["uri"] = ctx.Req.RequestURI

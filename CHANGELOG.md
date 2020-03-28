@@ -5,6 +5,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.21.1] - 2020-03-28
+
+**Changed:**
+
+- Add ctx.Scheme() instead of ctx.Protocol().
+
+**Fixed:**
+
+- Fix ctx.Protocol() and ctx.IP() for proxy.
+
 ## [1.21.0] - 2020-03-24
 
 **Changed:**

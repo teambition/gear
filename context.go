@@ -276,42 +276,63 @@ func (ctx *Context) Setting(key interface{}) interface{} {
 
 // IP returns the client's network address based on `X-Forwarded-For`
 // or `X-Real-IP` request header.
+// The trustedProxy argument will be removed in v2.
 func (ctx *Context) IP(trustedProxy ...bool) net.IP {
 	trusted := ctx.Setting(SetTrustedProxy).(bool)
 	if len(trustedProxy) > 0 {
 		trusted = trustedProxy[0]
 	}
 
+	var ip string
 	if trusted {
-		ip := ctx.Req.Header.Get(HeaderXForwardedFor)
-		if ip == "" {
-			ip = ctx.Req.Header.Get(HeaderXRealIP)
-		} else if i := strings.IndexByte(ip, ','); i >= 0 {
-			ip = ip[0:i]
-		}
+		ip = ctx.Req.Header.Get(HeaderXRealIP)
 
-		if realIP := net.ParseIP(ip); realIP != nil {
-			return realIP
+		if ip == "" {
+			ip = ctx.Req.Header.Get(HeaderXForwardedFor)
+			if i := strings.IndexByte(ip, ','); i > 0 {
+				ip = ip[0:i]
+			}
 		}
 	}
+	if ip == "" {
+		ra := ctx.Req.RemoteAddr
+		ip, _, _ = net.SplitHostPort(ra)
+	}
 
-	ra := ctx.Req.RemoteAddr
-	ra, _, _ = net.SplitHostPort(ra)
-	return net.ParseIP(ra)
+	return net.ParseIP(ip)
 }
 
-// Protocol returns the protocol ("http", "https", "ws", "wss") that a client used to connect to your proxy or load balancer.
-// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
-func (ctx *Context) Protocol() string {
-	if ctx.Req.TLS != nil {
-		return "https"
+// Protocol -  Please use ctx.Scheme instead. This method will be changed in v2.
+func (ctx *Context) Protocol(trustedProxy ...bool) string {
+	return ctx.Scheme(trustedProxy...)
+}
+
+// Scheme returns the scheme ("http", "https", "ws", "wss") that a client used to connect to your proxy or load balancer.
+// The trustedProxy argument will be removed in v2.
+func (ctx *Context) Scheme(trustedProxy ...bool) string {
+	trusted := ctx.Setting(SetTrustedProxy).(bool)
+	if len(trustedProxy) > 0 {
+		trusted = trustedProxy[0]
 	}
-	switch p := ctx.GetHeader(HeaderXForwardedProto); p {
-	case "http", "https", "ws", "wss":
-		return p
-	default:
-		return "http"
+
+	var s string
+	if trusted {
+		if s = ctx.GetHeader(HeaderXRealScheme); s == "" {
+			if s = ctx.GetHeader(HeaderXForwardedProto); s == "" {
+				s = ctx.GetHeader(HeaderXForwardedScheme)
+			}
+		}
+		s = strings.ToLower(s)
 	}
+
+	if s == "" {
+		if ctx.Req.TLS != nil {
+			s = "https"
+		} else {
+			s = "http"
+		}
+	}
+	return s
 }
 
 // AcceptType returns the most preferred content type from the HTTP Accept header.

@@ -395,58 +395,15 @@ func TestGearContextIP(t *testing.T) {
 		assert := assert.New(t)
 
 		app := New()
-		r := NewRouter()
-		r.Get("/XForwardedFor", func(ctx *Context) error {
-			assert.True(ctx.IP().IsLoopback())
-			assert.Equal("192.168.0.99", ctx.IP(true).String())
-			return ctx.End(http.StatusNoContent)
-		})
-		r.Get("/XRealIP", func(ctx *Context) error {
-			assert.True(ctx.IP().IsLoopback())
-			assert.Equal("192.168.0.99", ctx.IP(true).String())
-			return ctx.End(http.StatusNoContent)
-		})
-		r.Get("/", func(ctx *Context) error {
-			assert.True(ctx.IP().IsLoopback())
-			assert.True(ctx.IP(true).IsLoopback())
-			return ctx.End(http.StatusNoContent)
-		})
-		r.Get("/invalidXRealIP", func(ctx *Context) error {
-			assert.True(ctx.IP().IsLoopback())
-			assert.True(ctx.IP(true).IsLoopback())
-			return ctx.End(http.StatusNoContent)
-		})
-		app.UseHandler(r)
+		ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
+		ctx.Req.RemoteAddr = "127.0.0.1:65432"
+		ctx.Req.Header.Set("X-Forwarded-For", "188.188.188.188, 192.168.0.99")
+		assert.Equal("127.0.0.1", ctx.IP().String())
 
-		srv := app.Start()
-		defer srv.Close()
-
-		host := "http://" + srv.Addr().String()
-		req, _ := NewRequst("GET", host+"/XForwardedFor")
-		req.Header.Set("X-Forwarded-For", "192.168.0.99, 127.0.0.10")
-
-		res, err := DefaultClientDo(req)
-		assert.Nil(err)
-		assert.Equal(204, res.StatusCode)
-
-		req, _ = NewRequst("GET", host+"/XRealIP")
-		req.Header.Set("X-Real-IP", "192.168.0.99")
-
-		res, err = DefaultClientDo(req)
-		assert.Nil(err)
-		assert.Equal(204, res.StatusCode)
-
-		req, _ = NewRequst("GET", host)
-		res, err = DefaultClientDo(req)
-		assert.Nil(err)
-		assert.Equal(204, res.StatusCode)
-
-		req, _ = NewRequst("GET", host+"/invalidXRealIP")
-		req.Header.Set("X-Real-IP", "1.2.3")
-
-		res, err = DefaultClientDo(req)
-		assert.Nil(err)
-		assert.Equal(204, res.StatusCode)
+		ctx = CtxTest(app, "POST", "http://example.com/foo", nil)
+		ctx.Req.RemoteAddr = "127.0.0.1:65432"
+		ctx.Req.Header.Set("X-Real-IP", "192.168.0.99")
+		assert.Equal("127.0.0.1", ctx.IP().String())
 	})
 
 	t.Run("when set true", func(t *testing.T) {
@@ -454,88 +411,59 @@ func TestGearContextIP(t *testing.T) {
 
 		app := New()
 		app.Set(SetTrustedProxy, true)
-		r := NewRouter()
-		r.Get("/XForwardedFor", func(ctx *Context) error {
-			assert.True(ctx.IP(false).IsLoopback())
-			assert.Equal("192.168.0.99", ctx.IP().String())
-			return ctx.End(http.StatusNoContent)
-		})
-		r.Get("/XRealIP", func(ctx *Context) error {
-			assert.True(ctx.IP(false).IsLoopback())
-			assert.Equal("192.168.0.99", ctx.IP().String())
-			return ctx.End(http.StatusNoContent)
-		})
-		r.Get("/", func(ctx *Context) error {
-			assert.True(ctx.IP().IsLoopback())
-			return ctx.End(http.StatusNoContent)
-		})
-		r.Get("/invalidXRealIP", func(ctx *Context) error {
-			assert.True(ctx.IP().IsLoopback())
-			return ctx.End(http.StatusNoContent)
-		})
-		app.UseHandler(r)
+		ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
+		ctx.Req.RemoteAddr = "127.0.0.1:65432"
+		assert.Equal("127.0.0.1", ctx.IP().String())
 
-		srv := app.Start()
-		defer srv.Close()
+		ctx.Req.Header.Set("X-Forwarded-For", "188.188.188.189")
+		assert.Equal("188.188.188.189", ctx.IP().String())
 
-		host := "http://" + srv.Addr().String()
-		req, _ := NewRequst("GET", host+"/XForwardedFor")
-		req.Header.Set("X-Forwarded-For", "192.168.0.99, 127.0.0.10")
+		ctx.Req.Header.Set("X-Forwarded-For", "188.188.188.188, 192.168.0.99")
+		assert.Equal("188.188.188.188", ctx.IP().String())
 
-		res, err := DefaultClientDo(req)
-		assert.Nil(err)
-		assert.Equal(204, res.StatusCode)
-
-		req, _ = NewRequst("GET", host+"/XRealIP")
-		req.Header.Set("X-Real-IP", "192.168.0.99")
-
-		res, err = DefaultClientDo(req)
-		assert.Nil(err)
-		assert.Equal(204, res.StatusCode)
-
-		req, _ = NewRequst("GET", host)
-		res, err = DefaultClientDo(req)
-		assert.Nil(err)
-		assert.Equal(204, res.StatusCode)
-
-		req, _ = NewRequst("GET", host+"/invalidXRealIP")
-		req.Header.Set("X-Real-IP", "1.2.3")
-
-		res, err = DefaultClientDo(req)
-		assert.Nil(err)
-		assert.Equal(204, res.StatusCode)
+		ctx.Req.Header.Set("X-Real-IP", "188.188.188.187")
+		assert.Equal("188.188.188.187", ctx.IP().String())
 	})
 }
 
-func TestGearContextProtocol(t *testing.T) {
-	assert := assert.New(t)
+func TestGearContextScheme(t *testing.T) {
+	t.Run("Default Setting", func(t *testing.T) {
+		assert := assert.New(t)
 
-	app := New()
-	r := NewRouter()
-	r.Get("/", func(ctx *Context) error {
-		assert.Equal("http", ctx.Protocol())
-		return ctx.End(http.StatusNoContent)
+		app := New()
+		ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
+		ctx.Req.RemoteAddr = "127.0.0.1:65432"
+		ctx.Req.Header.Set("X-Forwarded-Proto", "https")
+		assert.Equal("http", ctx.Scheme())
+
+		ctx = CtxTest(app, "POST", "http://example.com/foo", nil)
+		ctx.Req.RemoteAddr = "127.0.0.1:65432"
+		ctx.Req.Header.Set("X-Real-Scheme", "https")
+		assert.Equal("http", ctx.Scheme())
 	})
-	r.Get("/X-Forwarded-Proto", func(ctx *Context) error {
-		assert.Equal("https", ctx.Protocol())
-		return ctx.End(http.StatusNoContent)
+
+	t.Run("when set true", func(t *testing.T) {
+		assert := assert.New(t)
+
+		app := New()
+		app.Set(SetTrustedProxy, true)
+		ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
+		ctx.Req.RemoteAddr = "127.0.0.1:65432"
+		ctx.Req.Header.Set("X-Forwarded-Proto", "https")
+		assert.Equal("https", ctx.Scheme())
+
+		ctx = CtxTest(app, "POST", "http://example.com/foo", nil)
+		ctx.Req.RemoteAddr = "127.0.0.1:65432"
+		ctx.Req.Header.Set("X-Forwarded-Scheme", "https")
+		assert.Equal("https", ctx.Scheme())
+
+		ctx = CtxTest(app, "POST", "http://example.com/foo", nil)
+		ctx.Req.RemoteAddr = "127.0.0.1:65432"
+		ctx.Req.Header.Set("X-Forwarded-Proto", "https")
+		ctx.Req.Header.Set("X-Forwarded-Scheme", "https")
+		ctx.Req.Header.Set("X-Real-Scheme", "http")
+		assert.Equal("http", ctx.Scheme())
 	})
-	app.UseHandler(r)
-
-	srv := app.Start()
-	defer srv.Close()
-
-	host := "http://" + srv.Addr().String()
-	req, _ := NewRequst("GET", host)
-	res, err := DefaultClientDo(req)
-	assert.Nil(err)
-	assert.Equal(204, res.StatusCode)
-
-	req, _ = NewRequst("GET", host+"/X-Forwarded-Proto")
-	req.Header.Set("X-Forwarded-Proto", "https")
-	res, err = DefaultClientDo(req)
-	assert.Nil(err)
-	assert.Equal(204, res.StatusCode)
 }
 
 func TestGearContextAccept(t *testing.T) {
