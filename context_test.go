@@ -894,7 +894,7 @@ type PaginationEmbedTemplate struct {
 }
 
 type jsonQueryTemplate struct {
-	ID   string `json:"id" query:"id"`
+	ID   string `json:"id" query:"id,omitempty"`
 	Pass string `json:"pass" query:"pass"`
 	PaginationEmbedTemplate
 }

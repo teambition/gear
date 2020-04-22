@@ -305,6 +305,11 @@ func valuesToStruct(values map[string][]string, rv reflect.Value, tag string) (e
 			continue
 		}
 
+		// ignore tag options
+		if idx := strings.Index(fk, ","); idx > 0 {
+			fk = fk[:idx]
+		}
+
 		if vals, ok := values[fk]; ok {
 			if value.Kind() == reflect.Slice {
 				err = setRefSlice(value, vals)
