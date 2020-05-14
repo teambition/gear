@@ -533,7 +533,7 @@ func catchRequest(ctx *Context) {
 }
 
 func handleCtxEnd(ctx *Context) {
-	<-ctx.Done()
+	<-ctx.done
 	ctx.Res.ended.setTrue()
 }
 

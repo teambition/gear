@@ -90,23 +90,30 @@ func TestGearContextContextInterface(t *testing.T) {
 func TestGearContextWithContext(t *testing.T) {
 	assert := assert.New(t)
 
+	type contextKey string
+
 	count := Counter(0)
 	app := New()
 	app.Use(func(ctx *Context) error {
 		assert.Panics(func() {
-			ctx.WithContext(context.WithValue(ctx, "key", "val"))
+			ctx.WithContext(context.WithValue(ctx, contextKey("key"), "val"))
 		})
 
 		assert.Panics(func() {
-			ctx.WithContext(context.WithValue(context.Background(), "key", "val"))
+			ctx.WithContext(context.WithValue(context.Background(), contextKey("key"), "val"))
 		})
 
-		ctx.WithContext(context.WithValue(ctx.Context(), "key", "val"))
-		ctx.WithContext(ctx.WithValue("key2", "val2"))
-		assert.Equal("val", ctx.Value("key"))
-		assert.Equal("val2", ctx.Value("key2"))
-		c := ctx.WithValue("test", "abc")
-		assert.Equal("abc", c.Value("test").(string))
+		ctx.WithContext(context.WithValue(ctx.Context(), contextKey("key"), "val"))
+		ctx.WithContext(ctx.WithValue(contextKey("key2"), "val2"))
+		assert.Equal("val", ctx.Value(contextKey("key")))
+		assert.Equal("val2", ctx.Value(contextKey("key2")))
+		assert.Equal("val", ctx.Req.Context().Value(contextKey("key")))
+		assert.Equal("val2", ctx.Req.Context().Value(contextKey("key2")))
+
+		c := ctx.WithValue(contextKey("test"), "abc")
+		assert.Equal("val", c.Value(contextKey("key")))
+		assert.Equal("val2", c.Value(contextKey("key2")))
+		assert.Equal("abc", c.Value(contextKey("test")))
 		s := c.Value(http.ServerContextKey)
 		EqualPtr(t, s, app.Server)
 

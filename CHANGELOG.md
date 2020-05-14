@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
 
+## [1.21.2] - 2020-05-14
+
+**Fixed:**
+
+- Fix ctx.WithContext: sets the context to underlying request object.
+
 ## [1.21.1] - 2020-03-28
 
 **Changed:**

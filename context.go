@@ -22,8 +22,8 @@ import (
 type contextKey int
 
 const (
-	isContext contextKey = iota
-	isRecursive
+	isInheritedContext contextKey = iota
+	isGearContext
 	paramsKey
 	routerNodeKey
 	routerRootKey
@@ -54,8 +54,8 @@ type Context struct {
 
 	query     url.Values
 	ctx       context.Context
-	_ctx      context.Context
 	cancelCtx context.CancelFunc
+	done      <-chan struct{}
 	kv        map[interface{}]interface{}
 }
 
@@ -63,7 +63,6 @@ type Context struct {
 func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	ctx := Context{
 		app: app,
-		Req: r,
 		Res: &Response{w: w, rw: w, handlerHeader: w.Header()},
 
 		Host:    r.Host,
@@ -84,16 +83,14 @@ func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	} else {
 		ctx.ctx, ctx.cancelCtx = context.WithTimeout(r.Context(), app.timeout)
 	}
-	ctx.ctx = context.WithValue(ctx.ctx, isContext, isContext)
 
+	ctx.ctx = context.WithValue(ctx.ctx, isInheritedContext, struct{}{})
+	ctx.Req = r.WithContext(ctx.ctx)
 	if app.withContext != nil {
-		ctx._ctx = app.withContext(r.WithContext(ctx.ctx))
-		if ctx._ctx.Value(isContext) == nil {
-			panic(Err.WithMsg("the context is not created from gear.Context"))
-		}
-	} else {
-		ctx._ctx = ctx.ctx
+		ctx.WithContext(app.withContext(ctx.Req))
 	}
+
+	ctx.done = ctx.ctx.Done()
 	return &ctx
 }
 
@@ -120,10 +117,11 @@ func (ctx *Context) Err() error {
 // if no value is associated with key. Successive calls to Value with
 // the same key returns the same result.
 func (ctx *Context) Value(key interface{}) (val interface{}) {
-	if key == isRecursive {
-		return isRecursive
+	if key == isGearContext {
+		return struct{}{}
 	}
-	return ctx._ctx.Value(key)
+
+	return ctx.ctx.Value(key)
 }
 
 // Cancel cancel the ctx and all it' children context.
@@ -137,27 +135,27 @@ func (ctx *Context) Cancel() {
 // WithCancel returns a copy of the ctx with a new Done channel.
 // The returned context's Done channel is closed when the returned cancel function is called or when the parent context's Done channel is closed, whichever happens first.
 func (ctx *Context) WithCancel() (context.Context, context.CancelFunc) {
-	return context.WithCancel(ctx._ctx)
+	return context.WithCancel(ctx.ctx)
 }
 
 // WithDeadline returns a copy of the ctx with the deadline adjusted to be no later than d.
 func (ctx *Context) WithDeadline(deadline time.Time) (context.Context, context.CancelFunc) {
-	return context.WithDeadline(ctx._ctx, deadline)
+	return context.WithDeadline(ctx.ctx, deadline)
 }
 
 // WithTimeout returns WithDeadline(time.Now().Add(timeout)).
 func (ctx *Context) WithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(ctx._ctx, timeout)
+	return context.WithTimeout(ctx.ctx, timeout)
 }
 
 // WithValue returns a copy of the ctx in which the value associated with key is val.
 func (ctx *Context) WithValue(key, val interface{}) context.Context {
-	return context.WithValue(ctx._ctx, key, val)
+	return context.WithValue(ctx.ctx, key, val)
 }
 
 // Context returns the underlying context of gear.Context
 func (ctx *Context) Context() context.Context {
-	return ctx._ctx
+	return ctx.ctx
 }
 
 // WithContext sets the context to underlying gear.Context.
@@ -166,25 +164,16 @@ func (ctx *Context) Context() context.Context {
 //  ctx.WithContext(ctx.WithValue("key", "value"))
 //  // ctx.Value("key") == "value"
 //
-// a opentracing middleware:
-//
-//  func New(opts ...opentracing.StartSpanOption) gear.Middleware {
-//  	return func(ctx *gear.Context) error {
-//  		span := opentracing.StartSpan(fmt.Sprintf(`%s %s`, ctx.Method, ctx.Path), opts...)
-//  		ctx.WithContext(opentracing.ContextWithSpan(ctx.Context(), span))
-//  		ctx.OnEnd(span.Finish)
-//  		return nil
-//  	}
-//  }
-//
 func (ctx *Context) WithContext(c context.Context) {
-	if c.Value(isRecursive) != nil {
-		panic(Err.WithMsg("context recursive, please use ctx.Context() as parent context"))
+	if c.Value(isGearContext) != nil {
+		panic(Err.WithMsg("should not use *gear.Context as parent context, please use ctx.Context()"))
 	}
-	if c.Value(isContext) == nil {
-		panic(Err.WithMsg("the context is not created from gear.Context"))
+	if c.Value(isInheritedContext) == nil {
+		panic(Err.WithMsg("the context is not created from ctx.Context()"))
 	}
-	ctx._ctx = c
+
+	ctx.Req = ctx.Req.WithContext(c)
+	ctx.ctx = c
 }
 
 // LogErr writes error to underlayer logging system through app.Error.
