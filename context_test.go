@@ -928,6 +928,7 @@ func (b *jsonParamTemplate) Validate() error {
 type jsonParamQueryTemplate struct {
 	ID   string `json:"id" query:"id" param:"id"`
 	Pass string `json:"pass" query:"pass" param:"pass"`
+	Size int    `json:"size" query:"size" param:"size"`
 }
 
 func (b *jsonParamQueryTemplate) Validate() error {
@@ -1052,7 +1053,7 @@ func TestGearContextParseURL(t *testing.T) {
 	t.Run("should parse url params and query content", func(t *testing.T) {
 		assert := assert.New(t)
 
-		ctx := CtxTest(app, "GET", "http://example.com/foo?id=admin", nil)
+		ctx := CtxTest(app, "GET", "http://example.com/foo?id=admin&size=", nil)
 		ctx.SetAny(paramsKey, map[string]string{
 			"pass": "1234567",
 		})
@@ -1061,6 +1062,7 @@ func TestGearContextParseURL(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal("admin", body.ID)
 		assert.Equal("1234567", body.Pass)
+		assert.Equal(0, body.Size)
 	})
 
 	t.Run("should parse url params take precedence over query content", func(t *testing.T) {

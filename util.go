@@ -308,7 +308,7 @@ func valuesToStruct(values map[string][]string, rv reflect.Value, tag string) (e
 		if vals, ok := values[fk]; ok {
 			if value.Kind() == reflect.Slice {
 				err = setRefSlice(value, vals)
-			} else if len(vals) > 0 {
+			} else if len(vals) > 0 && vals[0] != "" {
 				err = setRefField(value, vals[0])
 			}
 			if err != nil {
