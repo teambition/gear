@@ -146,6 +146,12 @@ type App struct {
 func New() *App {
 	app := new(App)
 	app.Server = new(http.Server)
+	// https://medium.com/@simonfrey/go-as-in-golang-standard-net-http-config-will-break-your-production-environment-1360871cb72b
+	app.Server.ReadHeaderTimeout = 20 * time.Second
+	app.Server.ReadTimeout = 60 * time.Second
+	app.Server.WriteTimeout = 120 * time.Second
+	app.Server.IdleTimeout = 90 * time.Second
+
 	app.mds = make(middlewares, 0)
 	app.settings = make(map[interface{}]interface{})
 

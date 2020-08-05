@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.21.4] - 2020-08-05
+
+**Changed:**
+
+- Add default ReadHeaderTimeout, ReadTimeout, WriteTimeout and IdleTimeout for Server.
+
 ## [1.21.3] - 2020-07-31
 
 **Fixed:**
