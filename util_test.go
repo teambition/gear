@@ -959,6 +959,9 @@ func TestIsLikeMediaType(t *testing.T) {
 		assert.True(isLikeMediaType("application/jose+json", "json"))
 		assert.True(isLikeMediaType("application/geo+json", "json"))
 		assert.True(isLikeMediaType("application/geo+json-seq", "json"))
+		assert.True(isLikeMediaType("application/schema+json", "json"))
+		assert.True(isLikeMediaType("application/schema-instance+json", "json"))
+		assert.True(isLikeMediaType("application/ld+json", "json"))
 		assert.False(isLikeMediaType("application1/jrd+json", "json"))
 		assert.False(isLikeMediaType("application/json", "json"))
 

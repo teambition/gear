@@ -760,7 +760,7 @@ func (ctx *Context) OkStream(contentType string, r io.Reader) error {
 func (ctx *Context) Error(e error) error {
 	ctx.Res.afterHooks = nil // clear afterHooks when any error
 	ctx.Res.ResetHeader()
-	err := ParseError(e, ctx.Res.status)
+	err := ctx.app.parseError(e)
 	if err == nil {
 		err = ErrInternalServerError.WithMsg("nil error")
 	}
@@ -815,17 +815,18 @@ func (ctx *Context) OnEnd(hook func()) {
 
 func (ctx *Context) respondError(err HTTPError) {
 	if !ctx.Res.wroteHeader.isTrue() {
-		code := err.Status()
-		// we don't need to logging 501, 4xx errors
+		code, contentType, body := ctx.app.renderError(err)
+		if !IsStatusCode(code) && ctx.Res.status != 0 {
+			code = ctx.Res.status
+		}
+		// we don't need to logging 501 and 4xx errors
 		if code == 500 || code > 501 || code < 400 {
 			ctx.app.Error(err)
 		}
-		// try to render error as json
-		ctx.SetHeader(HeaderContentType, MIMEApplicationJSONCharsetUTF8)
-		ctx.SetHeader(HeaderXContentTypeOptions, "nosniff")
 
-		buf, _ := json.Marshal(err)
-		ctx.Res.respond(code, buf)
+		ctx.SetHeader(HeaderXContentTypeOptions, "nosniff")
+		ctx.SetHeader(HeaderContentType, contentType)
+		ctx.Res.respond(code, body)
 	}
 }
 

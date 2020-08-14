@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.21.5] - 2020-08-14
+
+**Changed:**
+
+- Add gear.SetRenderError hook that convert error to raw response.
+- Add gear.MIMEApplicationSchemaJSONLD MIME type.
+
 ## [1.21.4] - 2020-08-05
 
 **Changed:**

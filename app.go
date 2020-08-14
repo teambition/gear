@@ -136,7 +136,8 @@ type App struct {
 	timeout     time.Duration // Default to 0, no time out.
 	serverName  string        // Gear/1.7.6
 	logger      *log.Logger
-	parseError  func(err error) HTTPError
+	parseError  func(error) HTTPError
+	renderError func(HTTPError) (code int, contentType string, body []byte)
 	onerror     func(*Context, HTTPError)
 	withContext func(*http.Request) context.Context
 	settings    map[interface{}]interface{}
@@ -167,6 +168,14 @@ func New() *App {
 	app.Set(SetLogger, log.New(os.Stderr, "", 0))
 	app.Set(SetParseError, func(err error) HTTPError {
 		return ParseError(err)
+	})
+	app.Set(SetRenderError, func(err HTTPError) (int, string, []byte) {
+		// default to render error as json
+		body, e := json.Marshal(err)
+		if e != nil {
+			body, _ = json.Marshal(map[string]string{"message": err.Error()})
+		}
+		return err.Status(), MIMEApplicationJSONCharsetUTF8, body
 	})
 	app.Set(SetOnError, func(ctx *Context, err HTTPError) {
 		ctx.Error(err)
@@ -224,6 +233,18 @@ const (
 	//  	return ParseError(err)
 	//  })
 	SetParseError
+
+	// Set a SetRenderError hook to app that convert error to raw response,
+	// value should be `func(HTTPError) (code int, contentType string, body []byte)`, default to:
+	//   app.Set(SetRenderError, func(err HTTPError) (int, string, []byte) {
+	//  	// default to render error as json
+	//  	body, e := json.Marshal(err)
+	//  	if e != nil {
+	//  		body, _ = json.Marshal(map[string]string{"message": err.Error()})
+	//  	}
+	//  	return err.Status(), MIMEApplicationJSONCharsetUTF8, body
+	//  })
+	SetRenderError
 
 	// Set a on-error hook to app that handle middleware error.
 	// value should be `func(ctx *Context, err HTTPError)`, default to:
@@ -296,14 +317,20 @@ func (app *App) Set(key, val interface{}) *App {
 				app.logger = logger
 			}
 		case SetParseError:
-			if parseError, ok := val.(func(err error) HTTPError); !ok {
-				panic(Err.WithMsg("SetParseError setting must be `func(err error) HTTPError`"))
+			if parseError, ok := val.(func(error) HTTPError); !ok {
+				panic(Err.WithMsg("SetParseError setting must be `func(error) HTTPError`"))
 			} else {
 				app.parseError = parseError
 			}
+		case SetRenderError:
+			if renderError, ok := val.(func(HTTPError) (int, string, []byte)); !ok {
+				panic(Err.WithMsg("SetRenderError setting must be `func(HTTPError) (int, string, []byte)`"))
+			} else {
+				app.renderError = renderError
+			}
 		case SetOnError:
-			if onerror, ok := val.(func(ctx *Context, err HTTPError)); !ok {
-				panic(Err.WithMsg("SetOnError setting must be `func(ctx *Context, err HTTPError)`"))
+			if onerror, ok := val.(func(*Context, HTTPError)); !ok {
+				panic(Err.WithMsg("SetOnError setting must be `func(*Context, HTTPError)`"))
 			} else {
 				app.onerror = onerror
 			}

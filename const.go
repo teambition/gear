@@ -23,6 +23,7 @@ const (
 	MIMEOctetStream                      = "application/octet-stream"
 	MIMEApplicationSchemaJSON            = "application/schema+json"
 	MIMEApplicationSchemaInstanceJSON    = "application/schema-instance+json"
+	MIMEApplicationSchemaJSONLD          = "application/ld+json"
 )
 
 // HTTP Header Fields
