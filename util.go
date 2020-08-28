@@ -88,6 +88,27 @@ type Error struct {
 	Stack string      `json:"-"`
 }
 
+// ErrorResponse represents error response like JSON-RPC2 or Google cloud API.
+type ErrorResponse struct {
+	Error struct {
+		Code    int         `json:"code"`
+		Status  string      `json:"status"`
+		Message string      `json:"message"`
+		Data    interface{} `json:"data,omitempty"`
+	} `json:"error"`
+}
+
+// ToErrorResponse convert a error to ErrorResponse instance.
+func ToErrorResponse(e error) ErrorResponse {
+	res := ErrorResponse{}
+	err := Err.From(e)
+	res.Error.Code = err.Code
+	res.Error.Status = err.Err
+	res.Error.Message = err.Msg
+	res.Error.Data = err.Data
+	return res
+}
+
 // errorForLog use to marshal for logging.
 type errorForLog struct {
 	Code  int         `json:"code"`
@@ -651,4 +672,30 @@ func ContextWithSignal(ctx context.Context) context.Context {
 		cancel()
 	}()
 	return newCtx
+}
+
+// RenderErrorResponse is a SetRenderError function with ErrorResponse struct.
+// It will become a default SetRenderError function in Gear@v2.
+//
+// Usage:
+//
+//  app.Set(gear.SetRenderError, gear.RenderErrorResponse)
+//
+func RenderErrorResponse(err HTTPError) (int, string, []byte) {
+	body, e := json.Marshal(ToErrorResponse(err))
+	if e != nil {
+		body, _ = json.Marshal(map[string]interface{}{
+			"error": map[string]string{"message": err.Error()},
+		})
+	}
+	return err.Status(), MIMEApplicationJSONCharsetUTF8, body
+}
+
+func defaultRenderError(err HTTPError) (int, string, []byte) {
+	// default to render error as json
+	body, e := json.Marshal(err)
+	if e != nil {
+		body, _ = json.Marshal(map[string]string{"error": err.Error()})
+	}
+	return err.Status(), MIMEApplicationJSONCharsetUTF8, body
 }

@@ -34,4 +34,4 @@ replace (
 	google.golang.org/grpc => github.com/grpc/grpc-go v1.26.0
 )
 
-go 1.13
+go 1.14

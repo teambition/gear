@@ -235,8 +235,8 @@ func New(w io.Writer) *Logger {
 		if s := ctx.GetHeader(gear.HeaderReferer); s != "" {
 			log["referer"] = s
 		}
-		if vals := ctx.GetHeaders(gear.HeaderXCanary); len(vals) > 0 {
-			log["xCanary"] = vals
+		if s := ctx.GetHeader(gear.HeaderXCanary); s != "" {
+			log["xCanary"] = s
 		}
 		log["userAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
 	}
@@ -492,6 +492,7 @@ func (l *Logger) SetLevel(level Level) *Logger {
 }
 
 // SetJSONLog set the logger writing JSON string log.
+// It will become default in Gear@v2.
 func (l *Logger) SetJSONLog() *Logger {
 	l.mu.Lock()
 	defer l.mu.Unlock()

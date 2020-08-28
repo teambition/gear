@@ -325,6 +325,55 @@ func TestGearAppOnError(t *testing.T) {
 	})
 }
 
+func TestGearAppRenderError(t *testing.T) {
+	t.Run("default RenderError", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := New()
+		app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
+		router := NewRouter()
+		router.Get("/", func(ctx *Context) error {
+			return errors.New("some error")
+		})
+		app.UseHandler(router)
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
+		assert.Equal(`{"error":"InternalServerError","message":"some error"}`, PickRes(res.Text()).(string))
+		assert.True(strings.Contains(buf.String(), `"message":"some error"`))
+		res.Body.Close()
+	})
+
+	t.Run("with RenderErrorResponse", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var buf bytes.Buffer
+		app := New()
+		app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
+		app.Set(SetRenderError, RenderErrorResponse)
+		router := NewRouter()
+		router.Get("/", func(ctx *Context) error {
+			return errors.New("some error")
+		})
+		app.UseHandler(router)
+		srv := app.Start()
+		defer srv.Close()
+
+		res, err := RequestBy("GET", "http://"+srv.Addr().String())
+		assert.Nil(err)
+		assert.Equal(500, res.StatusCode)
+		assert.Equal("application/json; charset=utf-8", res.Header.Get(HeaderContentType))
+		assert.Equal(`{"error":{"code":500,"status":"InternalServerError","message":"some error"}}`, PickRes(res.Text()).(string))
+		assert.True(strings.Contains(buf.String(), `"message":"some error"`))
+		res.Body.Close()
+	})
+}
+
 func TestGearSetTimeout(t *testing.T) {
 	t.Run("respond 504 when timeout", func(t *testing.T) {
 		assert := assert.New(t)

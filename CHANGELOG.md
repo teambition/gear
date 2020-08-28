@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.21.6] - 2020-08-28
+
+**Changed:**
+
+- Add gear.ErrorResponse struct that represents error response like JSON-RPC2 or Google cloud API.
+- Add gear.RenderErrorResponse function that render error with ErrorResponse struct.
+
+**Fixed:**
+
+- Fix default SetRenderError function.
+- Fix `xCanary` field in logging middleware.
+
 ## [1.21.5] - 2020-08-14
 
 **Changed:**

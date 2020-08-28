@@ -169,14 +169,7 @@ func New() *App {
 	app.Set(SetParseError, func(err error) HTTPError {
 		return ParseError(err)
 	})
-	app.Set(SetRenderError, func(err HTTPError) (int, string, []byte) {
-		// default to render error as json
-		body, e := json.Marshal(err)
-		if e != nil {
-			body, _ = json.Marshal(map[string]string{"message": err.Error()})
-		}
-		return err.Status(), MIMEApplicationJSONCharsetUTF8, body
-	})
+	app.Set(SetRenderError, defaultRenderError)
 	app.Set(SetOnError, func(ctx *Context, err HTTPError) {
 		ctx.Error(err)
 	})
@@ -240,10 +233,15 @@ const (
 	//  	// default to render error as json
 	//  	body, e := json.Marshal(err)
 	//  	if e != nil {
-	//  		body, _ = json.Marshal(map[string]string{"message": err.Error()})
+	//  		body, _ = json.Marshal(map[string]string{"error": err.Error()})
 	//  	}
 	//  	return err.Status(), MIMEApplicationJSONCharsetUTF8, body
 	//  })
+	//
+	// you can use another recommand one:
+	//
+	//  app.Set(gear.SetRenderError, gear.RenderErrorResponse)
+	//
 	SetRenderError
 
 	// Set a on-error hook to app that handle middleware error.
