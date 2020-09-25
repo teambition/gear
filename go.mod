@@ -1,27 +1,31 @@
 module github.com/teambition/gear
 
 require (
+	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/GitbookIO/mimedb v0.0.0-20180329142916-39fdfdb4def4 // indirect
-	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
+	github.com/codahale/hdrhistogram v0.9.0 // indirect
 	github.com/dimfeld/httptreemux v5.0.1+incompatible // indirect
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/go-http-utils/cookie v1.3.1
 	github.com/go-http-utils/negotiator v1.0.0
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/julienschmidt/httprouter v1.2.0 // indirect
-	github.com/kr/pretty v0.1.0 // indirect
+	github.com/julienschmidt/httprouter v1.3.0 // indirect
+	github.com/kr/pretty v0.2.1 // indirect
 	github.com/mailgun/timetools v0.0.0-20170619190023-f3a7b8ffff47 // indirect
-	github.com/pelletier/go-toml v1.4.0
-	github.com/sirupsen/logrus v1.4.2 // indirect
-	github.com/stretchr/testify v1.4.0
+	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
+	github.com/pelletier/go-toml v1.8.1
+	github.com/sirupsen/logrus v1.6.0 // indirect
+	github.com/stretchr/objx v0.3.0 // indirect
+	github.com/stretchr/testify v1.6.1
 	github.com/teambition/compressible-go v1.0.1
 	github.com/teambition/trie-mux v1.4.2
-	github.com/vulcand/oxy v0.0.0-20181019102601-ac21a760928b
-	golang.org/x/net v0.0.0-20190311183353-d8887717615a
-	golang.org/x/text v0.3.1-0.20181010134911-4d1c5fb19474 // indirect
-	google.golang.org/grpc v1.26.0
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
-	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
+	github.com/vulcand/oxy v1.1.0
+	golang.org/x/net v0.0.0-20200923182212-328152dc79b1
+	golang.org/x/text v0.3.3 // indirect
+	google.golang.org/grpc v1.32.0
+	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
+	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
+	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
 
 replace (

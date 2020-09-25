@@ -422,7 +422,7 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 	b := ctx.Req.Body
 	if encoding = ctx.GetHeader(HeaderContentEncoding); encoding != "" {
 		if b, err = Decompress(encoding, ctx.Req.Body); err != nil {
-			return err
+			return ErrBadRequest.From(err)
 		}
 	}
 
@@ -438,7 +438,10 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 	if err = ctx.app.bodyParser.Parse(buf, body, mediaType, params["charset"]); err != nil {
 		return ErrBadRequest.From(err)
 	}
-	return body.Validate()
+	if err = body.Validate(); err != nil {
+		return ErrBadRequest.From(err)
+	}
+	return nil
 }
 
 // ParseURL parses router params (like ctx.Param) and queries (like ctx.Query) in request URL,
@@ -488,7 +491,10 @@ func (ctx *Context) ParseURL(body BodyTemplate) error {
 		}
 	}
 
-	return body.Validate()
+	if err := body.Validate(); err != nil {
+		return ErrBadRequest.From(err)
+	}
+	return nil
 }
 
 // Get - Please use ctx.GetHeader instead. This method will be changed in v2.

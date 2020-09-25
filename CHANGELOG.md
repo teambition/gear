@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.21.7] - 2020-09-25
+
+**Changed:**
+
+- Add gear.MIMEApplicationSchemaGraphQL constant.
+- Enlarge Error' Stack trace buffer size.
+
+**Fixed:**
+
+- Fix ctx.ParseBody' error code.
+
 ## [1.21.6] - 2020-08-28
 
 **Changed:**

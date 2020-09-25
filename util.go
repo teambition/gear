@@ -260,7 +260,7 @@ func ErrorWithStack(val interface{}, skip ...int) *Error {
 	}
 
 	if err.Stack == "" {
-		buf := make([]byte, 2048)
+		buf := make([]byte, 8192)
 		buf = buf[:runtime.Stack(buf, false)]
 		s := 0
 		if len(skip) != 0 {

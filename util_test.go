@@ -969,3 +969,13 @@ func TestIsLikeMediaType(t *testing.T) {
 		assert.False(isLikeMediaType("application/xml", "xml"))
 	})
 }
+
+func TestToErrorResponse(t *testing.T) {
+	t.Run("should ok", func(t *testing.T) {
+		assert := assert.New(t)
+		e1 := ErrBadRequest.WithMsg("test123")
+		e2 := ToErrorResponse(e1)
+		assert.Equal(e1.Code, e2.Error.Code)
+		assert.Equal("test123", e2.Error.Message)
+	})
+}
