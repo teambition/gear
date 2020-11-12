@@ -138,8 +138,8 @@ func (err Error) GoString() string {
 	if v, ok := err.Data.([]byte); ok && utf8.Valid(v) {
 		err.Data = string(v)
 	}
-	return fmt.Sprintf(`Error{Code:%d, Err:"%s", Msg:"%s", Data:%#v, Stack:"%s"}`,
-		err.Code, err.Err, err.Msg, err.Data, err.Stack)
+	return fmt.Sprintf(`Error{Code:%d, Err:%s, Msg:%s, Data:%#v, Stack:%s}`,
+		err.Code, strconv.Quote(err.Err), strconv.Quote(err.Msg), err.Data, strconv.Quote(err.Stack))
 }
 
 // Format implemented logging.Messager interface.

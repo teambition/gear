@@ -164,10 +164,10 @@ func TestGearAppError(t *testing.T) {
 		err := Err.WithMsg("some error")
 		err.Data = math.NaN()
 		app.Error(err)
-		// [2017-08-11T15:51:08.827Z] CRIT Error{Code:500, Err:"Error", Msg:"some error", Data:NaN, Stack:"\t/usr/local/go/src/testing/testing.go:697"}
+		// [2017-08-11T15:51:08.827Z] CRIT Error{Code:500, Err:"Error", Msg:"some error", Data:NaN, Stack:"\\t/usr/local/go/src/testing/testing.go:697"}
 		assert.True(strings.Contains(buf.String(), `Z] CRIT Error{`))
 		assert.True(strings.Contains(buf.String(), `Msg:"some error"`))
-		assert.True(strings.Contains(buf.String(), `Stack:"\t`))
+		assert.True(strings.Contains(buf.String(), `Stack:"\\t`))
 	})
 
 	t.Run("malfor error and flag", func(t *testing.T) {
@@ -180,11 +180,11 @@ func TestGearAppError(t *testing.T) {
 		err := Err.WithMsg("some error")
 		err.Data = math.NaN()
 		app.Error(err)
-		// 2017/08/11 23:51:08 CRIT Error{Code:500, Err:"Error", Msg:"some error", Data:NaN, Stack:"\t/usr/local/go/src/testing/testing.go:697"}
+		// 2017/08/11 23:51:08 CRIT Error{Code:500, Err:"Error", Msg:"some error", Data:NaN, Stack:"\\t/usr/local/go/src/testing/testing.go:697"}
 		assert.False(strings.Contains(buf.String(), `Z] CRIT Error{`))
 		assert.True(strings.Contains(buf.String(), ` CRIT Error{`))
 		assert.True(strings.Contains(buf.String(), `Msg:"some error"`))
-		assert.True(strings.Contains(buf.String(), `Stack:"\t`))
+		assert.True(strings.Contains(buf.String(), `Stack:"\\t`))
 	})
 }
 
@@ -453,6 +453,8 @@ func TestGearSetTimeout(t *testing.T) {
 	})
 }
 
+type ctxKey string
+
 func TestGearSetWithContext(t *testing.T) {
 	t.Run("respond 200", func(t *testing.T) {
 		assert := assert.New(t)
@@ -487,7 +489,7 @@ func TestGearSetWithContext(t *testing.T) {
 
 		app := New()
 		app.Set(SetWithContext, func(r *http.Request) context.Context {
-			return context.WithValue(context.Background(), "key", "Hello Context")
+			return context.WithValue(context.Background(), ctxKey("key"), "Hello Context")
 		})
 		count := 0
 		app.Use(func(ctx *Context) error {
