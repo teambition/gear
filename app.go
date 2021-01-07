@@ -429,6 +429,42 @@ func (app *App) ListenWithContext(ctx context.Context, addr string, keyPair ...s
 	return app.Listen(addr)
 }
 
+// ServeWithContext accepts incoming connections on the Listener l, starts the HTTP server (or HTTPS server with keyPair) with a context
+//
+// Usage:
+//
+//  func main() {
+//		l, err := net.Listen("tcp", ":8080")
+//		if err != nil {
+//			log.Fatal(err)
+//		}
+//
+//  	app := gear.New() // Create app
+//  	do some thing...
+//
+//  	app.ServeWithContext(gear.ContextWithSignal(context.Background()), l)
+//	  // starts the HTTPS server.
+//	  // app.ServeWithContext(gear.ContextWithSignal(context.Background()), l, certFile, keyFile)
+//  }
+//
+func (app *App) ServeWithContext(ctx context.Context, l net.Listener, keyPair ...string) error {
+	go func() {
+		<-ctx.Done()
+		c, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := app.Close(c); err != nil {
+			app.Error(err)
+		}
+	}()
+
+	app.Server.ErrorLog = app.logger
+	app.Server.Handler = app
+	if len(keyPair) >= 2 && keyPair[0] != "" && keyPair[1] != "" {
+		return app.Server.ServeTLS(l, keyPair[0], keyPair[1])
+	}
+	return app.Server.Serve(l)
+}
+
 // Start starts a non-blocking app instance. It is useful for testing.
 // If addr omit, the app will listen on a random addr, use ServerListener.Addr() to get it.
 // The non-blocking app instance must close by ServerListener.Close().

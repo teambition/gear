@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.23.0] - 2021-01-07
+
+**Changed:**
+
+- Add app.ServeWithContext method.
+
 ## [1.22.0] - 2020-11-12
 
 **Changed:**

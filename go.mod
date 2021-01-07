@@ -8,13 +8,14 @@ require (
 	github.com/go-http-utils/cookie v1.3.1
 	github.com/go-http-utils/negotiator v1.0.0
 	github.com/pelletier/go-toml v1.8.1
+	github.com/soheilhy/cmux v0.1.4
 	github.com/stretchr/testify v1.6.1
 	github.com/teambition/compressible-go v1.0.1
 	github.com/teambition/trie-mux v1.5.0
 	github.com/vulcand/oxy v1.1.0
-	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+	golang.org/x/net v0.0.0-20201224014010-6772e930b67b
 	golang.org/x/text v0.3.4 // indirect
-	google.golang.org/grpc v1.33.2
+	google.golang.org/grpc v1.34.0
 )
 
 replace (
