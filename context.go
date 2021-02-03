@@ -498,14 +498,14 @@ func (ctx *Context) ParseURL(body BodyTemplate) error {
 }
 
 // Get - Please use ctx.GetHeader instead. This method will be changed in v2.
-func (ctx *Context) Get(key string) string {
-	return ctx.GetHeader(key)
-}
+// func (ctx *Context) Get(key string) string {
+// 	return ctx.GetHeader(key)
+// }
 
 // Set - Please use ctx.SetHeader instead. This method will be changed in v2.
-func (ctx *Context) Set(key, value string) {
-	ctx.SetHeader(key, value)
-}
+// func (ctx *Context) Set(key, value string) {
+// 	ctx.SetHeader(key, value)
+// }
 
 // GetHeader returns the first value associated with the given key from the request Header.
 func (ctx *Context) GetHeader(key string) string {

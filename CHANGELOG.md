@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.24.0] - 2021-02-03
+
+**Changed:**
+
+- Remove ctx.Get and ctx.Set methods.
+- Change Log structure fields: "time" -> "duration"; "timestamp" -> "time".
+
 ## [1.23.0] - 2021-01-07
 
 **Changed:**

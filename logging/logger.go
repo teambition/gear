@@ -243,7 +243,7 @@ func New(w io.Writer) *Logger {
 
 	logger.consume = func(log Log, ctx *gear.Context) {
 		end := time.Now().UTC()
-		log["time"] = end.Sub(ctx.StartAt) / 1e6 // ms
+		log["duration"] = end.Sub(ctx.StartAt) / 1e6 // ms
 
 		if s := ctx.GetHeader(gear.HeaderXRequestID); s != "" {
 			log["xRequestId"] = s
@@ -427,7 +427,7 @@ func (l *Logger) output(t time.Time, level Level, v interface{}) (err error) {
 		} else {
 			log = formatError2Log(v)
 		}
-		log["timestamp"] = t.Format(l.tf)
+		log["time"] = t.Format(l.tf)
 		log["level"] = level.String()
 		return l.OutputJSON(log)
 	}
@@ -758,3 +758,8 @@ func format2Log(i interface{}) Log {
 		return Log{"message": format(i)}
 	}
 }
+
+// func WithLogger()
+// func LogFromCtx()
+// func LoggerFromCtx()
+// func AddLogToCtx()

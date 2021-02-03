@@ -520,7 +520,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 			}).
 			SetLogConsume(func(log Log, _ *gear.Context) {
 				end := time.Now()
-				log["time"] = end.Sub(log["start"].(time.Time)) / 1e6
+				log["duration"] = end.Sub(log["start"].(time.Time)) / 1e6
 				delete(log, "start")
 				if res, err := log.Format(); err == nil {
 					logger.Output(end, InfoLevel, res)

@@ -9,13 +9,14 @@ require (
 	github.com/go-http-utils/negotiator v1.0.0
 	github.com/pelletier/go-toml v1.8.1
 	github.com/soheilhy/cmux v0.1.4
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/teambition/compressible-go v1.0.1
 	github.com/teambition/trie-mux v1.5.0
 	github.com/vulcand/oxy v1.1.0
-	golang.org/x/net v0.0.0-20201224014010-6772e930b67b
-	golang.org/x/text v0.3.4 // indirect
-	google.golang.org/grpc v1.34.0
+	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
+	golang.org/x/text v0.3.5 // indirect
+	google.golang.org/grpc v1.35.0
+	google.golang.org/grpc/examples v0.0.0-20210129004707-0bc741730b81
 )
 
 replace (
@@ -25,5 +26,5 @@ replace (
 	golang.org/x/text => github.com/golang/text v0.3.1-0.20181010134911-4d1c5fb19474
 	golang.org/x/tools => github.com/golang/tools v0.0.0-20181016205153-5ef16f43e633
 	google.golang.org/genproto => github.com/google/go-genproto v0.0.0-20181016170114-94acd270e44e
-	google.golang.org/grpc => github.com/grpc/grpc-go v1.26.0
+	google.golang.org/grpc => github.com/grpc/grpc-go v1.35.0
 )

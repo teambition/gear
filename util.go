@@ -666,7 +666,7 @@ func isLikeMediaType(s, t string) bool {
 func ContextWithSignal(ctx context.Context) context.Context {
 	newCtx, cancel := context.WithCancel(ctx)
 	signals := make(chan os.Signal)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-signals
 		cancel()

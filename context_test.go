@@ -1095,16 +1095,6 @@ func TestGearContextParseURL(t *testing.T) {
 func TestGearContextGetSet(t *testing.T) {
 	app := New()
 
-	t.Run("shoud Set and Get header", func(t *testing.T) {
-		assert := assert.New(t)
-
-		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
-		assert.Equal("", ctx.Get(HeaderAccept))
-		ctx.Set(HeaderWarning, "Some error")
-		res := CtxResult(ctx)
-		assert.Equal("Some error", res.Header.Get(HeaderWarning))
-	})
-
 	t.Run("shoud GetHeader and SetHeader", func(t *testing.T) {
 		assert := assert.New(t)
 
