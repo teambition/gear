@@ -166,6 +166,7 @@ func New() *App {
 	app.Set(SetBodyParser, DefaultBodyParser(2<<20)) // 2MB
 	app.Set(SetURLParser, DefaultURLParser{})
 	app.Set(SetLogger, log.New(os.Stderr, "", 0))
+	app.Set(SetGraceTimeout, 10*time.Second)
 	app.Set(SetParseError, func(err error) HTTPError {
 		return ParseError(err)
 	})
@@ -264,6 +265,11 @@ const (
 	//  app.Set(gear.SetTimeout, 3*time.Second)
 	SetTimeout
 
+	// Set a graceful timeout to for gracefully shuts down, value should be `time.Duration`. Default to 10*time.Second.
+	// Example:
+	//  app.Set(gear.SetGraceTimeout, 60*time.Second)
+	SetGraceTimeout
+
 	// Set a function that Wrap the gear.Context' underlayer context.Context. No default.
 	SetWithContext
 
@@ -350,6 +356,10 @@ func (app *App) Set(key, val interface{}) *App {
 			} else {
 				app.timeout = timeout
 			}
+		case SetGraceTimeout:
+			if _, ok := val.(time.Duration); !ok {
+				panic(Err.WithMsg("SetGraceTimeout setting must be `time.Duration` instance"))
+			}
 		case SetWithContext:
 			if withContext, ok := val.(func(*http.Request) context.Context); !ok {
 				panic(Err.WithMsg("SetWithContext setting must be `func(*http.Request) context.Context`"))
@@ -414,9 +424,10 @@ func (app *App) ListenTLS(addr, certFile, keyFile string) error {
 //  }
 //
 func (app *App) ListenWithContext(ctx context.Context, addr string, keyPair ...string) error {
+	timeout := app.settings[SetGraceTimeout].(time.Duration)
 	go func() {
 		<-ctx.Done()
-		c, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		c, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		if err := app.Close(c); err != nil {
 			app.Error(err)
@@ -448,9 +459,10 @@ func (app *App) ListenWithContext(ctx context.Context, addr string, keyPair ...s
 //  }
 //
 func (app *App) ServeWithContext(ctx context.Context, l net.Listener, keyPair ...string) error {
+	timeout := app.settings[SetGraceTimeout].(time.Duration)
 	go func() {
 		<-ctx.Done()
-		c, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		c, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		if err := app.Close(c); err != nil {
 			app.Error(err)
@@ -552,7 +564,7 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Close closes the underlying server.
+// Close closes the underlying server gracefully.
 // If context omit, Server.Close will be used to close immediately.
 // Otherwise Server.Shutdown will be used to close gracefully.
 func (app *App) Close(ctx ...context.Context) error {
