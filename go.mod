@@ -9,6 +9,6 @@ require (
 	github.com/go-http-utils/negotiator v1.0.0
 	github.com/stretchr/testify v1.7.0
 	github.com/teambition/compressible-go v1.0.1
-	github.com/teambition/trie-mux v1.5.1
+	github.com/teambition/trie-mux v1.5.2
 	golang.org/x/net v0.0.0-20210908191846-a5e095526f91
 )

@@ -939,20 +939,12 @@ func TestGearRouter(t *testing.T) {
 
 		res, err = RequestBy("GET", host+"/abc")
 		assert.Nil(err)
-		assert.Equal(200, res.StatusCode)
-		assert.Equal("", PickRes(res.Text()).(string))
-		res.Body.Close()
-
-		res, err = RequestBy("GET", host+"/abcd")
-		assert.Nil(err)
-		assert.Equal(200, res.StatusCode)
-		assert.Equal("", PickRes(res.Text()).(string))
+		assert.Equal(421, res.StatusCode)
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/abc/")
 		assert.Nil(err)
-		assert.Equal(200, res.StatusCode)
-		assert.Equal("", PickRes(res.Text()).(string))
+		assert.Equal(421, res.StatusCode)
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/abc/123")
@@ -961,10 +953,14 @@ func TestGearRouter(t *testing.T) {
 		assert.Equal("123", PickRes(res.Text()).(string))
 		res.Body.Close()
 
+		res, err = RequestBy("GET", host+"/abcd")
+		assert.Nil(err)
+		assert.Equal(421, res.StatusCode)
+		res.Body.Close()
+
 		res, err = RequestBy("GET", host+"/abcd/")
 		assert.Nil(err)
-		assert.Equal(200, res.StatusCode)
-		assert.Equal("", PickRes(res.Text()).(string))
+		assert.Equal(421, res.StatusCode)
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/abcd/123")
