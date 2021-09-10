@@ -151,11 +151,13 @@ func TestGearError(t *testing.T) {
 		assert.Equal(400, err.Code)
 		assert.Equal("InvalidEmail", err.Err)
 
-		err = err.WithMsg("Hello")
-		assert.Equal(400, err.Code)
-		assert.Equal("InvalidEmail", err.Err)
-		assert.Equal("Hello", err.Msg)
-		assert.Equal("InvalidEmail: Hello", err.Error())
+		err1 := err.WithMsg("Hello")
+		assert.NotEqual("Hello", err.Msg)
+
+		assert.Equal(400, err1.Code)
+		assert.Equal("InvalidEmail", err1.Err)
+		assert.Equal("Hello", err1.Msg)
+		assert.Equal("InvalidEmail: Hello", err1.Error())
 	})
 
 	t.Run("Error.WithMsg", func(t *testing.T) {

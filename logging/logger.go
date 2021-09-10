@@ -54,6 +54,14 @@ func (l Log) String() string {
 	return l.GoString()
 }
 
+// KV set key/value to the log, returns self.
+//  log := Log{}
+//  logging.Info(log.KV("key1", "foo").KV("key2", 123))
+func (l Log) KV(key string, value interface{}) Log {
+	l[key] = value
+	return l
+}
+
 // From copy values from the Log argument, returns self.
 //  log := Log{"key": "foo"}
 //  logging.Info(log.From(Log{"key2": "foo2"}))

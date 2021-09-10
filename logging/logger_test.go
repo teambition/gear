@@ -105,6 +105,17 @@ func TestGearLog(t *testing.T) {
 		assert.Equal(Log{"key1": 1, "key2": true}, log3)
 		assert.Equal(log3, log1.With(map[string]interface{}{"key1": 1, "key2": true}))
 	})
+
+	t.Run("Log.KV", func(t *testing.T) {
+		assert := assert.New(t)
+
+		log1 := Log{"key1": 1}
+		log2 := log1.KV("key2", "a").KV("key3", true)
+
+		EqualPtr(t, log1, log2)
+		assert.Equal(true, log1["key3"])
+		assert.Equal(true, log2["key3"])
+	})
 }
 
 func TestGearLogger(t *testing.T) {
