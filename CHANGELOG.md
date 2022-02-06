@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.25.1] - 2022-02-06
+
+**Fixed:**
+
+- Fix favicon middleware.
+
+## [1.25.0] - 2021-09-10
+
+**Changed:**
+
+- update trie-mux mod for issue #54. Your routing may be affected!
+
+## [1.24.2] - 2021-09-10
+
+**Changed:**
+
+- update trie-mux.
+- add Log.KV method.
+
+## [1.24.1] - 2021-06-11
+
+**Changed:**
+
+- add SetGraceTimeout option.
+- clear mod.
+
 ## [1.24.0] - 2021-02-03
 
 **Changed:**
