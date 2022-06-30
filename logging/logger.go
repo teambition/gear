@@ -237,6 +237,9 @@ func New(w io.Writer) *Logger {
 		log["proto"] = ctx.Req.Proto
 		log["method"] = ctx.Method
 		log["uri"] = ctx.Req.RequestURI
+		if s := ctx.GetHeader(gear.HeaderUpgrade); s != "" {
+			log["upgrade"] = s
+		}
 		if s := ctx.GetHeader(gear.HeaderOrigin); s != "" {
 			log["origin"] = s
 		}

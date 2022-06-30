@@ -7,8 +7,8 @@ require (
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/go-http-utils/cookie v1.3.1
 	github.com/go-http-utils/negotiator v1.0.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.5
 	github.com/teambition/compressible-go v1.0.1
 	github.com/teambition/trie-mux v1.5.2
-	golang.org/x/net v0.0.0-20210908191846-a5e095526f91
+	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e
 )

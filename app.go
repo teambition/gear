@@ -12,6 +12,9 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 // Middleware defines a function to process as middleware.
@@ -398,7 +401,7 @@ func (app *App) Env() string {
 func (app *App) Listen(addr string) error {
 	app.Server.Addr = addr
 	app.Server.ErrorLog = app.logger
-	app.Server.Handler = app
+	app.Server.Handler = h2c.NewHandler(app, &http2.Server{})
 	return app.Server.ListenAndServe()
 }
 

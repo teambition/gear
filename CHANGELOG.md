@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.26.0] - 2022-06-30
+
+**Changed:**
+
+- Support h2c, the non-TLS version of HTTP/2
+
 ## [1.25.1] - 2022-02-06
 
 **Fixed:**
