@@ -47,22 +47,21 @@ var oldIERegex = regexp.MustCompile(`(?i)msie\s*(\d+)`)
 // Default provides protection for your Gear app by setting
 // various HTTP headers.
 //
-//  app.Use(secure.Default)
+//	app.Use(secure.Default)
 //
 // Equals:
 //
-//  app.Use(secure.DNSPrefetchControl(false))
-//  app.Use(secure.HidePoweredBy())
-//  app.Use(secure.IENoOpen())
-//  app.Use(secure.NoSniff())
-//  app.Use(secure.NoCache())
-//  app.Use(secure.XSSFilter())
-//  app.Use(secure.FrameGuard(FrameGuardActionSameOrigin))
-//  app.Use(secure.StrictTransportSecurity(secure.StrictTransportSecurityOptions{
-//  	MaxAge:            180 * 24 * time.Hour,
-//  	IncludeSubDomains: true,
-//  }))
-//
+//	app.Use(secure.DNSPrefetchControl(false))
+//	app.Use(secure.HidePoweredBy())
+//	app.Use(secure.IENoOpen())
+//	app.Use(secure.NoSniff())
+//	app.Use(secure.NoCache())
+//	app.Use(secure.XSSFilter())
+//	app.Use(secure.FrameGuard(FrameGuardActionSameOrigin))
+//	app.Use(secure.StrictTransportSecurity(secure.StrictTransportSecurityOptions{
+//		MaxAge:            180 * 24 * time.Hour,
+//		IncludeSubDomains: true,
+//	}))
 var Default = gear.Compose(
 	DNSPrefetchControl(false),
 	HidePoweredBy(),

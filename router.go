@@ -11,35 +11,35 @@ import (
 // dispatch requests to different handler functions.
 // A trivial example is:
 //
-// 	package main
+//	package main
 //
-// 	import (
-// 		"fmt"
+//	import (
+//		"fmt"
 //
-// 		"github.com/teambition/gear"
-// 	)
+//		"github.com/teambition/gear"
+//	)
 //
-// 	func SomeRouterMiddleware(ctx *gear.Context) error {
-// 		// do some thing.
-// 		fmt.Println("Router middleware...")
-// 		return nil
-// 	}
+//	func SomeRouterMiddleware(ctx *gear.Context) error {
+//		// do some thing.
+//		fmt.Println("Router middleware...")
+//		return nil
+//	}
 //
-// 	func ViewHello(ctx *gear.Context) error {
-// 		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-// 	}
+//	func ViewHello(ctx *gear.Context) error {
+//		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+//	}
 //
-// 	func main() {
-// 		app := gear.New()
-// 		// Add app middleware
+//	func main() {
+//		app := gear.New()
+//		// Add app middleware
 //
-// 		router := gear.NewRouter()
-// 		router.Use(SomeRouterMiddleware) // Add router middleware, optionally
-// 		router.Get("/", ViewHello)
+//		router := gear.NewRouter()
+//		router.Use(SomeRouterMiddleware) // Add router middleware, optionally
+//		router.Get("/", ViewHello)
 //
-// 		app.UseHandler(router)
-// 		app.Error(app.Listen(":3000"))
-// 	}
+//		app.UseHandler(router)
+//		app.Error(app.Listen(":3000"))
+//	}
 //
 // The router matches incoming requests by the request method and the path.
 // If a handle is registered for this path and method, the router delegates the
@@ -48,60 +48,60 @@ import (
 // The registered path, against which the router matches incoming requests, can
 // contain six types of parameters:
 //
-//  | Syntax | Description |
-//  |--------|------|
-//  | `:name` | named parameter |
-//  | `:name(regexp)` | named with regexp parameter |
-//  | `:name+suffix` | named parameter with suffix matching |
-//  | `:name(regexp)+suffix` | named with regexp parameter and suffix matching |
-//  | `:name*` | named with catch-all parameter |
-//  | `::name` | not named parameter, it is literal `:name` |
+//	| Syntax | Description |
+//	|--------|------|
+//	| `:name` | named parameter |
+//	| `:name(regexp)` | named with regexp parameter |
+//	| `:name+suffix` | named parameter with suffix matching |
+//	| `:name(regexp)+suffix` | named with regexp parameter and suffix matching |
+//	| `:name*` | named with catch-all parameter |
+//	| `::name` | not named parameter, it is literal `:name` |
 //
 // Named parameters are dynamic path segments. They match anything until the next '/' or the path end:
 //
 // Defined: `/api/:type/:ID`
 //
-//  /api/user/123             matched: type="user", ID="123"
-//  /api/user                 no match
-//  /api/user/123/comments    no match
+//	/api/user/123             matched: type="user", ID="123"
+//	/api/user                 no match
+//	/api/user/123/comments    no match
 //
 // Named with regexp parameters match anything using regexp until the next '/' or the path end:
 //
 // Defined: `/api/:type/:ID(^\d+$)`
 //
-//  /api/user/123             matched: type="user", ID="123"
-//  /api/user                 no match
-//  /api/user/abc             no match
-//  /api/user/123/comments    no match
+//	/api/user/123             matched: type="user", ID="123"
+//	/api/user                 no match
+//	/api/user/abc             no match
+//	/api/user/123/comments    no match
 //
 // Named parameters with suffix, such as [Google API Design](https://cloud.google.com/apis/design/custom_methods):
 //
 // Defined: `/api/:resource/:ID+:undelete`
 //
-//  /api/file/123                     no match
-//  /api/file/123:undelete            matched: resource="file", ID="123"
-//  /api/file/123:undelete/comments   no match
+//	/api/file/123                     no match
+//	/api/file/123:undelete            matched: resource="file", ID="123"
+//	/api/file/123:undelete/comments   no match
 //
 // Named with regexp parameters and suffix:
 //
 // Defined: `/api/:resource/:ID(^\d+$)+:cancel`
 //
-//  /api/task/123                   no match
-//  /api/task/123:cancel            matched: resource="task", ID="123"
-//  /api/task/abc:cancel            no match
+//	/api/task/123                   no match
+//	/api/task/123:cancel            matched: resource="task", ID="123"
+//	/api/task/abc:cancel            no match
 //
 // Named with catch-all parameters match anything until the path end, including the directory index (the '/' before the catch-all). Since they match anything until the end, catch-all parameters must always be the final path element.
 //
 // Defined: `/files/:filepath*`
 //
-//  /files                           no match
-//  /files/LICENSE                   matched: filepath="LICENSE"
-//  /files/templates/article.html    matched: filepath="templates/article.html"
+//	/files                           no match
+//	/files/LICENSE                   matched: filepath="LICENSE"
+//	/files/templates/article.html    matched: filepath="templates/article.html"
 //
 // The value of parameters is saved on the `Matched.Params`. Retrieve the value of a parameter by name:
 //
-//  type := matched.Params("type")
-//  id   := matched.Params("ID")
+//	type := matched.Params("type")
+//	id   := matched.Params("ID")
 //
 // More info: https://github.com/teambition/trie-mux
 type Router struct {
@@ -147,29 +147,28 @@ var defaultRouterOptions = RouterOptions{
 // NewRouter returns a new Router instance with root path and ignoreCase option.
 // Gear support multi-routers. For example:
 //
-//  // Create app
-//  app := gear.New()
+//	// Create app
+//	app := gear.New()
 //
-//  // Create views router
-//  viewRouter := gear.NewRouter()
-//  viewRouter.Get("/", Ctl.IndexView)
-//  // add more ...
+//	// Create views router
+//	viewRouter := gear.NewRouter()
+//	viewRouter.Get("/", Ctl.IndexView)
+//	// add more ...
 //
-//  apiRouter := gear.NewRouter(RouterOptions{
-//  	Root: "/api",
-//  	IgnoreCase: true,
-//  	FixedPathRedirect: true,
-//  	TrailingSlashRedirect: true,
-//  })
-//  // support one more middleware
-//  apiRouter.Get("/user/:id", API.Auth, API.User)
-//  // add more ..
+//	apiRouter := gear.NewRouter(RouterOptions{
+//		Root: "/api",
+//		IgnoreCase: true,
+//		FixedPathRedirect: true,
+//		TrailingSlashRedirect: true,
+//	})
+//	// support one more middleware
+//	apiRouter.Get("/user/:id", API.Auth, API.User)
+//	// add more ..
 //
-//  app.UseHandler(apiRouter) // Must add apiRouter first.
-//  app.UseHandler(viewRouter)
-//  // Start app at 3000
-//  app.Listen(":3000")
-//
+//	app.UseHandler(apiRouter) // Must add apiRouter first.
+//	app.UseHandler(viewRouter)
+//	// Start app at 3000
+//	app.Listen(":3000")
 func NewRouter(routerOptions ...RouterOptions) *Router {
 	opts := defaultRouterOptions
 	if len(routerOptions) > 0 {
@@ -331,10 +330,10 @@ func (r *Router) Serve(ctx *Context) error {
 
 // GetRouterNodeFromCtx returns matched Node from router
 //
-//  router.Get("/api/:type/:ID", func(ctx *Context) error {
-//  	assert.Equal("/api/:type/:ID", GetRouterNodeFromCtx(ctx).GetPattern())
-//  	return ctx.HTML(200, ctx.Param("type")+ctx.Param("ID"))
-//  })
+//	router.Get("/api/:type/:ID", func(ctx *Context) error {
+//		assert.Equal("/api/:type/:ID", GetRouterNodeFromCtx(ctx).GetPattern())
+//		return ctx.HTML(200, ctx.Param("type")+ctx.Param("ID"))
+//	})
 func GetRouterNodeFromCtx(ctx *Context) *trie.Node {
 	if res, _ := ctx.Any(routerNodeKey); res != nil {
 		return res.(*trie.Node)
@@ -344,10 +343,10 @@ func GetRouterNodeFromCtx(ctx *Context) *trie.Node {
 
 // GetRouterPatternFromCtx returns matched Node from router
 //
-//  routerV2.Get("/api/:type/:ID", func(ctx *Context) error {
-//  	assert.Equal("/v2/api/:type/:ID", GetRouterPatternFromCtx(ctx))
-//  	return ctx.HTML(200, "ok")
-//  })
+//	routerV2.Get("/api/:type/:ID", func(ctx *Context) error {
+//		assert.Equal("/v2/api/:type/:ID", GetRouterPatternFromCtx(ctx))
+//		return ctx.HTML(200, "ok")
+//	})
 func GetRouterPatternFromCtx(ctx *Context) string {
 	if node := GetRouterNodeFromCtx(ctx); node != nil {
 		rt := ctx.MustAny(routerRootKey)

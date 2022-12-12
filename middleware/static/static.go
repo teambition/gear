@@ -23,29 +23,28 @@ type Options struct {
 
 // New creates a static middleware to serves static content from the provided root directory.
 //
-//  package main
+//	package main
 //
-//  import (
-//  	"github.com/teambition/gear"
-//  	"github.com/teambition/gear/middleware/favicon"
-//  	"github.com/teambition/gear/middleware/static"
-//  )
+//	import (
+//		"github.com/teambition/gear"
+//		"github.com/teambition/gear/middleware/favicon"
+//		"github.com/teambition/gear/middleware/static"
+//	)
 //
-//  func main() {
-//  	app := gear.New()
-//  	app.Use(favicon.New("./assets/favicon.ico"))
-//  	app.Use(static.New(static.Options{
-//  		Root:        "./assets",
-//  		Prefix:      "/assets",
-//  		StripPrefix: false,
-//  		Includes:    []string{"/robots.txt"},
-//  	}))
-//  	app.Use(func(ctx *gear.Context) error {
-//  		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-//  	})
-//  	app.Error(app.Listen(":3000"))
-//  }
-//
+//	func main() {
+//		app := gear.New()
+//		app.Use(favicon.New("./assets/favicon.ico"))
+//		app.Use(static.New(static.Options{
+//			Root:        "./assets",
+//			Prefix:      "/assets",
+//			StripPrefix: false,
+//			Includes:    []string{"/robots.txt"},
+//		}))
+//		app.Use(func(ctx *gear.Context) error {
+//			return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+//		})
+//		app.Error(app.Listen(":3000"))
+//	}
 func New(opts Options) gear.Middleware {
 	modTime := time.Now()
 	if opts.Root == "" {

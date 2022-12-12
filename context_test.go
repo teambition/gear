@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/go-http-utils/cookie"
 	"github.com/stretchr/testify/assert"
 )
@@ -667,7 +666,7 @@ func (b *xmlBodyTemplate) Validate() error {
 	return nil
 }
 
-type mapTemplate map[string]*bson.ObjectId
+type mapTemplate map[string]*ObjectId
 
 func (m mapTemplate) Validate() error {
 	if !m["id"].Valid() {
@@ -759,7 +758,7 @@ func TestGearContextParseBody(t *testing.T) {
 
 		body := mapTemplate{}
 		assert.Nil(ctx.ParseBody(&body))
-		assert.Equal(*body["id"], bson.ObjectIdHex("000000000000000000000000"))
+		assert.Equal(*body["id"], ObjectIdHex("000000000000000000000000"))
 	})
 
 	t.Run("should 400 error when validate error", func(t *testing.T) {

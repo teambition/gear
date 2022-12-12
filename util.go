@@ -153,15 +153,17 @@ func (err Error) Format() (string, error) {
 }
 
 // WithErr returns a copy of err with given new error name.
-//  err := gear.ErrBadRequest.WithErr("InvalidEmail") // 400 Bad Request error with error name InvalidEmail"
+//
+//	err := gear.ErrBadRequest.WithErr("InvalidEmail") // 400 Bad Request error with error name InvalidEmail"
 func (err Error) WithErr(name string) *Error {
 	err.Err = name
 	return &err
 }
 
 // WithMsg returns a copy of err with given new messages.
-//  err := gear.Err.WithMsg() // just clone
-//  err := gear.ErrBadRequest.WithMsg("invalid email") // 400 Bad Request error with message invalid email"
+//
+//	err := gear.Err.WithMsg() // just clone
+//	err := gear.ErrBadRequest.WithMsg("invalid email") // 400 Bad Request error with message invalid email"
 func (err Error) WithMsg(msgs ...string) *Error {
 	if len(msgs) > 0 {
 		err.Msg = strings.Join(msgs, ", ")
@@ -170,13 +172,15 @@ func (err Error) WithMsg(msgs ...string) *Error {
 }
 
 // WithMsgf returns a copy of err with given message in the manner of fmt.Printf.
-//  err := gear.ErrBadRequest.WithMsgf(`invalid email: "%s"`, email)
+//
+//	err := gear.ErrBadRequest.WithMsgf(`invalid email: "%s"`, email)
 func (err Error) WithMsgf(format string, args ...interface{}) *Error {
 	return err.WithMsg(fmt.Sprintf(format, args...))
 }
 
 // WithCode returns a copy of err with given code.
-//  BadRequestErr := gear.Err.WithCode(400)
+//
+//	BadRequestErr := gear.Err.WithCode(400)
 func (err Error) WithCode(code int) *Error {
 	err.Code = code
 	if text := http.StatusText(code); text != "" {
@@ -186,15 +190,17 @@ func (err Error) WithCode(code int) *Error {
 }
 
 // WithStack returns a copy of err with error stack.
-//  err := gear.Err.WithMsg("some error").WithStack()
+//
+//	err := gear.Err.WithMsg("some error").WithStack()
 func (err Error) WithStack(skip ...int) *Error {
 	return ErrorWithStack(&err, skip...)
 }
 
 // From returns a copy of err with given error. It will try to merge the given error.
 // If the given error is a *Error instance, it will be returned without copy.
-//  err := gear.ErrBadRequest.From(errors.New("invalid email"))
-//  err := gear.Err.From(someErr)
+//
+//	err := gear.ErrBadRequest.From(errors.New("invalid email"))
+//	err := gear.Err.From(someErr)
 func (err Error) From(e error) *Error {
 	if IsNil(e) {
 		return nil
@@ -273,18 +279,17 @@ func ErrorWithStack(val interface{}, skip ...int) *Error {
 
 // ValuesToStruct converts url.Values into struct object. It supports specific types that implementing encoding.TextUnmarshaler interface.
 //
-//  type jsonQueryTemplate struct {
-//  	ID   string `json:"id" form:"id"`
-//  	Pass string `json:"pass" form:"pass"`
-//  }
+//	type jsonQueryTemplate struct {
+//		ID   string `json:"id" form:"id"`
+//		Pass string `json:"pass" form:"pass"`
+//	}
 //
-//  target := jsonQueryTemplate{}
+//	target := jsonQueryTemplate{}
 //
-//  gear.ValuesToStruct(map[string][]string{
-//  	"id": []string{"some id"},
-//  	"pass": []string{"some pass"},
-//  }, &target, "form")
-//
+//	gear.ValuesToStruct(map[string][]string{
+//		"id": []string{"some id"},
+//		"pass": []string{"some pass"},
+//	}, &target, "form")
 func ValuesToStruct(values map[string][]string, target interface{}, tag string) (err error) {
 	if values == nil {
 		return fmt.Errorf("invalid values: %v", values)
@@ -353,6 +358,12 @@ func shouldDeref(k reflect.Kind) bool {
 }
 
 func setRefSlice(v reflect.Value, vals []string) error {
+	if len(vals) == 1 && vals[0] != "" {
+		if ok, err := tryUnmarshalValue(v, vals[0]); ok {
+			return err
+		}
+	}
+
 	l := len(vals)
 	slice := reflect.MakeSlice(v.Type(), l, l)
 
@@ -447,27 +458,41 @@ func tryUnmarshalValue(v reflect.Value, str string) (bool, error) {
 // ```
 // goroutine 9 [running]:
 // runtime/debug.Stack(0x6, 0x6, 0xc42003c898)
-//     /usr/local/Cellar/go/1.7.4_2/libexec/src/runtime/debug/stack.go:24 +0x79
+//
+//	/usr/local/Cellar/go/1.7.4_2/libexec/src/runtime/debug/stack.go:24 +0x79
+//
 // github.com/teambition/gear/logging.(*Logger).OutputWithStack(0xc420012a50, 0xed0092215, 0x573fdbb, 0x471f20, 0x0, 0xc42000dc1a, 0x6, 0xc42000dc01, 0xc42000dca0)
-//     /Users/xus/go/src/github.com/teambition/gear/logging/logger.go:267 +0x4e
+//
+//	/Users/xus/go/src/github.com/teambition/gear/logging/logger.go:267 +0x4e
+//
 // github.com/teambition/gear/logging.(*Logger).Emerg(0xc420012a50, 0x2a9cc0, 0xc42000dca0)
-//     /Users/xus/go/src/github.com/teambition/gear/logging/logger.go:171 +0xd3
+//
+//	/Users/xus/go/src/github.com/teambition/gear/logging/logger.go:171 +0xd3
+//
 // github.com/teambition/gear/logging.TestGearLogger.func2(0xc420018600)
-//     /Users/xus/go/src/github.com/teambition/gear/logging/logger_test.go:90 +0x3c1
+//
+//	/Users/xus/go/src/github.com/teambition/gear/logging/logger_test.go:90 +0x3c1
+//
 // testing.tRunner(0xc420018600, 0x33d240)
-//     /usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:610 +0x81
+//
+//	/usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:610 +0x81
+//
 // created by testing.(*T).Run
-//     /usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:646 +0x2ec
+//
+//	/usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:646 +0x2ec
+//
 // ```
 // dst:
 // ```
 // Stack:
-//     /usr/local/Cellar/go/1.7.4_2/libexec/src/runtime/debug/stack.go:24
-//     /Users/xus/go/src/github.com/teambition/gear/logging/logger.go:283
-//     /Users/xus/go/src/github.com/teambition/gear/logging/logger.go:171
-//     /Users/xus/go/src/github.com/teambition/gear/logging/logger_test.go:90
-//     /usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:610
-//     /usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:646
+//
+//	/usr/local/Cellar/go/1.7.4_2/libexec/src/runtime/debug/stack.go:24
+//	/Users/xus/go/src/github.com/teambition/gear/logging/logger.go:283
+//	/Users/xus/go/src/github.com/teambition/gear/logging/logger.go:171
+//	/Users/xus/go/src/github.com/teambition/gear/logging/logger_test.go:90
+//	/usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:610
+//	/usr/local/Cellar/go/1.7.4_2/libexec/src/testing/testing.go:646
+//
 // ```
 func pruneStack(stack []byte, skip int) string {
 	// remove first line
@@ -567,21 +592,20 @@ func ContentDisposition(fileName, dispositionType string) (header string) {
 // LoggerFilterWriter is a writer for Logger to filter bytes.
 // In a https server, avoid some handshake mismatch condition such as loadbalance healthcheck:
 //
-//  2017/06/09 07:18:04 http: TLS handshake error from 10.10.5.1:45001: tls: first record does not look like a TLS handshake
-//  2017/06/14 02:39:29 http: TLS handshake error from 10.0.1.2:54975: read tcp 10.10.5.22:8081->10.0.1.2:54975: read: connection reset by peer
+//	2017/06/09 07:18:04 http: TLS handshake error from 10.10.5.1:45001: tls: first record does not look like a TLS handshake
+//	2017/06/14 02:39:29 http: TLS handshake error from 10.0.1.2:54975: read tcp 10.10.5.22:8081->10.0.1.2:54975: read: connection reset by peer
 //
 // Usage:
 //
-//  func main() {
-//  	app := gear.New() // Create app
-//  	app.Set(gear.SetLogger, log.New(gear.DefaultFilterWriter(), "", 0))
-//  	app.Use(func(ctx *gear.Context) error {
-//  		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-//  	})
+//	func main() {
+//		app := gear.New() // Create app
+//		app.Set(gear.SetLogger, log.New(gear.DefaultFilterWriter(), "", 0))
+//		app.Use(func(ctx *gear.Context) error {
+//			return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+//		})
 //
-//  	app.Listen(":3000")
-//  }
-//
+//		app.Listen(":3000")
+//	}
 type LoggerFilterWriter struct {
 	phrases [][]byte
 	out     io.Writer
@@ -654,15 +678,14 @@ func isLikeMediaType(s, t string) bool {
 //
 // Usage:
 //
-//  func main() {
-//  	app := gear.New() // Create app
-//  	do some thing...
+//	 func main() {
+//	 	app := gear.New() // Create app
+//	 	do some thing...
 //
-//  	app.ListenWithContext(gear.ContextWithSignal(context.Background()), addr)
-//	  // starts the HTTPS server.
-//	  // app.ListenWithContext(gear.ContextWithSignal(context.Background()), addr, certFile, keyFile)
-//  }
-//
+//	 	app.ListenWithContext(gear.ContextWithSignal(context.Background()), addr)
+//		  // starts the HTTPS server.
+//		  // app.ListenWithContext(gear.ContextWithSignal(context.Background()), addr, certFile, keyFile)
+//	 }
 func ContextWithSignal(ctx context.Context) context.Context {
 	newCtx, cancel := context.WithCancel(ctx)
 	signals := make(chan os.Signal)
@@ -679,8 +702,7 @@ func ContextWithSignal(ctx context.Context) context.Context {
 //
 // Usage:
 //
-//  app.Set(gear.SetRenderError, gear.RenderErrorResponse)
-//
+//	app.Set(gear.SetRenderError, gear.RenderErrorResponse)
 func RenderErrorResponse(err HTTPError) (int, string, []byte) {
 	body, e := json.Marshal(ToErrorResponse(err))
 	if e != nil {

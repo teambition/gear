@@ -36,8 +36,8 @@ type Renderer interface {
 }
 
 // URLParser interface is used by ctx.ParseUrl. Default to:
-//  app.Set(gear.SetURLParser, gear.DefaultURLParser)
 //
+//	app.Set(gear.SetURLParser, gear.DefaultURLParser)
 type URLParser interface {
 	Parse(val map[string][]string, body interface{}, tag string) error
 }
@@ -51,8 +51,8 @@ func (d DefaultURLParser) Parse(val map[string][]string, body interface{}, tag s
 }
 
 // BodyParser interface is used by ctx.ParseBody. Default to:
-//  app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
 //
+//	app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
 type BodyParser interface {
 	// Maximum allowed size for a request body
 	MaxBytes() int64
@@ -62,8 +62,7 @@ type BodyParser interface {
 // DefaultBodyParser is default BodyParser type.
 // SetBodyParser used 1MB as default:
 //
-//  app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
-//
+//	app.Set(gear.SetBodyParser, gear.DefaultBodyParser(1<<20))
 type DefaultBodyParser int64
 
 // MaxBytes implemented BodyParser interface.
@@ -114,18 +113,17 @@ type HTTPError interface {
 //
 // Hello Gear!
 //
-//  package main
+//	package main
 //
-//  import "github.com/teambition/gear"
+//	import "github.com/teambition/gear"
 //
-//  func main() {
-//  	app := gear.New() // Create app
-//  	app.Use(func(ctx *gear.Context) error {
-//  		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-//  	})
-//  	app.Error(app.Listen(":3000"))
-//  }
-//
+//	func main() {
+//		app := gear.New() // Create app
+//		app.Use(func(ctx *gear.Context) error {
+//			return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+//		})
+//		app.Error(app.Listen(":3000"))
+//	}
 type App struct {
 	Server *http.Server
 	mds    middlewares
@@ -417,15 +415,14 @@ func (app *App) ListenTLS(addr, certFile, keyFile string) error {
 //
 // Usage:
 //
-//  func main() {
-//  	app := gear.New() // Create app
-//  	do some thing...
+//	 func main() {
+//	 	app := gear.New() // Create app
+//	 	do some thing...
 //
-//  	app.ListenWithContext(gear.ContextWithSignal(context.Background()), addr)
-//	  // starts the HTTPS server.
-//	  // app.ListenWithContext(gear.ContextWithSignal(context.Background()), addr, certFile, keyFile)
-//  }
-//
+//	 	app.ListenWithContext(gear.ContextWithSignal(context.Background()), addr)
+//		  // starts the HTTPS server.
+//		  // app.ListenWithContext(gear.ContextWithSignal(context.Background()), addr, certFile, keyFile)
+//	 }
 func (app *App) ListenWithContext(ctx context.Context, addr string, keyPair ...string) error {
 	timeout := app.settings[SetGraceTimeout].(time.Duration)
 	go func() {
@@ -447,20 +444,19 @@ func (app *App) ListenWithContext(ctx context.Context, addr string, keyPair ...s
 //
 // Usage:
 //
-//  func main() {
-//		l, err := net.Listen("tcp", ":8080")
-//		if err != nil {
-//			log.Fatal(err)
-//		}
+//	 func main() {
+//			l, err := net.Listen("tcp", ":8080")
+//			if err != nil {
+//				log.Fatal(err)
+//			}
 //
-//  	app := gear.New() // Create app
-//  	do some thing...
+//	 	app := gear.New() // Create app
+//	 	do some thing...
 //
-//  	app.ServeWithContext(gear.ContextWithSignal(context.Background()), l)
-//	  // starts the HTTPS server.
-//	  // app.ServeWithContext(gear.ContextWithSignal(context.Background()), l, certFile, keyFile)
-//  }
-//
+//	 	app.ServeWithContext(gear.ContextWithSignal(context.Background()), l)
+//		  // starts the HTTPS server.
+//		  // app.ServeWithContext(gear.ContextWithSignal(context.Background()), l, certFile, keyFile)
+//	 }
 func (app *App) ServeWithContext(ctx context.Context, l net.Listener, keyPair ...string) error {
 	timeout := app.settings[SetGraceTimeout].(time.Duration)
 	go func() {

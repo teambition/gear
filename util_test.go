@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"compress/zlib"
 	"crypto/tls"
+	"encoding/hex"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -20,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/http2"
 )
@@ -47,6 +47,51 @@ func PickError(res interface{}, err error) error {
 }
 
 // ------Helpers for help test --------
+type ObjectId []byte
+
+func ObjectIdHex(s string) ObjectId {
+	if d, _ := hex.DecodeString(s); len(d) == 12 {
+		return d
+	}
+	return nil
+}
+
+func (id ObjectId) Valid() bool {
+	return len(id) == 12
+}
+
+func (id ObjectId) MashalText() ([]byte, error) {
+	return []byte(hex.EncodeToString(id)), nil
+}
+
+func (id *ObjectId) UnmarshalText(b []byte) error {
+	oid := ObjectIdHex(string(b))
+	if !oid.Valid() {
+		return errors.New("invalid ObjectId")
+	}
+
+	*id = oid
+	return nil
+}
+
+func (id ObjectId) MashalJSON() ([]byte, error) {
+	return []byte(`"` + hex.EncodeToString(id) + `"`), nil
+}
+
+func (id *ObjectId) UnmarshalJSON(data []byte) error {
+	if len(data) != 26 || data[0] != '"' || data[25] != '"' {
+		return errors.New("invalid ObjectId")
+	}
+
+	oid := ObjectIdHex(string(data[1:25]))
+	if !oid.Valid() {
+		return errors.New("invalid ObjectId")
+	}
+
+	*id = oid
+	return nil
+}
+
 var DefaultClient = &http.Client{}
 
 type GearResponse struct {
@@ -697,7 +742,7 @@ type valuesStruct struct {
 	Time     time.Time     `form:"time"`
 	Du       time.Duration `form:"du"`
 	Du2      myDuration    `form:"du2"`
-	ObjectID bson.ObjectId `form:"objectID"`
+	ObjectID ObjectId      `form:"objectID"`
 
 	Pstring   *string        `form:"pstring"`
 	Pbool     *bool          `form:"pbool"`
@@ -720,7 +765,7 @@ type valuesStruct struct {
 	PTimeN    *time.Time     `form:"ptimeN"`
 	PDu       *time.Duration `form:"pdu"`
 	PDu2      *myDuration    `form:"pdu2"`
-	PObjectID *bson.ObjectId `form:"pobjectID"`
+	PObjectID *ObjectId      `form:"pobjectID"`
 	Hide      string         `json:"hide"`
 }
 
@@ -749,7 +794,7 @@ func TestGearValuesToStruct(t *testing.T) {
 		"time":      {timeStr},
 		"du":        {"300000000"},
 		"du2":       {"300ms"},
-		"objectID":  {"000000000000000000000000"},
+		"objectID":  {"a0a0a0a0a0a0a0a0a0a0a0a0"},
 		"pstring":   {"string"},
 		"pbool":     {"true"},
 		"pint":      {"-1"},
@@ -771,7 +816,7 @@ func TestGearValuesToStruct(t *testing.T) {
 		"ptimeN":    {},
 		"pdu":       {"300000000"},
 		"pdu2":      {"300ms"},
-		"pobjectID": {"000000000000000000000000"},
+		"pobjectID": {"a0a0a0a0a0a0a0a0a0a0a0a0"},
 	}
 
 	t.Run("Should error", func(t *testing.T) {
@@ -824,7 +869,7 @@ func TestGearValuesToStruct(t *testing.T) {
 		assert.Equal(timeVal.Unix(), s.Time.Unix())
 		assert.Equal(time.Millisecond*300, s.Du)
 		assert.Equal(myDuration{time.Millisecond * 300}, s.Du2)
-		assert.Equal(bson.ObjectIdHex("000000000000000000000000"), s.ObjectID)
+		assert.Equal(ObjectIdHex("a0a0a0a0a0a0a0a0a0a0a0a0"), s.ObjectID)
 
 		assert.Nil(ValuesToStruct(data, &s, "form"))
 		assert.Equal("string", *s.Pstring)
@@ -850,7 +895,7 @@ func TestGearValuesToStruct(t *testing.T) {
 		assert.Nil(s.PTimeN)
 		assert.Equal(time.Millisecond*300, *s.PDu)
 		assert.Equal(myDuration{time.Millisecond * 300}, *s.PDu2)
-		assert.Equal(bson.ObjectIdHex("000000000000000000000000"), *s.PObjectID)
+		assert.Equal(ObjectIdHex("a0a0a0a0a0a0a0a0a0a0a0a0"), *s.PObjectID)
 	})
 }
 

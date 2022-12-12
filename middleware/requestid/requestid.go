@@ -15,22 +15,21 @@ type Options struct {
 
 // New creates a middleware to return X-Request-ID header
 //
-//  package main
+//	package main
 //
-//  import (
-//  	"github.com/teambition/gear"
-//  	"github.com/teambition/gear/middleware/requestid"
-//  )
+//	import (
+//		"github.com/teambition/gear"
+//		"github.com/teambition/gear/middleware/requestid"
+//	)
 //
-//  func main() {
-//  	app := gear.New()
-//  	app.Use(requestid.New())
-//  	app.Use(func(ctx *gear.Context) error {
-//  		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-//  	})
-//  	app.Error(app.Listen(":3000"))
-//  }
-//
+//	func main() {
+//		app := gear.New()
+//		app.Use(requestid.New())
+//		app.Use(func(ctx *gear.Context) error {
+//			return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+//		})
+//		app.Error(app.Listen(":3000"))
+//	}
 func New(options ...Options) gear.Middleware {
 	opts := Options{
 		Generator: generator,

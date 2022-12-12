@@ -161,9 +161,8 @@ func (ctx *Context) Context() context.Context {
 // WithContext sets the context to underlying gear.Context.
 // The context must be a children or a grandchild of gear.Context.
 //
-//  ctx.WithContext(ctx.WithValue("key", "value"))
-//  // ctx.Value("key") == "value"
-//
+//	ctx.WithContext(ctx.WithValue("key", "value"))
+//	// ctx.Value("key") == "value"
 func (ctx *Context) WithContext(c context.Context) {
 	if c.Value(isGearContext) != nil {
 		panic(Err.WithMsg("should not use *gear.Context as parent context, please use ctx.Context()"))
@@ -202,23 +201,22 @@ func (ctx *Context) Timing(dt time.Duration, fn func(context.Context)) (err erro
 // value not set, any.New will be called to eval the value, and then set to the ctx.
 // if any.New returns error, the value will not be set.
 //
-//  // create some Any type for your project.
-//  type someAnyType struct{}
-//  type someAnyResult struct {
-//  	r *http.Request
-//  }
+//	// create some Any type for your project.
+//	type someAnyType struct{}
+//	type someAnyResult struct {
+//		r *http.Request
+//	}
 //
-//  var someAnyKey = &someAnyType{}
+//	var someAnyKey = &someAnyType{}
 //
-//  func (t *someAnyType) New(ctx *gear.Context) (interface{}, error) {
-//  	return &someAnyResult{r: ctx.Req}, nil
-//  }
+//	func (t *someAnyType) New(ctx *gear.Context) (interface{}, error) {
+//		return &someAnyResult{r: ctx.Req}, nil
+//	}
 //
-//  // use it in app
-//  if val, err := ctx.Any(someAnyKey); err == nil {
-//  	res := val.(*someAnyResult)
-//  }
-//
+//	// use it in app
+//	if val, err := ctx.Any(someAnyKey); err == nil {
+//		res := val.(*someAnyResult)
+//	}
 func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
 	var ok bool
 	if val, ok = ctx.kv[any]; !ok {
@@ -252,10 +250,9 @@ func (ctx *Context) SetAny(key, val interface{}) {
 
 // Setting returns App's settings by key
 //
-//  fmt.Println(ctx.Setting(gear.SetEnv).(string) == "development")
-//  app.Set(gear.SetEnv, "production")
-//  fmt.Println(ctx.Setting(gear.SetEnv).(string) == "production")
-//
+//	fmt.Println(ctx.Setting(gear.SetEnv).(string) == "development")
+//	app.Set(gear.SetEnv, "production")
+//	fmt.Println(ctx.Setting(gear.SetEnv).(string) == "production")
 func (ctx *Context) Setting(key interface{}) interface{} {
 	if val, ok := ctx.app.settings[key]; ok {
 		return val
@@ -377,24 +374,25 @@ func (ctx *Context) QueryAll(name string) []string {
 // DefaultBodyParser support JSON, Form and XML.
 //
 // Define a BodyTemplate type in some API:
-//  type jsonBodyTemplate struct {
-//  	ID   string `json:"id" form:"id"`
-//  	Pass string `json:"pass" form:"pass"`
-//  }
 //
-//  func (b *jsonBodyTemplate) Validate() error {
-//  	if len(b.ID) < 3 || len(b.Pass) < 6 {
-//  		return ErrBadRequest.WithMsg("invalid id or pass")
-//  	}
-//  	return nil
-//  }
+//	type jsonBodyTemplate struct {
+//		ID   string `json:"id" form:"id"`
+//		Pass string `json:"pass" form:"pass"`
+//	}
+//
+//	func (b *jsonBodyTemplate) Validate() error {
+//		if len(b.ID) < 3 || len(b.Pass) < 6 {
+//			return ErrBadRequest.WithMsg("invalid id or pass")
+//		}
+//		return nil
+//	}
 //
 // Use it in middleware:
-//  body := jsonBodyTemplate{}
-//  if err := ctx.ParseBody(&body); err != nil {
-//  	return err
-//  }
 //
+//	body := jsonBodyTemplate{}
+//	if err := ctx.ParseBody(&body); err != nil {
+//		return err
+//	}
 func (ctx *Context) ParseBody(body BodyTemplate) error {
 	if ctx.app.bodyParser == nil {
 		return Err.WithMsg("bodyParser not registered")
@@ -448,27 +446,28 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 // stores the result in the struct object pointed to by BodyTemplate body, and validate it.
 //
 // Define a BodyTemplate type in some API:
-//  type taskTemplate struct {
-//  	ID      bson.ObjectId `json:"_taskID" param:"_taskID"` // router.Get("/tasks/:_taskID", APIhandler)
-//  	StartAt time.Time     `json:"startAt" query:"startAt"` // GET /tasks/50c32afae8cf1439d35a87e6?startAt=2017-05-03T10:06:45.319Z
-//  }
 //
-//  func (b *taskTemplate) Validate() error {
-//  	if !b.ID.Valid() {
-//  		return gear.ErrBadRequest.WithMsg("invalid task id")
-//  	}
-//  	if b.StartAt.IsZero() {
-//  		return gear.ErrBadRequest.WithMsg("invalid task start time")
-//  	}
-//  	return nil
-//  }
+//	type taskTemplate struct {
+//		ID      bson.ObjectId `json:"_taskID" param:"_taskID"` // router.Get("/tasks/:_taskID", APIhandler)
+//		StartAt time.Time     `json:"startAt" query:"startAt"` // GET /tasks/50c32afae8cf1439d35a87e6?startAt=2017-05-03T10:06:45.319Z
+//	}
+//
+//	func (b *taskTemplate) Validate() error {
+//		if !b.ID.Valid() {
+//			return gear.ErrBadRequest.WithMsg("invalid task id")
+//		}
+//		if b.StartAt.IsZero() {
+//			return gear.ErrBadRequest.WithMsg("invalid task start time")
+//		}
+//		return nil
+//	}
 //
 // Use it in APIhandler:
-//  body := taskTemplate{}
-//  if err := ctx.ParseURL(&body); err != nil {
-//  	return err
-//  }
 //
+//	body := taskTemplate{}
+//	if err := ctx.ParseURL(&body); err != nil {
+//		return err
+//	}
 func (ctx *Context) ParseURL(body BodyTemplate) error {
 	if ctx.app.urlParser == nil {
 		return Err.WithMsg("urlParser not registered")
@@ -626,35 +625,35 @@ func (ctx *Context) XMLBlob(code int, buf []byte) error {
 // "after hooks" (if no error) and "end hooks" will run normally.
 // You can define a custom send function like this:
 //
-//  type mySenderT struct{}
+//	 type mySenderT struct{}
 //
-//  func (s *mySenderT) Send(ctx *Context, code int, data interface{}) error {
-// 	 switch v := data.(type) {
-// 	 case []byte:
-//  		ctx.Type(MIMETextPlainCharsetUTF8)
-//  		return ctx.End(code, v)
-//  	case string:
-//  		return ctx.HTML(code, v)
-//  	case error:
-//  		return ctx.Error(v)
-//  	default:
-//  		return ctx.JSON(code, data)
-//  	}
-//  }
+//	 func (s *mySenderT) Send(ctx *Context, code int, data interface{}) error {
+//		 switch v := data.(type) {
+//		 case []byte:
+//	 		ctx.Type(MIMETextPlainCharsetUTF8)
+//	 		return ctx.End(code, v)
+//	 	case string:
+//	 		return ctx.HTML(code, v)
+//	 	case error:
+//	 		return ctx.Error(v)
+//	 	default:
+//	 		return ctx.JSON(code, data)
+//	 	}
+//	 }
 //
-//  app.Set(gear.SetSender, &mySenderT{})
-//  app.Use(func(ctx *Context) error {
-//  	switch ctx.Path {
-//  	case "/text":
-//  		return ctx.Send(http.StatusOK, []byte("Hello, Gear!"))
-//  	case "/html":
-//  		return ctx.Send(http.StatusOK, "<h1>Hello, Gear!</h1>")
-//  	case "/error":
-//  		return ctx.Send(http.StatusOK, Err.WithMsg("some error"))
-//  	default:
-//  		return ctx.Send(http.StatusOK, map[string]string{"value": "Hello, Gear!"})
-//  	}
-//  })
+//	 app.Set(gear.SetSender, &mySenderT{})
+//	 app.Use(func(ctx *Context) error {
+//	 	switch ctx.Path {
+//	 	case "/text":
+//	 		return ctx.Send(http.StatusOK, []byte("Hello, Gear!"))
+//	 	case "/html":
+//	 		return ctx.Send(http.StatusOK, "<h1>Hello, Gear!</h1>")
+//	 	case "/error":
+//	 		return ctx.Send(http.StatusOK, Err.WithMsg("some error"))
+//	 	default:
+//	 		return ctx.Send(http.StatusOK, map[string]string{"value": "Hello, Gear!"})
+//	 	}
+//	 })
 func (ctx *Context) Send(code int, data interface{}) (err error) {
 	if ctx.app.sender == nil {
 		return Err.WithMsg("sender not registered")
@@ -734,7 +733,7 @@ func (ctx *Context) OkHTML(str string) error {
 
 // OkJSON is a wrap of ctx.JSON with http.StatusOK
 //
-//  ctx.OkJSON(struct{}{})
+//	ctx.OkJSON(struct{}{})
 func (ctx *Context) OkJSON(val interface{}) error {
 	return ctx.JSON(http.StatusOK, val)
 }

@@ -55,16 +55,18 @@ func (l Log) String() string {
 }
 
 // KV set key/value to the log, returns self.
-//  log := Log{}
-//  logging.Info(log.KV("key1", "foo").KV("key2", 123))
+//
+//	log := Log{}
+//	logging.Info(log.KV("key1", "foo").KV("key2", 123))
 func (l Log) KV(key string, value interface{}) Log {
 	l[key] = value
 	return l
 }
 
 // From copy values from the Log argument, returns self.
-//  log := Log{"key": "foo"}
-//  logging.Info(log.From(Log{"key2": "foo2"}))
+//
+//	log := Log{"key": "foo"}
+//	logging.Info(log.From(Log{"key2": "foo2"}))
 func (l Log) From(log Log) Log {
 	for key, val := range log {
 		l[key] = val
@@ -73,8 +75,9 @@ func (l Log) From(log Log) Log {
 }
 
 // Into copy self values into the Log argument, returns the Log argument.
-//  redisLog := Log{"kind": "redis"}
-//  logging.Err(redisLog.Into(Log{"data": "foo"}))
+//
+//	redisLog := Log{"kind": "redis"}
+//	logging.Err(redisLog.Into(Log{"data": "foo"}))
 func (l Log) Into(log Log) Log {
 	for key, val := range l {
 		log[key] = val
@@ -83,8 +86,9 @@ func (l Log) Into(log Log) Log {
 }
 
 // With copy values from the argument, returns new log.
-//  log := Log{"key": "foo"}
-//  logging.Info(log.With(Log{"key2": "foo2"}))
+//
+//	log := Log{"key": "foo"}
+//	logging.Info(log.With(Log{"key2": "foo2"}))
 func (l Log) With(log map[string]interface{}) Log {
 	cp := l.Into(Log{})
 	for key, val := range log {
@@ -95,13 +99,12 @@ func (l Log) With(log map[string]interface{}) Log {
 
 // Reset delete all key-value on the log. Empty log will not be consumed.
 //
-//  log := logger.FromCtx(ctx)
-//  if ctx.Path == "/" {
-//  	log.Reset() // reset log, don't logging for path "/"
-//  } else {
-//  	log["data"] = someData
-//  }
-//
+//	log := logger.FromCtx(ctx)
+//	if ctx.Path == "/" {
+//		log.Reset() // reset log, don't logging for path "/"
+//	} else {
+//		log["data"] = someData
+//	}
 func (l Log) Reset() {
 	for key := range l {
 		delete(l, key)
@@ -207,8 +210,7 @@ func Default(devMode ...bool) *Logger {
 // a simple version of Common Log Format with terminal color
 // https://en.wikipedia.org/wiki/Common_Log_Format
 //
-//  127.0.0.1 - - [2017-06-01T12:23:13.161Z] "GET /context.go?query=xxx HTTP/1.1" 200 21559 5.228ms
-//
+//	127.0.0.1 - - [2017-06-01T12:23:13.161Z] "GET /context.go?query=xxx HTTP/1.1" 200 21559 5.228ms
 func developmentConsume(log Log, ctx *gear.Context) {
 	std.mu.Lock() // don't need Lock usually, logger.Output do it for us.
 	defer std.mu.Unlock()
@@ -280,40 +282,39 @@ func New(w io.Writer) *Logger {
 //
 // A custom logger example:
 //
-//  app := gear.New()
+//	app := gear.New()
 //
-//  logger := logging.New(os.Stdout)
-//  logger.SetLevel(logging.InfoLevel)
-//  logger.SetLogInit(func(log logging.Log, ctx *gear.Context) {
-//    log["ip"] = ctx.IP().String()
-//    log["method"] = ctx.Method
-//    log["uri"] = ctx.Req.RequestURI
-//    log["proto"] = ctx.Req.Proto
-//    log["userAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
-//    log["start"] = ctx.StartAt.Format("2006-01-02T15:04:05.000Z")
-//    if s := ctx.GetHeader(gear.HeaderOrigin); s != "" {
-//    	log["origin"] = s
-//    }
-//    if s := ctx.GetHeader(gear.HeaderReferer); s != "" {
-//    	log["referer"] = s
-//    }
-//  })
-//  logger.SetLogConsume(func(log logging.Log, _ *gear.Context) {
-//  	end := time.Now().UTC()
-//  	if str, err := log.Format(); err == nil {
-//  		logger.Output(end, logging.InfoLevel, str)
-//  	} else {
-//  		logger.Output(end, logging.WarningLevel, log.String())
-//  	}
-//  })
+//	logger := logging.New(os.Stdout)
+//	logger.SetLevel(logging.InfoLevel)
+//	logger.SetLogInit(func(log logging.Log, ctx *gear.Context) {
+//	  log["ip"] = ctx.IP().String()
+//	  log["method"] = ctx.Method
+//	  log["uri"] = ctx.Req.RequestURI
+//	  log["proto"] = ctx.Req.Proto
+//	  log["userAgent"] = ctx.GetHeader(gear.HeaderUserAgent)
+//	  log["start"] = ctx.StartAt.Format("2006-01-02T15:04:05.000Z")
+//	  if s := ctx.GetHeader(gear.HeaderOrigin); s != "" {
+//	  	log["origin"] = s
+//	  }
+//	  if s := ctx.GetHeader(gear.HeaderReferer); s != "" {
+//	  	log["referer"] = s
+//	  }
+//	})
+//	logger.SetLogConsume(func(log logging.Log, _ *gear.Context) {
+//		end := time.Now().UTC()
+//		if str, err := log.Format(); err == nil {
+//			logger.Output(end, logging.InfoLevel, str)
+//		} else {
+//			logger.Output(end, logging.WarningLevel, log.String())
+//		}
+//	})
 //
-//  app.UseHandler(logger)
-//  app.Use(func(ctx *gear.Context) error {
-//  	log := logger.FromCtx(ctx)
-//  	log["data"] = []int{1, 2, 3}
-//  	return ctx.HTML(200, "OK")
-//  })
-//
+//	app.UseHandler(logger)
+//	app.Use(func(ctx *gear.Context) error {
+//		log := logger.FromCtx(ctx)
+//		log["data"] = []int{1, 2, 3}
+//		return ctx.HTML(200, "OK")
+//	})
 type Logger struct {
 	// Destination for output, It's common to set this to a
 	// file, or `os.Stderr`. You can also set this to
@@ -543,7 +544,7 @@ func (l *Logger) SetLogInit(fn func(Log, *gear.Context)) *Logger {
 // It will be called on a "end hook" and should write the log to underlayer logging system.
 // The default implements is for development, the output log format:
 //
-//   127.0.0.1 GET /text 200 6500 - 0.765 ms
+//	127.0.0.1 GET /text 200 6500 - 0.765 ms
 //
 // Please implements a Log Consume for your production.
 func (l *Logger) SetLogConsume(fn func(Log, *gear.Context)) *Logger {
@@ -569,10 +570,11 @@ func (l *Logger) FromCtx(ctx *gear.Context) Log {
 }
 
 // SetTo sets key/value to the Log instance on ctx.
-//  app.Use(func(ctx *gear.Context) error {
-//  	logging.SetTo(ctx, "Data", []int{1, 2, 3})
-//  	return ctx.HTML(200, "OK")
-//  })
+//
+//	app.Use(func(ctx *gear.Context) error {
+//		logging.SetTo(ctx, "Data", []int{1, 2, 3})
+//		return ctx.HTML(200, "OK")
+//	})
 func (l *Logger) SetTo(ctx *gear.Context, key string, val interface{}) {
 	any, _ := ctx.Any(l)
 	any.(Log)[key] = val
@@ -580,14 +582,13 @@ func (l *Logger) SetTo(ctx *gear.Context, key string, val interface{}) {
 
 // Serve implements gear.Handler interface, we can use logger as gear middleware.
 //
-//  app := gear.New()
-//  app.UseHandler(logging.Default())
-//  app.Use(func(ctx *gear.Context) error {
-//  	log := logging.FromCtx(ctx)
-//  	log["data"] = []int{1, 2, 3}
-//  	return ctx.HTML(200, "OK")
-//  })
-//
+//	app := gear.New()
+//	app.UseHandler(logging.Default())
+//	app.Use(func(ctx *gear.Context) error {
+//		log := logging.FromCtx(ctx)
+//		log["data"] = []int{1, 2, 3}
+//		return ctx.HTML(200, "OK")
+//	})
 func (l *Logger) Serve(ctx *gear.Context) error {
 	// should be inited when start
 	log := l.FromCtx(ctx)
@@ -700,11 +701,12 @@ func FromCtx(ctx *gear.Context) Log {
 }
 
 // SetTo sets key/value to the Log instance on ctx for the default logger.
-//  app.UseHandler(logging.Default())
-//  app.Use(func(ctx *gear.Context) error {
-//  	logging.SetTo(ctx, "Data", []int{1, 2, 3})
-//  	return ctx.HTML(200, "OK")
-//  })
+//
+//	app.UseHandler(logging.Default())
+//	app.Use(func(ctx *gear.Context) error {
+//		logging.SetTo(ctx, "Data", []int{1, 2, 3})
+//		return ctx.HTML(200, "OK")
+//	})
 func SetTo(ctx *gear.Context, key string, val interface{}) {
 	std.SetTo(ctx, key, val)
 }

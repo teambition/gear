@@ -17,25 +17,23 @@ type Compressible interface {
 
 // DefaultCompress is defalut Compress implemented. Use it to enable compress:
 //
-//  app.Set(gear.SetCompress, &gear.DefaultCompress{})
-//
+//	app.Set(gear.SetCompress, &gear.DefaultCompress{})
 type DefaultCompress struct{}
 
 // Compressible implemented Compress interface.
 // Recommend https://github.com/teambition/compressible-go.
 //
-//  import "github.com/teambition/compressible-go"
+//	import "github.com/teambition/compressible-go"
 //
-//  app := gear.New()
-//  app.Set(gear.SetCompress, compressible.WithThreshold(1024))
+//	app := gear.New()
+//	app.Set(gear.SetCompress, compressible.WithThreshold(1024))
 //
-//  // Add a static middleware
-//  app.Use(static.New(static.Options{
-//  	Root:   "./",
-//  	Prefix: "/",
-//  }))
-//  app.Error(app.Listen(":3000")) // http://127.0.0.1:3000/
-//
+//	// Add a static middleware
+//	app.Use(static.New(static.Options{
+//		Root:   "./",
+//		Prefix: "/",
+//	}))
+//	app.Error(app.Listen(":3000")) // http://127.0.0.1:3000/
 func (d *DefaultCompress) Compressible(contentType string, contentLength int) bool {
 	if contentLength > 0 && contentLength <= 1024 {
 		return false
