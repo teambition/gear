@@ -4,7 +4,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/teambition/gear"
@@ -43,12 +42,6 @@ func main() {
 		ctx.SetHeader("Content-Type", "text/event-stream")
 		ctx.SetHeader("Cache-Control", "no-cache")
 		ctx.SetHeader("Connection", "keep-alive")
-
-		notify := ctx.Res.CloseNotify()
-		go func() {
-			<-notify
-			log.Println("HTTP connection just closed.")
-		}()
 
 		for {
 			// Read from our messageChan.

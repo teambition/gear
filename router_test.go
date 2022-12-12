@@ -556,6 +556,7 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/abc//efg")
+		assert.NoError(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/abc/efg", PickRes(res.Text()).(string))
 		res.Body.Close()
@@ -604,6 +605,7 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/abc//efg")
+		assert.NoError(err)
 		assert.Equal(421, res.StatusCode)
 		res.Body.Close()
 
@@ -653,6 +655,7 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/abc/efg/")
+		assert.NoError(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal("/abc/efg", PickRes(res.Text()).(string))
 		res.Body.Close()
@@ -670,6 +673,7 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 
 		res, err = RequestBy("PUT", host+"/abc/xyz")
+		assert.NoError(err)
 		assert.Equal(200, res.StatusCode)
 		res.Body.Close()
 
@@ -775,11 +779,13 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 
 		res, err = RequestBy("GET", host+"/abc/efg/")
+		assert.NoError(err)
 		assert.Equal(421, res.StatusCode)
 		res.Body.Close()
 
 		ctx := CtxTest(app, "GET", "/abc/efg/", nil)
 		err = r.Serve(ctx)
+		assert.NoError(err)
 		assert.Nil(r.Serve(ctx))
 
 		res, err = RequestBy("PUT", host+"/abc/xyz/")
@@ -789,6 +795,7 @@ func TestGearRouter(t *testing.T) {
 		res.Body.Close()
 
 		res, err = RequestBy("PUT", host+"/abc/xyz")
+		assert.NoError(err)
 		assert.Equal(421, res.StatusCode)
 		res.Body.Close()
 

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -24,7 +24,7 @@ func TestGearResponseCompress(t *testing.T) {
 	gzipUnCompress := func(buf []byte) []byte {
 		var data []byte
 		if gr, err := gzip.NewReader(bytes.NewBuffer(buf)); err == nil {
-			data, _ = ioutil.ReadAll(gr)
+			data, _ = io.ReadAll(gr)
 			gr.Close()
 		}
 		return data
@@ -40,15 +40,15 @@ func TestGearResponseCompress(t *testing.T) {
 	zlibUnCompress := func(buf []byte) []byte {
 		var data []byte
 		if fr, err := zlib.NewReader(bytes.NewBuffer(buf)); err == nil {
-			data, _ = ioutil.ReadAll(fr)
+			data, _ = io.ReadAll(fr)
 			fr.Close()
 		}
 		return data
 	}
 
 	t.Run("DefaultCompress", func(t *testing.T) {
-		body := []byte(strings.Repeat("你好，Gear", 500))
-		short := []byte(strings.Repeat("你好，Gear", 50))
+		body := []byte(strings.Repeat("你好, Gear", 500))
+		short := []byte(strings.Repeat("你好, Gear", 50))
 
 		app := New()
 		assert.Panics(t, func() {
@@ -84,7 +84,7 @@ func TestGearResponseCompress(t *testing.T) {
 			res, err := DefaultClientDo(req)
 			assert.Nil(err)
 			assert.True(res.OK())
-			content := PickRes(ioutil.ReadAll(res.Body)).([]byte)
+			content := PickRes(io.ReadAll(res.Body)).([]byte)
 
 			buf := gzipCompress(body)
 			assert.True(len(buf) < len(body))
@@ -104,7 +104,7 @@ func TestGearResponseCompress(t *testing.T) {
 			res, err := DefaultClientDo(req)
 			assert.Nil(err)
 			assert.True(res.OK())
-			content := PickRes(ioutil.ReadAll(res.Body)).([]byte)
+			content := PickRes(io.ReadAll(res.Body)).([]byte)
 
 			buf := zlibCompress(body)
 			assert.True(len(buf) < len(body))

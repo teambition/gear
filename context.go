@@ -7,7 +7,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net"
 	"net/http"
@@ -348,7 +347,7 @@ func (ctx *Context) AcceptCharset(preferred ...string) string {
 // Param returns path parameter by name.
 func (ctx *Context) Param(key string) (val string) {
 	if res, _ := ctx.Any(paramsKey); res != nil {
-		val, _ = res.(map[string]string)[key]
+		val = res.(map[string]string)[key]
 	}
 	return
 }
@@ -427,7 +426,7 @@ func (ctx *Context) ParseBody(body BodyTemplate) error {
 	reader := http.MaxBytesReader(ctx.Res, b, ctx.app.bodyParser.MaxBytes())
 	defer reader.Close()
 
-	if buf, err = ioutil.ReadAll(reader); err != nil {
+	if buf, err = io.ReadAll(reader); err != nil {
 		// err may not be 413 Request entity too large, just make it to 413
 		return ErrRequestEntityTooLarge.From(err)
 	}
@@ -523,12 +522,12 @@ func (ctx *Context) GetHeader(key string) string {
 func (ctx *Context) GetHeaders(key string) []string {
 	switch key {
 	case "Referer", "referer", "Referrer", "referrer":
-		if vals := getHeaderValues(ctx.Req.Header, "Referer"); len(vals) > 0 {
+		if vals := ctx.Req.Header.Values("Referer"); len(vals) > 0 {
 			return vals
 		}
-		return getHeaderValues(ctx.Req.Header, "Referrer")
+		return ctx.Req.Header.Values("Referrer")
 	default:
-		return getHeaderValues(ctx.Req.Header, key)
+		return ctx.Req.Header.Values(key)
 	}
 }
 

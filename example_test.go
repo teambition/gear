@@ -2,7 +2,6 @@ package gear_test
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/teambition/gear"
 	"github.com/teambition/gear/logging"
@@ -85,18 +84,18 @@ func Example() {
 	app.Error(app.Listen(":3000"))
 }
 
-func ExampleBackgroundAPP() {
-	app := gear.New()
+// func ExampleRunBackground() {
+// 	app := gear.New()
 
-	app.Use(func(ctx *gear.Context) error {
-		return ctx.End(200, []byte("<h1>Hello!</h1>"))
-	})
+// 	app.Use(func(ctx *gear.Context) error {
+// 		return ctx.End(200, []byte("<h1>Hello!</h1>"))
+// 	})
 
-	s := app.Start() // Start at random addr.
-	fmt.Printf("App start at: %s\n", s.Addr())
-	go func() {
-		time.Sleep(time.Second * 3) // Close it after 3 sec
-		fmt.Printf("App closed: %s\n", s.Close())
-	}()
-	s.Wait()
-}
+// 	s := app.Start() // Start at random addr.
+// 	fmt.Printf("App start at: %s\n", s.Addr())
+// 	go func() {
+// 		time.Sleep(time.Second * 3) // Close it after 3 sec
+// 		fmt.Printf("App closed: %s\n", s.Close())
+// 	}()
+// 	s.Wait()
+// }

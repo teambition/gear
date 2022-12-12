@@ -84,13 +84,13 @@ func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charse
 
 		if ute, ok := err.(*json.UnmarshalTypeError); ok {
 			if ute.Field == "" { // go1.11
-				return fmt.Errorf("Unmarshal type error: expected=%v, got=%v, offset=%v",
+				return fmt.Errorf("unmarshal type error: expected=%v, got=%v, offset=%v",
 					ute.Type, ute.Value, ute.Offset)
 			}
-			return fmt.Errorf("Unmarshal type error: field=%v, expected=%v, got=%v, offset=%v",
+			return fmt.Errorf("unmarshal type error: field=%v, expected=%v, got=%v, offset=%v",
 				ute.Field, ute.Type, ute.Value, ute.Offset)
 		} else if se, ok := err.(*json.SyntaxError); ok {
-			return fmt.Errorf("Syntax error: offset=%v, error=%v", se.Offset, se.Error())
+			return fmt.Errorf("syntax error: offset=%v, error=%v", se.Offset, se.Error())
 		} else {
 			return err
 		}

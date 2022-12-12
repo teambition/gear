@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
-	"io/ioutil"
 	"log"
 	"mime"
 	"net/http"
@@ -144,7 +143,7 @@ func (resp *GearResponse) Content() (val []byte, err error) {
 	}
 
 	defer reader.Close()
-	if b, err = ioutil.ReadAll(reader); err != nil {
+	if b, err = io.ReadAll(reader); err != nil {
 		return nil, err
 	}
 	return b, err
@@ -307,7 +306,6 @@ func TestGearError(t *testing.T) {
 type testHTTPError1 struct {
 	c int
 	m string
-	x bool
 }
 
 func (e *testHTTPError1) Error() string {
@@ -321,7 +319,6 @@ func (e *testHTTPError1) Status() int {
 type testHTTPError2 struct {
 	c int
 	m string
-	x bool
 }
 
 func (e testHTTPError2) Error() string {
@@ -585,9 +582,6 @@ func TestGearWrapResponseWriter(t *testing.T) {
 	app.Set(SetLogger, log.New(&buf, "TEST: ", 0))
 	app.Use(func(ctx *Context) error {
 		ctx.Res.rw = &WriterTest{ctx.Res.rw}
-
-		ch := ctx.Res.CloseNotify()
-		assert.NotNil(ch)
 		return ctx.End(200, []byte("OK"))
 	})
 
@@ -928,7 +922,7 @@ func TestLoggerFilterWriter(t *testing.T) {
 			if msg.Expect == "" {
 				assert.Equal(buf.Bytes(), []byte(msg.Expect))
 			} else {
-				assert.Contains(string(buf.Bytes()), msg.Expect)
+				assert.Contains(buf.String(), msg.Expect)
 			}
 		}
 	})
@@ -948,7 +942,7 @@ func TestDecompress(t *testing.T) {
 
 		reader, err := Decompress("gzip", &buf)
 		assert.Nil(err)
-		data, err := ioutil.ReadAll(reader)
+		data, err := io.ReadAll(reader)
 		assert.Nil(err)
 		assert.Equal(body, data)
 	})
@@ -957,7 +951,7 @@ func TestDecompress(t *testing.T) {
 		assert := assert.New(t)
 
 		var buf bytes.Buffer
-		body := []byte(strings.Repeat("你好，Gear", 500))
+		body := []byte(strings.Repeat("你好, Gear", 500))
 
 		zw := zlib.NewWriter(&buf)
 		zw.Write(body)
@@ -966,7 +960,7 @@ func TestDecompress(t *testing.T) {
 
 		reader, err := Decompress("zlib", &buf)
 		assert.Nil(err)
-		data, err := ioutil.ReadAll(reader)
+		data, err := io.ReadAll(reader)
 		assert.Nil(err)
 		assert.Equal(body, data)
 	})
@@ -975,7 +969,7 @@ func TestDecompress(t *testing.T) {
 		assert := assert.New(t)
 
 		var buf bytes.Buffer
-		body := []byte(strings.Repeat("你好，Gear", 500))
+		body := []byte(strings.Repeat("你好, Gear", 500))
 
 		zw := zlib.NewWriter(&buf)
 		zw.Write(body)
@@ -984,7 +978,7 @@ func TestDecompress(t *testing.T) {
 
 		reader, err := Decompress("deflate", &buf)
 		assert.Nil(err)
-		data, err := ioutil.ReadAll(reader)
+		data, err := io.ReadAll(reader)
 		assert.Nil(err)
 		assert.Equal(body, data)
 	})

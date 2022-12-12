@@ -144,7 +144,7 @@ func (err Error) GoString() string {
 
 // Format implemented logging.Messager interface.
 func (err Error) Format() (string, error) {
-	errlog := errorForLog{err.Code, err.Err, err.Msg, err.Data, err.Stack}
+	errlog := errorForLog(err)
 	res, e := json.Marshal(errlog)
 	if e == nil {
 		return string(res), nil

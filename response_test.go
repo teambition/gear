@@ -27,7 +27,7 @@ func TestGearResponse(t *testing.T) {
 		assert.Equal(res.Get("Set-Cookie"), header.Get("Set-Cookie"))
 
 		res.Add("Set-Cookie", "a=b; Path=/; HttpOnly")
-		assert.Equal([]string{"foo=bar; Path=/; HttpOnly", "a=b; Path=/; HttpOnly"}, getHeaderValues(header, "Set-Cookie"))
+		assert.Equal([]string{"foo=bar; Path=/; HttpOnly", "a=b; Path=/; HttpOnly"}, header.Values("Set-Cookie"))
 
 		res.Del("Set-Cookie")
 		assert.Equal("", res.Get("Set-Cookie"))
@@ -277,26 +277,6 @@ func TestGearResponseHijacker(t *testing.T) {
 		assert.NotNil(rw)
 		assert.Nil(err)
 		conn.Close()
-		return nil
-	})
-
-	srv := app.Start()
-	defer srv.Close()
-
-	res, err := RequestBy("GET", "http://"+srv.Addr().String())
-	assert.Nil(err)
-	assert.Equal(204, res.StatusCode)
-	res.Body.Close()
-}
-
-func TestGearResponseCloseNotifier(t *testing.T) {
-	assert := assert.New(t)
-
-	app := New()
-	app.Use(func(ctx *Context) error {
-		ctx.End(204)
-		ch := ctx.Res.CloseNotify()
-		assert.NotNil(ch)
 		return nil
 	})
 

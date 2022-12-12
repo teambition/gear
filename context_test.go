@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
@@ -47,7 +46,7 @@ func CtxResult(ctx *Context) *http.Response {
 }
 
 func CtxBody(ctx *Context) (val string) {
-	body, err := ioutil.ReadAll(CtxResult(ctx).Body)
+	body, err := io.ReadAll(CtxResult(ctx).Body)
 	if err == nil {
 		val = bytes.NewBuffer(body).String()
 	}
@@ -733,7 +732,7 @@ func TestGearContextParseBody(t *testing.T) {
 
 		err := ctx.ParseBody(&body)
 		assert.Equal(400, err.(*Error).Code)
-		assert.Equal("BadRequest: Syntax error: offset=2, error=invalid character 'a' looking for beginning of object key string", err.Error())
+		assert.Equal("BadRequest: syntax error: offset=2, error=invalid character 'a' looking for beginning of object key string", err.Error())
 	})
 
 	t.Run("should parse XML content", func(t *testing.T) {
@@ -1537,7 +1536,7 @@ func TestGearContextRender(t *testing.T) {
 }
 
 func TestGearContextStream(t *testing.T) {
-	data, err := ioutil.ReadFile("testdata/hello.html")
+	data, err := os.ReadFile("testdata/hello.html")
 	if err != nil {
 		panic(Err.From(err))
 	}
@@ -1593,7 +1592,7 @@ func TestGearContextStream(t *testing.T) {
 }
 
 func TestGearContextAttachment(t *testing.T) {
-	data, err := ioutil.ReadFile("testdata/README.md")
+	data, err := os.ReadFile("testdata/README.md")
 	if err != nil {
 		panic(Err.From(err))
 	}
