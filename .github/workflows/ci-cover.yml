@@ -1,0 +1,43 @@
+name: Gear CI Cover
+on:
+  push:
+    tags:
+      - '*'
+jobs:
+  # Test on various OS with default Go version.
+  tests:
+    name: Test on ${{matrix.os}}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        go-version: ['1.19.x']
+
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 1
+
+    - name: Print Go version
+      run: go version
+
+    - name: Get dependencies
+      run: go get -v -t -d ./...
+
+    - name: Run tests
+      run: make cover
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v2
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./gover.coverprofile
+        flags: unittests
+        name: codecov-umbrella
+        verbose: true

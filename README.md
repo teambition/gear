@@ -1,8 +1,10 @@
 ![Gear](https://raw.githubusercontent.com/teambition/gear/master/gear.png)
-[![Build Status](http://img.shields.io/travis/teambition/gear.svg?style=flat-square)](https://travis-ci.org/teambition/gear)
-[![Coverage Status](http://img.shields.io/coveralls/teambition/gear.svg?style=flat-square)](https://coveralls.io/r/teambition/gear)
+
+[![CI](https://github.com/teambition/gear/actions/workflows/ci-cover.yml/badge.svg)](https://github.com/teambition/gear/actions?query=workflow%3Aci-cover)
+[![Codecov](https://codecov.io/gh/teambition/gear/branch/main/graph/badge.svg)](https://codecov.io/gh/teambition/gear)
+[![Go Reference](https://pkg.go.dev/badge/github.com/teambition/gear.svg)](https://pkg.go.dev/github.com/teambition/gear)
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/teambition/gear/master/LICENSE)
-[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/teambition/gear)
+
 
 A lightweight, composable and high performance web service framework for Go.
 
