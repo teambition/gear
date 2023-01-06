@@ -65,7 +65,7 @@ func WrapHandlerFunc(fn http.HandlerFunc) Middleware {
 }
 
 // IsNil checks if a specified object is nil or not, without failing.
-func IsNil(val interface{}) bool {
+func IsNil(val any) bool {
 	if val == nil {
 		return true
 	}
@@ -81,20 +81,20 @@ func IsNil(val interface{}) bool {
 
 // Error represents a numeric error with optional meta. It can be used in middleware as a return result.
 type Error struct {
-	Code  int         `json:"-"`
-	Err   string      `json:"error"`
-	Msg   string      `json:"message"`
-	Data  interface{} `json:"data,omitempty"`
-	Stack string      `json:"-"`
+	Code  int    `json:"-"`
+	Err   string `json:"error"`
+	Msg   string `json:"message"`
+	Data  any    `json:"data,omitempty"`
+	Stack string `json:"-"`
 }
 
 // ErrorResponse represents error response like JSON-RPC2 or Google cloud API.
 type ErrorResponse struct {
 	Error struct {
-		Code    int         `json:"code"`
-		Status  string      `json:"status"`
-		Message string      `json:"message"`
-		Data    interface{} `json:"data,omitempty"`
+		Code    int    `json:"code"`
+		Status  string `json:"status"`
+		Message string `json:"message"`
+		Data    any    `json:"data,omitempty"`
 	} `json:"error"`
 }
 
@@ -111,11 +111,11 @@ func ToErrorResponse(e error) ErrorResponse {
 
 // errorForLog use to marshal for logging.
 type errorForLog struct {
-	Code  int         `json:"code"`
-	Err   string      `json:"error"`
-	Msg   string      `json:"message"`
-	Data  interface{} `json:"data,omitempty"`
-	Stack string      `json:"stack"`
+	Code  int    `json:"code"`
+	Err   string `json:"error"`
+	Msg   string `json:"message"`
+	Data  any    `json:"data,omitempty"`
+	Stack string `json:"stack"`
 }
 
 // Status implemented HTTPError interface.
@@ -174,7 +174,7 @@ func (err Error) WithMsg(msgs ...string) *Error {
 // WithMsgf returns a copy of err with given message in the manner of fmt.Printf.
 //
 //	err := gear.ErrBadRequest.WithMsgf(`invalid email: "%s"`, email)
-func (err Error) WithMsgf(format string, args ...interface{}) *Error {
+func (err Error) WithMsgf(format string, args ...any) *Error {
 	return err.WithMsg(fmt.Sprintf(format, args...))
 }
 
@@ -248,7 +248,7 @@ func ParseError(e error, code ...int) HTTPError {
 }
 
 // ErrorWithStack create a error with stacktrace
-func ErrorWithStack(val interface{}, skip ...int) *Error {
+func ErrorWithStack(val any, skip ...int) *Error {
 	if IsNil(val) {
 		return nil
 	}
@@ -290,7 +290,7 @@ func ErrorWithStack(val interface{}, skip ...int) *Error {
 //		"id": []string{"some id"},
 //		"pass": []string{"some pass"},
 //	}, &target, "form")
-func ValuesToStruct(values map[string][]string, target interface{}, tag string) (err error) {
+func ValuesToStruct(values map[string][]string, target any, tag string) (err error) {
 	if values == nil {
 		return fmt.Errorf("invalid values: %v", values)
 	}
@@ -706,7 +706,7 @@ func ContextWithSignal(ctx context.Context) context.Context {
 func RenderErrorResponse(err HTTPError) (int, string, []byte) {
 	body, e := json.Marshal(ToErrorResponse(err))
 	if e != nil {
-		body, _ = json.Marshal(map[string]interface{}{
+		body, _ = json.Marshal(map[string]any{
 			"error": map[string]string{"message": err.Error()},
 		})
 	}

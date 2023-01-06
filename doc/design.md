@@ -158,7 +158,7 @@ func (a *User) Login(ctx *gear.Context) (err error) {
   }
   ctx.SetHeader(gear.HeaderPragma, "no-cache")
   ctx.SetHeader(gear.HeaderCacheControl, "no-store")
-  return ctx.JSON(200, map[string]interface{}{
+  return ctx.JSON(200, map[string]any{
     "access_token": token,
     "token_type":   "Bearer",
     "expires_in":   auth.JWT().GetExpiresIn().Seconds(),
@@ -268,7 +268,7 @@ type Error struct {
   Code  int         `json:"-"`
   Err   string      `json:"error"`
   Msg   string      `json:"message"`
-  Data  interface{} `json:"data,omitempty"`
+  Data  any `json:"data,omitempty"`
   Stack string      `json:"-"`
 }
 ```
@@ -404,7 +404,7 @@ func (app *App) Error(err error) {
 其中 `gear.ErrorWithStack` 就是创建一个包含错误堆栈的 `gear.Error`：
 
 ```go
-func ErrorWithStack(val interface{}, skip ...int) *Error {
+func ErrorWithStack(val any, skip ...int) *Error {
   if IsNil(val) {
     return nil
   }
@@ -574,12 +574,12 @@ Gear 框架创新性的提出了 `Any interface` 这一解决方案，它由三�
 ```go
 // Any interface is used by ctx.Any.
 type Any interface {
-  New(ctx *Context) (interface{}, error)
+  New(ctx *Context) (any, error)
 }
 ```
 
 ```go
-func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
+func (ctx *Context) Any(any any) (val any, err error) {
   var ok bool
   if val, ok = ctx.kv[any]; !ok {
     switch v := any.(type) {
@@ -598,7 +598,7 @@ func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
 ```go
 // SetAny save a key, value pair on the ctx.
 // Then we can use ctx.Any(key) to retrieve the value from ctx.
-func (ctx *Context) SetAny(key, val interface{}) {
+func (ctx *Context) SetAny(key, val any) {
   ctx.kv[key] = val
 }
 ```
@@ -608,7 +608,7 @@ func (ctx *Context) SetAny(key, val interface{}) {
 以 [Gear-Auth](https://github.com/teambition/gear-auth) 中间件为例：
 
 ```go
-func (a *Auth) New(ctx *gear.Context) (val interface{}, err error) {
+func (a *Auth) New(ctx *gear.Context) (val any, err error) {
   if token := a.ex(ctx); token != "" {
     val, err = a.j.Verify(token)
   }
@@ -633,7 +633,7 @@ func (a *Auth) FromCtx(ctx *gear.Context) (josejwt.Claims, error) {
 
 它实现了 `Any interface`，当我们第一次调用 `ctx.Any(a)` 时，`New` 方法的逻辑就会运行，它从 `gear.Context` 中读取 token 并验证提取内容到 `Claims`，如果验证出错，还会生成一个空的 `Claims` 并通过 `ctx.SetAny(a, val)` 设置进去。也就是说 `ctx.Any` 总会返回值，只是当错误存在时这个值是空值。并且，这里保证了读取 token 并验证提取内容这一行为只会运行一次。
 
-这里还提供了 `FromCtx`，其实它只是 `ctx.Any` 的语法糖，把 `ctx.Any` 返回的 `interface{}` 类型强制转成可用的 `josejwt.Claims` 类型了。在实际开发中 `FromCtx` 这个语法糖非常好用。
+这里还提供了 `FromCtx`，其实它只是 `ctx.Any` 的语法糖，把 `ctx.Any` 返回的 `any` 类型强制转成可用的 `josejwt.Claims` 类型了。在实际开发中 `FromCtx` 这个语法糖非常好用。
 
 这是相对复杂的一个 `Any` 用例，实际上 logging，gear-session，gear-tracing 甚至框架内的 `ctx.Param` 都使用了它。总之，当涉及到要在中间件之间进行状态传值时，就可以用它了，够强大，够安全。
 
@@ -647,7 +647,7 @@ Go 语言原生提供了基于 Form 的请求数据解析，但这显然无法�
 type BodyParser interface {
   // Maximum allowed size for a request body
   MaxBytes() int64
-  Parse(buf []byte, body interface{}, mediaType, charset string) error
+  Parse(buf []byte, body any, mediaType, charset string) error
 }
 ```
 
@@ -660,7 +660,7 @@ func (d DefaultBodyParser) MaxBytes() int64 {
   return int64(d)
 }
 
-func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charset string) error {
+func (d DefaultBodyParser) Parse(buf []byte, body any, mediaType, charset string) error {
   if len(buf) == 0 {
     return &Error{Code: http.StatusBadRequest, Msg: "request entity empty"}
   }

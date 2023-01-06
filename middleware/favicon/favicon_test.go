@@ -31,22 +31,22 @@ func DefaultClientDo(req *http.Request) (*GearResponse, error) {
 	res, err := DefaultClient.Do(req)
 	return &GearResponse{res}, err
 }
-func EqualPtr(t *testing.T, a, b interface{}) {
+func EqualPtr(t *testing.T, a, b any) {
 	assert.Equal(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
 }
 
-func NotEqualPtr(t *testing.T, a, b interface{}) {
+func NotEqualPtr(t *testing.T, a, b any) {
 	assert.NotEqual(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
 }
 
-func PickRes(res interface{}, err error) interface{} {
+func PickRes(res any, err error) any {
 	if err != nil {
 		panic(err)
 	}
 	return res
 }
 
-func PickError(res interface{}, err error) error {
+func PickError(res any, err error) error {
 	return err
 }
 

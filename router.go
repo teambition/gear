@@ -1,6 +1,7 @@
 package gear
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -319,9 +320,13 @@ func (r *Router) Serve(ctx *Context) error {
 		}
 	}
 
-	ctx.SetAny(paramsKey, matched.Params)
-	ctx.SetAny(routerNodeKey, matched.Node)
-	ctx.SetAny(routerRootKey, r.rt)
+	state := CtxValue[State](ctx)
+	if state == nil {
+		return ErrInternalServerError.WithMsg("state is nil")
+	}
+
+	state.RouterPrefix = r.rt
+	state.RouterMatched = matched
 	if len(r.mds) > 0 {
 		handler = Compose(r.middleware, handler)
 	}
@@ -334,9 +339,9 @@ func (r *Router) Serve(ctx *Context) error {
 //		assert.Equal("/api/:type/:ID", GetRouterNodeFromCtx(ctx).GetPattern())
 //		return ctx.HTML(200, ctx.Param("type")+ctx.Param("ID"))
 //	})
-func GetRouterNodeFromCtx(ctx *Context) *trie.Node {
-	if res, _ := ctx.Any(routerNodeKey); res != nil {
-		return res.(*trie.Node)
+func GetRouterNodeFromCtx(ctx context.Context) *trie.Node {
+	if state := CtxValue[State](ctx); state != nil && state.RouterMatched != nil {
+		return state.RouterMatched.Node
 	}
 	return nil
 }
@@ -347,10 +352,9 @@ func GetRouterNodeFromCtx(ctx *Context) *trie.Node {
 //		assert.Equal("/v2/api/:type/:ID", GetRouterPatternFromCtx(ctx))
 //		return ctx.HTML(200, "ok")
 //	})
-func GetRouterPatternFromCtx(ctx *Context) string {
-	if node := GetRouterNodeFromCtx(ctx); node != nil {
-		rt := ctx.MustAny(routerRootKey)
-		return rt.(string) + node.GetPattern()
+func GetRouterPatternFromCtx(ctx context.Context) string {
+	if state := CtxValue[State](ctx); state != nil && state.RouterMatched != nil && state.RouterMatched.Node != nil {
+		return state.RouterPrefix + state.RouterMatched.Node.GetPattern()
 	}
 	return ""
 }

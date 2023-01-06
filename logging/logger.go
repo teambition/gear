@@ -24,7 +24,7 @@ type Messager interface {
 }
 
 // Log records key-value pairs for structured logging.
-type Log map[string]interface{}
+type Log map[string]any
 
 // Format try to marshal the structured log with json.Marshal.
 func (l Log) Format() (string, error) {
@@ -58,7 +58,7 @@ func (l Log) String() string {
 //
 //	log := Log{}
 //	logging.Info(log.KV("key1", "foo").KV("key2", 123))
-func (l Log) KV(key string, value interface{}) Log {
+func (l Log) KV(key string, value any) Log {
 	l[key] = value
 	return l
 }
@@ -89,7 +89,7 @@ func (l Log) Into(log Log) Log {
 //
 //	log := Log{"key": "foo"}
 //	logging.Info(log.With(Log{"key2": "foo2"}))
-func (l Log) With(log map[string]interface{}) Log {
+func (l Log) With(log map[string]any) Log {
 	cp := l.Into(Log{})
 	for key, val := range log {
 		cp[key] = val
@@ -335,68 +335,68 @@ func (l *Logger) checkLogLevel(level Level) bool {
 }
 
 // Emerg produce a "Emergency" log
-func (l *Logger) Emerg(v interface{}) {
+func (l *Logger) Emerg(v any) {
 	l.output(time.Now().UTC(), EmergLevel, v)
 }
 
 // Alert produce a "Alert" log
-func (l *Logger) Alert(v interface{}) {
+func (l *Logger) Alert(v any) {
 	if l.checkLogLevel(AlertLevel) {
 		l.output(time.Now().UTC(), AlertLevel, v)
 	}
 }
 
 // Crit produce a "Critical" log
-func (l *Logger) Crit(v interface{}) {
+func (l *Logger) Crit(v any) {
 	if l.checkLogLevel(CritLevel) {
 		l.output(time.Now().UTC(), CritLevel, v)
 	}
 }
 
 // Err produce a "Error" log
-func (l *Logger) Err(v interface{}) {
+func (l *Logger) Err(v any) {
 	if l.checkLogLevel(ErrLevel) {
 		l.output(time.Now().UTC(), ErrLevel, v)
 	}
 }
 
 // Warning produce a "Warning" log
-func (l *Logger) Warning(v interface{}) {
+func (l *Logger) Warning(v any) {
 	if l.checkLogLevel(WarningLevel) {
 		l.output(time.Now().UTC(), WarningLevel, v)
 	}
 }
 
 // Notice produce a "Notice" log
-func (l *Logger) Notice(v interface{}) {
+func (l *Logger) Notice(v any) {
 	if l.checkLogLevel(NoticeLevel) {
 		l.output(time.Now().UTC(), NoticeLevel, v)
 	}
 }
 
 // Info produce a "Informational" log
-func (l *Logger) Info(v interface{}) {
+func (l *Logger) Info(v any) {
 	if l.checkLogLevel(InfoLevel) {
 		l.output(time.Now().UTC(), InfoLevel, v)
 	}
 }
 
 // Debug produce a "Debug" log
-func (l *Logger) Debug(v interface{}) {
+func (l *Logger) Debug(v any) {
 	if l.checkLogLevel(DebugLevel) {
 		l.output(time.Now().UTC(), DebugLevel, v)
 	}
 }
 
 // Debugf produce a "Debug" log in the manner of fmt.Printf
-func (l *Logger) Debugf(format string, args ...interface{}) {
+func (l *Logger) Debugf(format string, args ...any) {
 	if l.checkLogLevel(DebugLevel) {
 		l.output(time.Now().UTC(), DebugLevel, fmt.Sprintf(format, args...))
 	}
 }
 
 // Panic produce a "Emergency" log and then calls panic with the message
-func (l *Logger) Panic(v interface{}) {
+func (l *Logger) Panic(v any) {
 	s := format(v)
 	l.Emerg(s)
 	panic(s)
@@ -405,33 +405,33 @@ func (l *Logger) Panic(v interface{}) {
 var exit = func() { os.Exit(1) }
 
 // Fatal produce a "Emergency" log and then calls os.Exit(1)
-func (l *Logger) Fatal(v interface{}) {
+func (l *Logger) Fatal(v any) {
 	l.Emerg(v)
 	exit()
 }
 
 // Print produce a log in the manner of fmt.Print, without timestamp and log level
-func (l *Logger) Print(args ...interface{}) {
+func (l *Logger) Print(args ...any) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	fmt.Fprint(l.Out, args...)
 }
 
 // Printf produce a log in the manner of fmt.Printf, without timestamp and log level
-func (l *Logger) Printf(format string, args ...interface{}) {
+func (l *Logger) Printf(format string, args ...any) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	fmt.Fprintf(l.Out, format, args...)
 }
 
 // Println produce a log in the manner of fmt.Println, without timestamp and log level
-func (l *Logger) Println(args ...interface{}) {
+func (l *Logger) Println(args ...any) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	fmt.Fprintln(l.Out, args...)
 }
 
-func (l *Logger) output(t time.Time, level Level, v interface{}) (err error) {
+func (l *Logger) output(t time.Time, level Level, v any) (err error) {
 	if l.json {
 		var log Log
 		if level > ErrLevel {
@@ -556,7 +556,7 @@ func (l *Logger) SetLogConsume(fn func(Log, *gear.Context)) *Logger {
 
 // New implements gear.Any interface,then we can use ctx.Any to retrieve a Log instance from ctx.
 // Here also some initialization work after created.
-func (l *Logger) New(ctx *gear.Context) (interface{}, error) {
+func (l *Logger) New(ctx *gear.Context) (any, error) {
 	log := Log{}
 	l.init(log, ctx)
 	return log, nil
@@ -575,7 +575,7 @@ func (l *Logger) FromCtx(ctx *gear.Context) Log {
 //		logging.SetTo(ctx, "Data", []int{1, 2, 3})
 //		return ctx.HTML(200, "OK")
 //	})
-func (l *Logger) SetTo(ctx *gear.Context, key string, val interface{}) {
+func (l *Logger) SetTo(ctx *gear.Context, key string, val any) {
 	any, _ := ctx.Any(l)
 	any.(Log)[key] = val
 }
@@ -592,6 +592,7 @@ func (l *Logger) SetTo(ctx *gear.Context, key string, val interface{}) {
 func (l *Logger) Serve(ctx *gear.Context) error {
 	// should be inited when start
 	log := l.FromCtx(ctx)
+
 	// Add a "end hook" to flush logs
 	ctx.OnEnd(func() {
 		// Ignore empty log
@@ -623,75 +624,75 @@ func (l *Logger) Serve(ctx *gear.Context) error {
 }
 
 // Emerg produce a "Emergency" log with the default logger
-func Emerg(v interface{}) {
+func Emerg(v any) {
 	std.Emerg(v)
 }
 
 // Alert produce a "Alert" log with the default logger
-func Alert(v interface{}) {
+func Alert(v any) {
 	std.Alert(v)
 }
 
 // Crit produce a "Critical" log with the default logger
-func Crit(v interface{}) {
+func Crit(v any) {
 	std.Crit(v)
 }
 
 // Err produce a "Error" log with the default logger
-func Err(v interface{}) {
+func Err(v any) {
 	std.Err(v)
 }
 
 // Warning produce a "Warning" log with the default logger
-func Warning(v interface{}) {
+func Warning(v any) {
 	std.Warning(v)
 }
 
 // Notice produce a "Notice" log with the default logger
-func Notice(v interface{}) {
+func Notice(v any) {
 	std.Notice(v)
 }
 
 // Info produce a "Informational" log with the default logger
-func Info(v interface{}) {
+func Info(v any) {
 	std.Info(v)
 }
 
 // Debug produce a "Debug" log with the default logger
-func Debug(v interface{}) {
+func Debug(v any) {
 	std.Debug(v)
 }
 
 // Debugf produce a "Debug" log in the manner of fmt.Printf with the default logger
-func Debugf(format string, args ...interface{}) {
+func Debugf(format string, args ...any) {
 	std.Debugf(format, args...)
 }
 
 // Panic produce a "Emergency" log with the default logger and then calls panic with the message
-func Panic(v interface{}) {
+func Panic(v any) {
 	std.Panic(v)
 }
 
 // Fatal produce a "Emergency" log with the default logger and then calls os.Exit(1)
-func Fatal(v interface{}) {
+func Fatal(v any) {
 	std.Fatal(v)
 }
 
 // Print produce a log in the manner of fmt.Print with the default logger,
 // without timestamp and log level
-func Print(args ...interface{}) {
+func Print(args ...any) {
 	std.Print(args...)
 }
 
 // Printf produce a log in the manner of fmt.Printf with the default logger,
 // without timestamp and log level
-func Printf(format string, args ...interface{}) {
+func Printf(format string, args ...any) {
 	std.Printf(format, args...)
 }
 
 // Println produce a log in the manner of fmt.Println with the default logger,
 // without timestamp and log level
-func Println(args ...interface{}) {
+func Println(args ...any) {
 	std.Println(args...)
 }
 
@@ -707,7 +708,7 @@ func FromCtx(ctx *gear.Context) Log {
 //		logging.SetTo(ctx, "Data", []int{1, 2, 3})
 //		return ctx.HTML(200, "OK")
 //	})
-func SetTo(ctx *gear.Context, key string, val interface{}) {
+func SetTo(ctx *gear.Context, key string, val any) {
 	std.SetTo(ctx, key, val)
 }
 
@@ -724,7 +725,7 @@ func colorStatus(code int) ColorType {
 	}
 }
 
-func formatError(i interface{}) string {
+func formatError(i any) string {
 	err := gear.ErrorWithStack(i)
 	if err == nil {
 		return ""
@@ -735,7 +736,7 @@ func formatError(i interface{}) string {
 	return err.String()
 }
 
-func formatError2Log(i interface{}) Log {
+func formatError2Log(i any) Log {
 	err := gear.ErrorWithStack(i)
 	if err == nil {
 		return Log{}
@@ -749,7 +750,7 @@ func formatError2Log(i interface{}) Log {
 	}
 }
 
-func format(i interface{}) string {
+func format(i any) string {
 	switch v := i.(type) {
 	case Messager:
 		if str, err := v.Format(); err == nil {
@@ -761,11 +762,11 @@ func format(i interface{}) string {
 	}
 }
 
-func format2Log(i interface{}) Log {
+func format2Log(i any) Log {
 	switch v := i.(type) {
 	case Log:
 		return v
-	case map[string]interface{}:
+	case map[string]any:
 		return Log(v)
 	default:
 		return Log{"message": format(i)}

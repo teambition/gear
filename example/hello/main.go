@@ -25,7 +25,7 @@ func main() {
 
 	// try: http://127.0.0.1:3000/test?query=hello
 	router.Otherwise(func(ctx *gear.Context) error {
-		return ctx.JSON(200, map[string]interface{}{
+		return ctx.JSON(200, map[string]any{
 			"Host":    ctx.Host,
 			"Method":  ctx.Method,
 			"Path":    ctx.Path,

@@ -22,6 +22,7 @@ import (
 
 	"github.com/go-http-utils/cookie"
 	"github.com/stretchr/testify/assert"
+	"github.com/teambition/trie-mux"
 )
 
 type Counter int32
@@ -302,7 +303,7 @@ type ctxAnyResult struct {
 
 var ctxAny = &ctxAnyType{}
 
-func (t *ctxAnyType) New(ctx *Context) (interface{}, error) {
+func (t *ctxAnyType) New(ctx *Context) (any, error) {
 	if ctx.Method != "GET" {
 		return nil, errors.New(ctx.Method)
 	}
@@ -357,7 +358,7 @@ func TestGearContextAny(t *testing.T) {
 		})
 	})
 
-	t.Run("SetAny with interface{}", func(t *testing.T) {
+	t.Run("SetAny with any", func(t *testing.T) {
 		assert := assert.New(t)
 
 		ctx := CtxTest(app, "POST", "http://example.com/foo", nil)
@@ -1022,11 +1023,16 @@ func TestGearContextParseURL(t *testing.T) {
 		assert := assert.New(t)
 
 		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin&name=admin", nil)
-		ctx.SetAny(paramsKey, map[string]string{
-			"pass": "1234567",
-			"id":   "admin_id",
-			"time": "vdfvdf",
+		CtxDoIf(ctx, func(v *State) {
+			v.RouterMatched = &trie.Matched{
+				Params: map[string]string{
+					"pass": "1234567",
+					"id":   "admin_id",
+					"time": "vdfvdf",
+				},
+			}
 		})
+
 		body := invalidParamTemplate{}
 		err := ctx.ParseURL(&body)
 		assert.NotNil(err)
@@ -1037,9 +1043,13 @@ func TestGearContextParseURL(t *testing.T) {
 		assert := assert.New(t)
 
 		ctx := CtxTest(app, "GET", "http://example.com/foo", nil)
-		ctx.SetAny(paramsKey, map[string]string{
-			"pass": "1234567",
-			"id":   "admin_id",
+		CtxDoIf(ctx, func(v *State) {
+			v.RouterMatched = &trie.Matched{
+				Params: map[string]string{
+					"pass": "1234567",
+					"id":   "admin_id",
+				},
+			}
 		})
 		body := jsonParamTemplate{}
 		err := ctx.ParseURL(&body)
@@ -1052,8 +1062,12 @@ func TestGearContextParseURL(t *testing.T) {
 		assert := assert.New(t)
 
 		ctx := CtxTest(app, "GET", "http://example.com/foo?id=admin&size=", nil)
-		ctx.SetAny(paramsKey, map[string]string{
-			"pass": "1234567",
+		CtxDoIf(ctx, func(v *State) {
+			v.RouterMatched = &trie.Matched{
+				Params: map[string]string{
+					"pass": "1234567",
+				},
+			}
 		})
 		body := jsonParamQueryTemplate{}
 		err := ctx.ParseURL(&body)
@@ -1067,9 +1081,13 @@ func TestGearContextParseURL(t *testing.T) {
 		assert := assert.New(t)
 
 		ctx := CtxTest(app, "GET", "http://example.com/foo?pass=password&id=admin", nil)
-		ctx.SetAny(paramsKey, map[string]string{
-			"pass": "1234567",
-			"id":   "admin_id",
+		CtxDoIf(ctx, func(v *State) {
+			v.RouterMatched = &trie.Matched{
+				Params: map[string]string{
+					"pass": "1234567",
+					"id":   "admin_id",
+				},
+			}
 		})
 		body := jsonParamQueryTemplate{}
 		err := ctx.ParseURL(&body)
@@ -1333,7 +1351,7 @@ func TestGearContextXML(t *testing.T) {
 			})
 
 			return ctx.XML(http.StatusOK, struct {
-				Value interface{}
+				Value any
 				Err   string
 				Kind  reflect.Kind
 			}{
@@ -1380,7 +1398,7 @@ func TestGearContextXML(t *testing.T) {
 
 type SenderTest struct{}
 
-func (s *SenderTest) Send(ctx *Context, code int, data interface{}) error {
+func (s *SenderTest) Send(ctx *Context, code int, data any) error {
 	switch v := data.(type) {
 	case []byte:
 		ctx.Type(MIMETextPlainCharsetUTF8)
@@ -1466,7 +1484,7 @@ type RenderTest struct {
 	tpl *template.Template
 }
 
-func (t *RenderTest) Render(ctx *Context, w io.Writer, name string, data interface{}) (err error) {
+func (t *RenderTest) Render(ctx *Context, w io.Writer, name string, data any) (err error) {
 	if err = t.tpl.ExecuteTemplate(w, name, data); err != nil {
 		err = ErrNotFound.From(err)
 	}

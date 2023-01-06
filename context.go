@@ -11,11 +11,13 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 	"time"
 
 	"github.com/go-http-utils/cookie"
 	"github.com/go-http-utils/negotiator"
+	"github.com/teambition/trie-mux"
 )
 
 type contextKey int
@@ -23,19 +25,56 @@ type contextKey int
 const (
 	isInheritedContext contextKey = iota
 	isGearContext
-	paramsKey
-	routerNodeKey
-	routerRootKey
 )
 
 // Any interface is used by ctx.Any.
 type Any interface {
-	New(ctx *Context) (interface{}, error)
+	New(ctx *Context) (any, error)
 }
 
 // BodyTemplate interface is used by ctx.ParseBody.
 type BodyTemplate interface {
 	Validate() error
+}
+
+// CtxWith returns a new context.Context with the value *T stored in it.
+func CtxWith[T any](parent context.Context, v *T) context.Context {
+	return context.WithValue(parent, reflect.TypeOf((*T)(nil)), v)
+}
+
+// CtxValue returns the value *T stored in the context.Context, or nil if not stored.
+func CtxValue[T any](ctx context.Context) *T {
+	v, _ := ctx.Value(reflect.TypeOf((*T)(nil))).(*T)
+	return v
+}
+
+// CtxDoIf calls the function fn with the value *T stored in the context.Context.
+// If the Value is not exist or not valid, the function fn will not be called.
+func CtxDoIf[T any, TI isValid[T]](ctx context.Context, fn func(v *T)) {
+	if v := CtxValue[T](ctx); TI(v).Valid() {
+		fn(v)
+	}
+}
+
+type isValid[T any] interface {
+	*T
+	Valid() bool
+}
+
+// State is the recommended namespace for passing information through middleware
+// and handlers.
+//
+//	state := gear.CtxValue[gear.State](ctx)
+//	state.KV[userKey] = user
+type State struct {
+	// key/value store.
+	KV            map[any]any
+	RouterPrefix  string
+	RouterMatched *trie.Matched
+}
+
+func (s *State) Valid() bool {
+	return s != nil && s.KV != nil
 }
 
 // Context represents the context of the current HTTP request. It holds request and
@@ -55,7 +94,6 @@ type Context struct {
 	ctx       context.Context
 	cancelCtx context.CancelFunc
 	done      <-chan struct{}
-	kv        map[interface{}]interface{}
 }
 
 // NewContext creates an instance of Context. Export for testing middleware.
@@ -70,7 +108,6 @@ func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 		StartAt: time.Now().UTC(),
 
 		Cookies: cookie.New(w, r, app.keys...),
-		kv:      make(map[interface{}]interface{}),
 	}
 
 	if app.serverName != "" {
@@ -84,6 +121,8 @@ func NewContext(app *App, w http.ResponseWriter, r *http.Request) *Context {
 	}
 
 	ctx.ctx = context.WithValue(ctx.ctx, isInheritedContext, struct{}{})
+	ctx.ctx = CtxWith(ctx.ctx, &State{KV: make(map[any]any)})
+
 	ctx.Req = r.WithContext(ctx.ctx)
 	if app.withContext != nil {
 		ctx.WithContext(app.withContext(ctx.Req))
@@ -115,7 +154,7 @@ func (ctx *Context) Err() error {
 // Value returns the value associated with this context for key, or nil
 // if no value is associated with key. Successive calls to Value with
 // the same key returns the same result.
-func (ctx *Context) Value(key interface{}) (val interface{}) {
+func (ctx *Context) Value(key any) (val any) {
 	if key == isGearContext {
 		return struct{}{}
 	}
@@ -148,7 +187,7 @@ func (ctx *Context) WithTimeout(timeout time.Duration) (context.Context, context
 }
 
 // WithValue returns a copy of the ctx in which the value associated with key is val.
-func (ctx *Context) WithValue(key, val interface{}) context.Context {
+func (ctx *Context) WithValue(key, val any) context.Context {
 	return context.WithValue(ctx.ctx, key, val)
 }
 
@@ -208,7 +247,7 @@ func (ctx *Context) Timing(dt time.Duration, fn func(context.Context)) (err erro
 //
 //	var someAnyKey = &someAnyType{}
 //
-//	func (t *someAnyType) New(ctx *gear.Context) (interface{}, error) {
+//	func (t *someAnyType) New(ctx *gear.Context) (any, error) {
 //		return &someAnyResult{r: ctx.Req}, nil
 //	}
 //
@@ -216,13 +255,14 @@ func (ctx *Context) Timing(dt time.Duration, fn func(context.Context)) (err erro
 //	if val, err := ctx.Any(someAnyKey); err == nil {
 //		res := val.(*someAnyResult)
 //	}
-func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
+func (ctx *Context) Any(any any) (val any, err error) {
 	var ok bool
-	if val, ok = ctx.kv[any]; !ok {
+	state := CtxValue[State](ctx.ctx)
+	if val, ok = state.KV[any]; !ok {
 		switch v := any.(type) {
 		case Any:
 			if val, err = v.New(ctx); err == nil {
-				ctx.kv[any] = val
+				state.KV[any] = val
 			}
 		default:
 			return nil, Err.WithMsg("non-existent key")
@@ -233,7 +273,7 @@ func (ctx *Context) Any(any interface{}) (val interface{}, err error) {
 
 // MustAny returns the value on this ctx by key. It is a sugar for ctx.Any,
 // If some error occurred, it will panic.
-func (ctx *Context) MustAny(any interface{}) interface{} {
+func (ctx *Context) MustAny(any any) any {
 	val, err := ctx.Any(any)
 	if err != nil {
 		panic(err)
@@ -243,8 +283,9 @@ func (ctx *Context) MustAny(any interface{}) interface{} {
 
 // SetAny save a key, value pair on the ctx.
 // Then we can use ctx.Any(key) to retrieve the value from ctx.
-func (ctx *Context) SetAny(key, val interface{}) {
-	ctx.kv[key] = val
+func (ctx *Context) SetAny(key, val any) {
+	state := CtxValue[State](ctx.ctx)
+	state.KV[key] = val
 }
 
 // Setting returns App's settings by key
@@ -252,7 +293,7 @@ func (ctx *Context) SetAny(key, val interface{}) {
 //	fmt.Println(ctx.Setting(gear.SetEnv).(string) == "development")
 //	app.Set(gear.SetEnv, "production")
 //	fmt.Println(ctx.Setting(gear.SetEnv).(string) == "production")
-func (ctx *Context) Setting(key interface{}) interface{} {
+func (ctx *Context) Setting(key any) any {
 	if val, ok := ctx.app.settings[key]; ok {
 		return val
 	}
@@ -346,8 +387,8 @@ func (ctx *Context) AcceptCharset(preferred ...string) string {
 
 // Param returns path parameter by name.
 func (ctx *Context) Param(key string) (val string) {
-	if res, _ := ctx.Any(paramsKey); res != nil {
-		val = res.(map[string]string)[key]
+	if s := CtxValue[State](ctx.ctx); s != nil && s.RouterMatched != nil {
+		val = s.RouterMatched.Params[key]
 	}
 	return
 }
@@ -476,10 +517,11 @@ func (ctx *Context) ParseURL(body BodyTemplate) error {
 		return ErrBadRequest.From(err)
 	}
 
-	if res, _ := ctx.Any(paramsKey); res != nil {
-		if params, _ := res.(map[string]string); len(params) > 0 {
+	// if res, _ := ctx.Any(paramsKey); res != nil {
+	if s := CtxValue[State](ctx.ctx); s != nil && s.RouterMatched != nil {
+		if len(s.RouterMatched.Params) > 0 {
 			paramValues := make(map[string][]string)
-			for k, v := range params {
+			for k, v := range s.RouterMatched.Params {
 				paramValues[k] = []string{v}
 			}
 
@@ -557,7 +599,7 @@ func (ctx *Context) HTML(code int, str string) error {
 // JSON set a JSON body with status code to response.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" (if no error) and "end hooks" will run normally.
-func (ctx *Context) JSON(code int, val interface{}) error {
+func (ctx *Context) JSON(code int, val any) error {
 	buf, err := json.Marshal(val)
 	if err != nil {
 		return err
@@ -576,7 +618,7 @@ func (ctx *Context) JSONBlob(code int, buf []byte) error {
 // JSONP sends a JSONP response with status code. It uses `callback` to construct the JSONP payload.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" (if no error) and "end hooks" will run normally.
-func (ctx *Context) JSONP(code int, callback string, val interface{}) error {
+func (ctx *Context) JSONP(code int, callback string, val any) error {
 	buf, err := json.Marshal(val)
 	if err != nil {
 		return err
@@ -602,7 +644,7 @@ func (ctx *Context) JSONPBlob(code int, callback string, buf []byte) error {
 // XML set an XML body with status code to response.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" (if no error) and "end hooks" will run normally.
-func (ctx *Context) XML(code int, val interface{}) error {
+func (ctx *Context) XML(code int, val any) error {
 	buf, err := xml.Marshal(val)
 	if err != nil {
 		return err
@@ -626,7 +668,7 @@ func (ctx *Context) XMLBlob(code int, buf []byte) error {
 //
 //	 type mySenderT struct{}
 //
-//	 func (s *mySenderT) Send(ctx *Context, code int, data interface{}) error {
+//	 func (s *mySenderT) Send(ctx *Context, code int, data any) error {
 //		 switch v := data.(type) {
 //		 case []byte:
 //	 		ctx.Type(MIMETextPlainCharsetUTF8)
@@ -653,7 +695,7 @@ func (ctx *Context) XMLBlob(code int, buf []byte) error {
 //	 		return ctx.Send(http.StatusOK, map[string]string{"value": "Hello, Gear!"})
 //	 	}
 //	 })
-func (ctx *Context) Send(code int, data interface{}) (err error) {
+func (ctx *Context) Send(code int, data any) (err error) {
 	if ctx.app.sender == nil {
 		return Err.WithMsg("sender not registered")
 	}
@@ -664,7 +706,7 @@ func (ctx *Context) Send(code int, data interface{}) (err error) {
 // code. Templates can be registered using `app.Set(gear.SetRenderer, someRenderer)`.
 // It will end the ctx. The middlewares after current middleware will not run.
 // "after hooks" (if no error) and "end hooks" will run normally.
-func (ctx *Context) Render(code int, name string, data interface{}) (err error) {
+func (ctx *Context) Render(code int, name string, data any) (err error) {
 	if ctx.app.renderer == nil {
 		return Err.WithMsg("renderer not registered")
 	}
@@ -733,22 +775,22 @@ func (ctx *Context) OkHTML(str string) error {
 // OkJSON is a wrap of ctx.JSON with http.StatusOK
 //
 //	ctx.OkJSON(struct{}{})
-func (ctx *Context) OkJSON(val interface{}) error {
+func (ctx *Context) OkJSON(val any) error {
 	return ctx.JSON(http.StatusOK, val)
 }
 
 // OkXML is a wrap of ctx.XML with http.StatusOK
-func (ctx *Context) OkXML(val interface{}) error {
+func (ctx *Context) OkXML(val any) error {
 	return ctx.XML(http.StatusOK, val)
 }
 
 // OkSend is a wrap of ctx.Send with http.StatusOK
-func (ctx *Context) OkSend(val interface{}) error {
+func (ctx *Context) OkSend(val any) error {
 	return ctx.Send(http.StatusOK, val)
 }
 
 // OkRender is a wrap of ctx.Render with http.StatusOK
-func (ctx *Context) OkRender(name string, val interface{}) error {
+func (ctx *Context) OkRender(name string, val any) error {
 	return ctx.Render(http.StatusOK, name, val)
 }
 

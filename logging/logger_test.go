@@ -16,11 +16,11 @@ import (
 )
 
 // ----- Test Helpers -----
-func EqualPtr(t *testing.T, a, b interface{}) {
+func EqualPtr(t *testing.T, a, b any) {
 	assert.Equal(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
 }
 
-func NotEqualPtr(t *testing.T, a, b interface{}) {
+func NotEqualPtr(t *testing.T, a, b any) {
 	assert.NotEqual(t, reflect.ValueOf(a).Pointer(), reflect.ValueOf(b).Pointer())
 }
 
@@ -103,7 +103,7 @@ func TestGearLog(t *testing.T) {
 		NotEqualPtr(t, log1, log3)
 		NotEqualPtr(t, log2, log3)
 		assert.Equal(Log{"key1": 1, "key2": true}, log3)
-		assert.Equal(log3, log1.With(map[string]interface{}{"key1": 1, "key2": true}))
+		assert.Equal(log3, log1.With(map[string]any{"key1": 1, "key2": true}))
 	})
 
 	t.Run("Log.KV", func(t *testing.T) {
@@ -543,7 +543,7 @@ func TestGearLoggerMiddleware(t *testing.T) {
 		app.UseHandler(logger)
 		app.Use(func(ctx *gear.Context) (err error) {
 			log := logger.FromCtx(ctx)
-			log["data"] = map[string]interface{}{"a": 0}
+			log["data"] = map[string]any{"a": 0}
 			panic("Some error")
 		})
 		srv := app.Start()

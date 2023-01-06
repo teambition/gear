@@ -27,26 +27,26 @@ type Handler interface {
 
 // Sender interface is used by ctx.Send.
 type Sender interface {
-	Send(ctx *Context, code int, data interface{}) error
+	Send(ctx *Context, code int, data any) error
 }
 
 // Renderer interface is used by ctx.Render.
 type Renderer interface {
-	Render(ctx *Context, w io.Writer, name string, data interface{}) error
+	Render(ctx *Context, w io.Writer, name string, data any) error
 }
 
 // URLParser interface is used by ctx.ParseUrl. Default to:
 //
 //	app.Set(gear.SetURLParser, gear.DefaultURLParser)
 type URLParser interface {
-	Parse(val map[string][]string, body interface{}, tag string) error
+	Parse(val map[string][]string, body any, tag string) error
 }
 
 // DefaultURLParser is default URLParser type.
 type DefaultURLParser struct{}
 
 // Parse implemented URLParser interface.
-func (d DefaultURLParser) Parse(val map[string][]string, body interface{}, tag string) error {
+func (d DefaultURLParser) Parse(val map[string][]string, body any, tag string) error {
 	return ValuesToStruct(val, body, tag)
 }
 
@@ -56,7 +56,7 @@ func (d DefaultURLParser) Parse(val map[string][]string, body interface{}, tag s
 type BodyParser interface {
 	// Maximum allowed size for a request body
 	MaxBytes() int64
-	Parse(buf []byte, body interface{}, mediaType, charset string) error
+	Parse(buf []byte, body any, mediaType, charset string) error
 }
 
 // DefaultBodyParser is default BodyParser type.
@@ -71,7 +71,7 @@ func (d DefaultBodyParser) MaxBytes() int64 {
 }
 
 // Parse implemented BodyParser interface.
-func (d DefaultBodyParser) Parse(buf []byte, body interface{}, mediaType, charset string) error {
+func (d DefaultBodyParser) Parse(buf []byte, body any, mediaType, charset string) error {
 	if len(buf) == 0 {
 		return ErrBadRequest.WithMsg("request entity empty")
 	}
@@ -141,7 +141,7 @@ type App struct {
 	renderError func(HTTPError) (code int, contentType string, body []byte)
 	onerror     func(*Context, HTTPError)
 	withContext func(*http.Request) context.Context
-	settings    map[interface{}]interface{}
+	settings    map[any]any
 }
 
 // New creates an instance of App.
@@ -155,7 +155,7 @@ func New() *App {
 	app.Server.IdleTimeout = 90 * time.Second
 
 	app.mds = make(middlewares, 0)
-	app.settings = make(map[interface{}]interface{})
+	app.settings = make(map[any]any)
 
 	env := os.Getenv("APP_ENV")
 	if env == "" {
@@ -288,7 +288,7 @@ const (
 )
 
 // Set add key/value settings to app. The settings can be retrieved by `ctx.Setting(key)`.
-func (app *App) Set(key, val interface{}) *App {
+func (app *App) Set(key, val any) *App {
 	if k, ok := key.(appSetting); ok {
 		switch key {
 		case SetBodyParser:
@@ -500,7 +500,7 @@ func (app *App) Start(addr ...string) *ServerListener {
 }
 
 // Error writes error to underlayer logging system.
-func (app *App) Error(err interface{}) {
+func (app *App) Error(err any) {
 	if err := ErrorWithStack(err, 2); err != nil {
 		str, e := err.Format()
 		f := app.logger.Flags() == 0

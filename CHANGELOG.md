@@ -551,13 +551,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 **Changed:**
 
-- Add `Error.WithStack(skip ...int) *Error` and `Error.WithMsgf(format string, args ...interface{}) *Error`.
+- Add `Error.WithStack(skip ...int) *Error` and `Error.WithMsgf(format string, args ...any) *Error`.
 
 ## [1.5.2] - 2017-05-18
 
 **Changed:**
 
-- Add `logging.Debugf(format string, args ...interface{})`.
+- Add `logging.Debugf(format string, args ...any)`.
 
 ## [1.5.1] - 2017-05-04
 
@@ -570,7 +570,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 **Changed:**
 
 - Add `ctx.ParseURL(body BodyTemplate)` method.
-- Change `gear.FormToStruct(map[string][]string, interface{}) error` to `gear.ValuesToStruct(map[string][]string, interface{}, string) error`
+- Change `gear.FormToStruct(map[string][]string, any) error` to `gear.ValuesToStruct(map[string][]string, any, string) error`
 - `gear.ValuesToStruct` support pointer fields, so `ctx.ParseURL` and `ctx.ParseBody` support pointer fields too.
 
 ## [1.4.3] - 2017-04-26
