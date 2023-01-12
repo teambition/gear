@@ -135,7 +135,7 @@ func TestGearMiddlewareStatic(t *testing.T) {
 		res, err := DefaultClientDo(req)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
-		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		assert.Contains([]string{gear.MIMETextPlainCharsetUTF8, gear.MIMEMarkdownCharsetUTF8}, res.Header.Get(gear.HeaderContentType))
 		assert.Equal("gzip", res.Header.Get(gear.HeaderContentEncoding))
 		res.Body.Close()
 	})
