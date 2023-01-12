@@ -1,5 +1,5 @@
 test:
-	go test -v -failfast -tags=test --race ./...
+	go test -v -tags=test --race ./...
 
 bench:
 	go test -bench=.

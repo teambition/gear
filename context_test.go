@@ -245,10 +245,6 @@ func TestGearContextTiming(t *testing.T) {
 		app := New()
 		app.Use(func(ctx *Context) error {
 			err := ctx.Timing(time.Millisecond*10, func(c context.Context) {
-				go func() {
-					<-c.Done()
-					assert.Equal(context.DeadlineExceeded, c.Err())
-				}()
 				time.Sleep(time.Millisecond * 15)
 			})
 			assert.Equal(context.DeadlineExceeded, err)

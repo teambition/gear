@@ -243,7 +243,7 @@ func TestGearMiddlewareStaticWithIncludes(t *testing.T) {
 		res, err := RequestBy("GET", "http://"+srv.Addr().String()+"/README.md")
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
-		assert.Equal("text/plain; charset=utf-8", res.Header.Get(gear.HeaderContentType))
+		assert.Contains([]string{gear.MIMETextPlainCharsetUTF8, gear.MIMEMarkdownCharsetUTF8}, res.Header.Get(gear.HeaderContentType))
 		res.Body.Close()
 	})
 

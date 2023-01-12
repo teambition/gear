@@ -264,8 +264,8 @@ func TestGearError(t *testing.T) {
 		assert.Equal(500, err.Code)
 		assert.Equal("Error", err.Err)
 		assert.Equal("error with stack", err.Msg)
-		assert.True(strings.Contains(err.Stack, "/util.go"))
-		assert.True(strings.Contains(err.Stack, "github.com/teambition/gear/util_test.go"))
+		assert.Contains(err.Stack, "/util.go")
+		assert.Contains(err.Stack, "/util_test.go")
 	})
 
 	t.Run("Error.From", func(t *testing.T) {

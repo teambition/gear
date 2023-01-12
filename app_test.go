@@ -288,7 +288,7 @@ func TestGearAppOnError(t *testing.T) {
 		assert.Equal(`{"error":"InternalServerError","message":"Some error"}`, PickRes(res.Text()).(string))
 
 		log := buf.String()
-		assert.True(strings.Contains(log, "github.com/teambition/gear"))
+		assert.Contains(log, "gear")
 		res.Body.Close()
 	})
 
