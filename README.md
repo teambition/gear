@@ -1,10 +1,9 @@
 ![Gear](https://raw.githubusercontent.com/teambition/gear/master/gear.png)
 
-[![CI](https://github.com/teambition/gear/actions/workflows/ci-cover.yml/badge.svg)](https://github.com/teambition/gear/actions?query=workflow%3Aci-cover)
+[![CI](https://github.com/teambition/gear/actions/workflows/ci-cover.yml/badge.svg)](https://github.com/teambition/gear/actions/workflows/ci-cover.yml)
 [![Codecov](https://codecov.io/gh/teambition/gear/branch/main/graph/badge.svg)](https://codecov.io/gh/teambition/gear)
 [![Go Reference](https://pkg.go.dev/badge/github.com/teambition/gear.svg)](https://pkg.go.dev/github.com/teambition/gear)
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/teambition/gear/master/LICENSE)
-
 
 A lightweight, composable and high performance web service framework for Go.
 
@@ -299,4 +298,4 @@ id   := matched.Params("ID")
 ## License
 
 Gear is licensed under the [MIT](https://github.com/teambition/gear/blob/master/LICENSE) license.
-Copyright &copy; 2016-2022 [Teambition](https://www.teambition.com).
+Copyright &copy; 2016-2023 [Teambition](https://www.teambition.com).

@@ -1635,7 +1635,7 @@ func TestGearContextAttachment(t *testing.T) {
 		assert.Equal(200, res.StatusCode)
 		assert.Equal(`attachment; filename="Gear+%E8%AE%BE%E8%AE%A1%E8%AF%B4%E6%98%8E.md"; filename*=UTF-8''Gear%20%E8%AE%BE%E8%AE%A1%E8%AF%B4%E6%98%8E.md`,
 			res.Header.Get(HeaderContentDisposition))
-		assert.Equal(MIMETextPlainCharsetUTF8, res.Header.Get(HeaderContentType))
+		assert.Contains([]string{MIMETextPlainCharsetUTF8, MIMEMarkdownCharsetUTF8}, res.Header.Get(HeaderContentType))
 		assert.Equal(string(data), PickRes(res.Text()).(string))
 	})
 
@@ -1658,7 +1658,7 @@ func TestGearContextAttachment(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
 		assert.Equal(`inline; filename="README.md"`, res.Header.Get(HeaderContentDisposition))
-		assert.Equal(MIMETextPlainCharsetUTF8, res.Header.Get(HeaderContentType))
+		assert.Contains([]string{MIMETextPlainCharsetUTF8, MIMEMarkdownCharsetUTF8}, res.Header.Get(HeaderContentType))
 		assert.Equal(string(data), PickRes(res.Text()).(string))
 	})
 }

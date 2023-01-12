@@ -19,6 +19,8 @@ const (
 	MIMETextHTMLCharsetUTF8              = "text/html; charset=utf-8"
 	MIMETextPlain                        = "text/plain"
 	MIMETextPlainCharsetUTF8             = "text/plain; charset=utf-8"
+	MIMEMarkdown                         = "text/markdown"
+	MIMEMarkdownCharsetUTF8              = "text/markdown; charset=utf-8"
 	MIMEMultipartForm                    = "multipart/form-data"
 	MIMEOctetStream                      = "application/octet-stream"
 	MIMEApplicationSchemaJSON            = "application/schema+json"

@@ -34,10 +34,10 @@ jobs:
       run: make cover
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./gover.coverprofile
+        files: ./coverage.out
         flags: unittests
         name: codecov-umbrella
         verbose: true
