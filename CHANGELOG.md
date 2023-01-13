@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.27.0] - 2023-01-13
+
+**Changed:**
+
+- Improve gear.Context with generics.
+- Add `gear.State` for passing information through middleware and handlers.
+- Add functions:
+  - `func CtxWith[T any](parent context.Context, v *T) context.Context`
+  - `func CtxValue[T any](ctx context.Context) *T`
+  - `func CtxDoIf[T any, TI isValid[T]](ctx context.Context, fn func(v *T))`
+
+**Fixed:**
+
+- Fix gear.ValuesToStruct for slice type.
+
+
 ## [1.26.0] - 2022-06-30
 
 **Changed:**

@@ -50,13 +50,14 @@ func CtxValue[T any](ctx context.Context) *T {
 
 // CtxDoIf calls the function fn with the value *T stored in the context.Context.
 // If the Value is not exist or not valid, the function fn will not be called.
-func CtxDoIf[T any, TI isValid[T]](ctx context.Context, fn func(v *T)) {
+func CtxDoIf[T any, TI IsValid[T]](ctx context.Context, fn func(v *T)) {
 	if v := CtxValue[T](ctx); TI(v).Valid() {
 		fn(v)
 	}
 }
 
-type isValid[T any] interface {
+// IsValid is a generic interface for `gear.CtxDoIf`.
+type IsValid[T any] interface {
 	*T
 	Valid() bool
 }
@@ -73,6 +74,7 @@ type State struct {
 	RouterMatched *trie.Matched
 }
 
+// Valid implements gear.IsValid interface.
 func (s *State) Valid() bool {
 	return s != nil && s.KV != nil
 }

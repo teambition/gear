@@ -1,7 +1,7 @@
 ![Gear](https://raw.githubusercontent.com/teambition/gear/master/gear.png)
 
 [![CI](https://github.com/teambition/gear/actions/workflows/ci-cover.yml/badge.svg)](https://github.com/teambition/gear/actions/workflows/ci-cover.yml)
-[![Codecov](https://codecov.io/gh/teambition/gear/branch/main/graph/badge.svg)](https://codecov.io/gh/teambition/gear)
+[![Codecov](https://codecov.io/gh/teambition/gear/branch/master/graph/badge.svg)](https://codecov.io/gh/teambition/gear)
 [![CodeQL](https://github.com/teambition/gear/actions/workflows/codeql.yml/badge.svg)](https://github.com/teambition/gear/actions/workflows/codeql.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/teambition/gear.svg)](https://pkg.go.dev/github.com/teambition/gear)
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/teambition/gear/master/LICENSE)
