@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.27.1] - 2023-07-04
+
+**Changed:**
+
+- Update dependencies.
+- Add a const `MIMEApplicationCBOR`.
+
+
 ## [1.27.0] - 2023-01-13
 
 **Changed:**

@@ -27,6 +27,7 @@ const (
 	MIMEApplicationSchemaInstanceJSON    = "application/schema-instance+json"
 	MIMEApplicationSchemaJSONLD          = "application/ld+json"
 	MIMEApplicationSchemaGraphQL         = "application/graphql"
+	MIMEApplicationCBOR                  = "application/cbor"
 )
 
 // HTTP Header Fields
