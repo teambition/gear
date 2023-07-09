@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -36,7 +37,7 @@ func main() {
 	flag.Parse()
 	if help {
 		output := flag.CommandLine.Output()
-		fmt.Fprintf(output, "Usage of gearproxy:\n")
+		fmt.Fprintf(output, "Usage of gearproxy@%s:\n", gear.Version)
 		flag.PrintDefaults()
 		fmt.Fprintf(output, "\nProxy localhost request to remote:\n")
 		fmt.Fprintf(output, "\tgearproxy -target 'https://github.com'\n")
@@ -48,13 +49,16 @@ func main() {
 	}
 
 	app := gear.New()
-
-	// Add logging middleware
 	app.UseHandler(logging.Default(true))
 
 	targetUrl, err := url.Parse(target)
 	if err != nil {
-		logging.Fatal(err)
+		logging.Printf("gearproxy: parse target host failed, %v", err)
+		os.Exit(1)
+	}
+	if targetUrl.Host == "" {
+		logging.Println("gearproxy: target host is required")
+		os.Exit(1)
 	}
 
 	proxy := buildProxy(passHostHeader, targetUrl)
@@ -62,11 +66,12 @@ func main() {
 
 	if certFile == "" {
 		logging.Info("gearproxy start at 80")
-		app.ListenWithContext(gear.ContextWithSignal(context.Background()), ":80")
+		err = app.ListenWithContext(gear.ContextWithSignal(context.Background()), ":80")
 	} else {
 		logging.Info("tgearproxy start at 443")
-		app.ListenWithContext(gear.ContextWithSignal(context.Background()), ":443", certFile, keyFile)
+		err = app.ListenWithContext(gear.ContextWithSignal(context.Background()), ":443", certFile, keyFile)
 	}
+	logging.Println(err.Error())
 }
 
 func buildProxy(passHostHeader bool, target *url.URL) http.Handler {
