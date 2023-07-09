@@ -190,6 +190,17 @@ func main() {
 }
 ```
 
+### A CMD tool: reverse proxy server
+
+https://github.com/teambition/gear/tree/master/example/gearproxy
+
+Install it with go:
+
+```sh
+go install github.com/teambition/gear/example/gearproxy
+gearproxy -help
+```
+
 ### HTTP2 & gRPC
 
 https://github.com/teambition/gear/tree/master/example/grpc_server
@@ -214,14 +225,14 @@ Features:
 
 The registered path, against which the router matches incoming requests, can contain six types of parameters:
 
-| Syntax | Description |
-|--------|------|
-| `:name` | named parameter |
-| `:name(regexp)` | named with regexp parameter |
-| `:name+suffix` | named parameter with suffix matching |
+| Syntax                 | Description                                     |
+| ---------------------- | ----------------------------------------------- |
+| `:name`                | named parameter                                 |
+| `:name(regexp)`        | named with regexp parameter                     |
+| `:name+suffix`         | named parameter with suffix matching            |
 | `:name(regexp)+suffix` | named with regexp parameter and suffix matching |
-| `:name*` | named with catch-all parameter |
-| `::name` | not named parameter, it is literal `:name` |
+| `:name*`               | named with catch-all parameter                  |
+| `::name`               | not named parameter, it is literal `:name`      |
 
 Named parameters are dynamic path segments. They match anything until the next '/' or the path end:
 
