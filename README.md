@@ -146,7 +146,7 @@ https://github.com/teambition/gear/tree/master/example/staticgo
 Install it with go:
 
 ```sh
-go install github.com/teambition/gear/example/staticgo
+go install github.com/teambition/gear/example/staticgo@latest
 ```
 
 It is a useful CMD tool that serve your local files as web server (support TLS).
@@ -197,7 +197,7 @@ https://github.com/teambition/gear/tree/master/example/gearproxy
 Install it with go:
 
 ```sh
-go install github.com/teambition/gear/example/gearproxy
+go install github.com/teambition/gear/example/gearproxy@latest
 gearproxy -help
 ```
 
