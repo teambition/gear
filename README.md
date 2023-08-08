@@ -179,7 +179,7 @@ func main() {
   app.Use(cors.New())
   app.Use(static.New(static.Options{Root: *path}))
 
-  logging.Println("staticgo v1.1.0, created by https://github.com/teambition/gear")
+  logging.Println("staticgo v1.2.0, created by https://github.com/teambition/gear")
   logging.Printf("listen: %s, serve: %s\n", *address, *path)
 
   if *certFile != "" && *keyFile != "" {

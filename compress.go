@@ -21,12 +21,20 @@ type Compressible interface {
 type DefaultCompress struct{}
 
 // Compressible implemented Compress interface.
-// Recommend https://github.com/teambition/compressible-go.
-//
-//	import "github.com/teambition/compressible-go"
+func (d *DefaultCompress) Compressible(contentType string, contentLength int) bool {
+	if contentLength > 0 && contentLength <= 1024 {
+		return false
+	}
+	return contentType != ""
+}
+
+// ThresholdCompress is an impelementation with transhold. The transhold defines the // minimun content length to enable compressible check.
+type ThresholdCompress int
+
+// Compressible implemented Compress interface.
 //
 //	app := gear.New()
-//	app.Set(gear.SetCompress, compressible.WithThreshold(1024))
+//	app.Set(gear.SetCompress, gear.ThresholdCompress(128))
 //
 //	// Add a static middleware
 //	app.Use(static.New(static.Options{
@@ -34,10 +42,11 @@ type DefaultCompress struct{}
 //		Prefix: "/",
 //	}))
 //	app.Error(app.Listen(":3000")) // http://127.0.0.1:3000/
-func (d *DefaultCompress) Compressible(contentType string, contentLength int) bool {
-	if contentLength > 0 && contentLength <= 1024 {
+func (tc ThresholdCompress) Compressible(contentType string, contentLength int) bool {
+	if contentLength < int(tc) {
 		return false
 	}
+
 	return contentType != ""
 }
 

@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file starting fro
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 -----
+## [1.27.3] - 2023-08-08
+
+**Changed:**
+
+- Add `gear.ThresholdCompress` instead of `github.com/teambition/compressible-go`.
+- Update dependencies.
+
+## [1.27.2] - 2023-07-10
+
+**Changed:**
+
+- Add gearproxy as example.
+
 ## [1.27.1] - 2023-07-04
 
 **Changed:**
